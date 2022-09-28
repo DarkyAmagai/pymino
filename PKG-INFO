@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: pymino
+Version: 0.0.2
+Summary: A python wrapper to communicate with Amino.
+Home-page: https://github.com/forevercynical/pymino
+Author: forevercynical
+Author-email: me@cynical.gg
+License: MIT
+Keywords: aminoapps,amino,amino-bots,amino-bot,amino-bot-api,amino-bot-api-python,amino-bot-api-python3,amino-bot-api-python3-library
+Requires-Python: >=3.6
+License-File: LICENSE
