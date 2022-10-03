@@ -63,7 +63,6 @@ class WSClient(EventHandler):
         message: Message = Message(loads(message))
 
         if message.userId == self.userId: return 
-        if message.comId != 171848279: return
 
         for key, value in EventTypes.__dict__.items():
             if value == f"{message.type}:{message.mediaType}":
