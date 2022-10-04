@@ -4,14 +4,6 @@ from .context import EventHandler
 class WSClient(EventHandler):
     """
     `WSClient` is a class that handles the websocket.
-
-    `**Example**`
-    ```python
-    from pymino import Client, WSClient
-
-    client = Client("email", "password")
-    ws = WSClient(client)
-    ws.connect()
     ```
 
     `**Parameters**`
@@ -30,6 +22,7 @@ class WSClient(EventHandler):
         Thread(target=self.start_threads).start()
 
     def start_threads(self):
+        """Starts the threads."""
         while True:
             for thread in self.threads:
                 if not thread.is_alive():
@@ -39,62 +32,108 @@ class WSClient(EventHandler):
 
     def fetch_ws_url(self):
         """Fetches the websocket url."""
-        self.ws_url=get(f"https://aminoapps.com/api/chat/web-socket-url", headers=self.headers).json()['result']['url']
+        return get(f"https://aminoapps.com/api/chat/web-socket-url", headers=self.headers).json()['result']['url']
 
     def connect(self):
         """Connects to the websocket."""
-        self.sid = self.sid
-        self.headers = {
-            "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 10; SM-G975F Build/QP1A.190711.020)",
-            "cookie": f"sid={self.sid}"
-        }
+        self.run_forever_thread = Thread(target=self.run_forever)
+        self.ws_started_time = int(time())
+        self.run_forever_thread.start()
 
-        self.fetch_ws_url()
-        self.ws = WebSocketApp(self.ws_url, on_open=self._on_ws_open, on_message=self._on_ws_message, on_error=self._on_ws_error, on_close=self._on_ws_close)
-
-        Thread(target=self.ws.run_forever).start()
-        #Thread(target=self._keep_alive).start() #NOTE: This is not needed, but it's here just in case.
         self.emit("ready")
         
+    def fetch_socket(self):
+        """Fetches the websocket url and connects to it. """
+        return WebSocketApp(self.fetch_ws_url(), on_open=self._on_ws_open, on_message=self._on_ws_message, on_error=self._on_ws_error, on_close=self._on_ws_close)
+
+    def start_forever(self) -> None:
+        """Starts the websocket forever."""
+
+        self.ws = self.fetch_socket()
+
+        try:
+            if self.run_forever_thread.is_alive():
+                self.run_forever_thread.join()
+        except (AttributeError, RuntimeError):
+            pass
+
+        self.ws_thread = Thread(target=self.ws.run_forever)
+        self.ws_thread.start()
+
+        return None
+
+    def run_forever(self):
+        """Runs the websocket forever."""
+
+        self.headers = {"User-Agent": "Dalvik/2.1.0 (Linux; U; Android 10; SM-G975F Build/QP1A.190711.020)", "cookie": f"sid={self.sid}"}
+        self.start_forever()
+        while True:
+            if int(time()) - self.ws_started_time > 420:
+
+                try:
+                    if self.ws.sock.connected: self.ws.close()
+                except (AttributeError, WebSocketConnectionClosedException):
+                    pass
+
+                try:
+                    if self.ws_thread.is_alive(): self.ws_thread.join()
+                except (AttributeError, RuntimeError): 
+                    pass
+
+                self.start_forever()
+
+    def _on_ws_error(self, ws: WebSocket, error: Exception) -> None:
+        if self.debug: print(f"{ws} error: {error}")
+        try:
+            self._events["error"](error)
+        except KeyError:
+            pass
+
+        return None
+
     def _on_ws_message(self, ws: WebSocket, message: dict):
         """
         `_on_ws_message` is a function that handles the websocket messages.
         """
-        message: Message = Message(loads(message))
+        if self.debug: print(f"{ws} received message: {message}")
+        raw_message = loads(message)
+        message: Message = Message(raw_message)
 
         if message.userId == self.userId: return 
 
-        for key, value in EventTypes.__dict__.items():
-            if value == f"{message.type}:{message.mediaType}":
+        if raw_message["t"] == 1000:
+            for key, value in EventTypes.__dict__.items():
+                if value == f"{message.type}:{message.mediaType}":
 
-                if (message.content == None or not message.content.startswith(self.command_prefix)):
-                    self.threads.append(Thread(target=self._handle_event, args=(key, message)))
-                    return 200
+                    if (message.content == None or not message.content.startswith(self.command_prefix)):
+                        self.threads.append(Thread(target=self._handle_event, args=(key, message)))
+                        return 200
 
-                elif message.content is not None and message.content.startswith(self.command_prefix):
-                    command = message.content.split(" ")[0][len(self.command_prefix):]
+                    elif message.content is not None and message.content.startswith(self.command_prefix):
+                        command = message.content.split(" ")[0][len(self.command_prefix):]
 
-                    if command in self._commands:
-                        self.threads.append(Thread(target=self._handle_command(message.json)))
-                    return 200
-                else:
-                    return 400         
-    
-    def _keep_alive(self):
-        while True:
-            if not self.ws.sock.connected:
-                self.ws.close()
-                sleep(5)
-                self.connect()
-            if self.debug:
-                print("WebSocket is alive")
+                        if command in self._commands:
+                            self.threads.append(Thread(target=self._handle_command(message.json)))
+                        return 200
+                    
+                    return 400  
 
-    def _on_ws_error(self, ws: WebSocket, error: Exception):
-        try: self._events["error"](error)
-        except KeyError: pass
+        elif raw_message["t"] == 201: pass # TODO: Fetch channel key for agora.
+        elif raw_message["t"] == 400: pass # TODO: Topic events.
+            
+            
+        return 400
+
     def _on_ws_close(self, ws: WebSocket, close_status_code: int, close_msg: str):
-        [ws, close_status_code, close_msg]
-        self.connect()
-    def _send_ws_message(self, message: Message): self.ws.send(dumps(message))
-    def stop(self): self.ws.close()
-    def _on_ws_open(self, ws: WebSocket): [ws]
+        if self.debug: print(f"{ws} closed with status code {close_status_code} and message {close_msg}")
+
+    def _send_ws_message(self, message: dict):
+        if self.debug: print(f"Sending message: {message}")
+        self.ws.send(dumps(message))
+
+    def stop_ws(self):
+        if self.debug: print("Stopping websocket...")
+        self.ws.close()
+
+    def _on_ws_open(self, ws: WebSocket):
+        if self.debug: print(f"{ws} has been opened.")

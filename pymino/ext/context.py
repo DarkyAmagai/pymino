@@ -1083,6 +1083,16 @@ class EventHandler(Context):
             return func
         return decorator
 
+    def key_error(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except KeyError:
+                return None
+        return wrapper
+
+    @key_error
     def _handle_event(self, event: str, data: dict):
         """
         `_handle_event` is a function that handles events.
@@ -1190,7 +1200,6 @@ class EventHandler(Context):
         elif event == "invite_message":
             self._events["invite_message"](self.context(data, self.request))
         
-
 
 
         

@@ -21,12 +21,14 @@ class Bot(Socket):
         debug=True
     )
     """
-    def __init__(self, command_prefix: Optional[str] = "!", community_id: Optional[str] = None, debug: Optional[bool] = False):
+    def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, debug: Optional[bool] = False, **kwargs):
         self.command_prefix = command_prefix
         self.community_id = community_id
         self.debug = debug
         self.is_ready = False
-        self.session = Session()
+        self.session = Session(
+            proxies=kwargs.get("proxies", None)
+            )
         self.session.headers = {
         "USER-AGENT": "Mozilla/5.0 (Linux; Android 7.0; SM-G930V Build/NRD90M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.125 Mobile Safari/537.36",
         "ACCEPT-LANGUAGE": "en-US",
@@ -84,3 +86,33 @@ class Bot(Socket):
             return response
         else:
             raise Exception("Failed to authenticate.")
+
+    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True):
+        """
+        `fetch_community_id` fetches the community id from a community link and sets it to `self.community_id` if `set_community_id` is `True`.
+        
+        `**Parameters**`
+        - `community_link` - The community link to fetch the community id from.
+        - `set_community_id` - Whether to set the community id to the fetched community id or not. Defaults to `True`.
+        
+        `**Example**`
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        
+        community_id = bot.fetch_community_id(
+            community_link="https://aminoapps.com/c/your-community",
+            set_community_id=True
+        )
+        ```
+        """
+        community_id = linkInfoV2(self.request.handler(
+            method="GET", url=f"https://service.narvii.com/api/v1/g/s/link-resolution?q={community_link}")
+            ).comId
+
+        if set_community_id:
+            self.community_id = community_id
+            self.community.community_id = community_id
+
+        return community_id
