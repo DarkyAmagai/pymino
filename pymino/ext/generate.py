@@ -11,6 +11,7 @@ from time import time, sleep
 from threading import Thread
 from PIL import Image
 from websocket import WebSocket, WebSocketApp, WebSocketConnectionClosedException
+from inspect import signature as inspect_signature
 
 def device_id(data: Optional[str]=None) -> str:
     """

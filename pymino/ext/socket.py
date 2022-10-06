@@ -1,3 +1,4 @@
+from json import JSONDecodeError
 from .generate import *
 from .context import EventHandler
 
@@ -32,7 +33,13 @@ class WSClient(EventHandler):
 
     def fetch_ws_url(self):
         """Fetches the websocket url."""
-        return get(f"https://aminoapps.com/api/chat/web-socket-url", headers=self.headers).json()['result']['url']
+        ws_url = get(f"https://aminoapps.com/api/chat/web-socket-url", headers=self.headers)
+
+        if ws_url.status_code != 200:
+            raise Exception(f"Failed to fetch websocket url.\n{ws_url.text}")
+            
+        return ws_url.json()['result']['url']
+
 
     def connect(self):
         """Connects to the websocket."""

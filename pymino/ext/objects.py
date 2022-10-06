@@ -614,7 +614,7 @@ class themePack:
     @property
     def json(self) -> dict: return self.__data__
 
-class Community:
+class SCommunity:
     def __init__(self, data: dict, List: bool = False):
         self.__data__ = data
         self.__List__ = List

@@ -35,7 +35,7 @@ class Context():
         return wrapper
 
     @attribute_error
-    def reply(self, content: str):
+    def reply(self, content: str, delete_after: int= None):
         """
         `**reply**` replies to the message that triggered the command.
         
@@ -46,7 +46,7 @@ class Context():
             ctx.reply("Pong!")
         ```
         """
-        return Message(self._session.handler(
+        message = Message(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
             data = {
                 "content": content,
@@ -54,9 +54,20 @@ class Context():
                 "type": 0,
                 "replyMessageId": self._message.messageId
             }))
+        if delete_after:
+            Thread(target=self._delete, args=(message, delete_after)).start()
+
+        return message
 
     @attribute_error
-    def send(self, content: str):
+    def _delete(self, message: Message, delete_after: int = 5):
+        if delete_after != 0:
+            sleep(delete_after)
+        return self._session.handler(
+            method="DELETE", url=f"/x{message.comId}/s/chat/thread/{message.chatId}/message/{message.messageId}")
+
+    @attribute_error
+    def send(self, content: str, delete_after: int= None):
         """
         `**send**` sends a message to the chat that triggered the command.
         
@@ -67,16 +78,20 @@ class Context():
             ctx.send("Pong!")
         ```
         """
-        return Message(self._session.handler(
+        message =  Message(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
             data = {
                 "content": content,
                 "timestamp": int(time() * 1000),
                 "type": 0
             }))
+        if delete_after:
+            Thread(target=self._delete, args=(message, delete_after)).start()
+
+        return message
 
     @attribute_error
-    def send_embed(self, title: str, content: str, image: str = None, link: Optional[str]=None) -> Message:
+    def send_embed(self, title: str, content: str, image: str = None, link: Optional[str]=None, delete_after: int= None) -> Message:
         """
         `**send_embed**` sends an embed to the chat that triggered the command.
 
@@ -94,7 +109,7 @@ class Context():
         ```
         """
         image = self._prep_image(image)
-        return Message(self._session.handler(
+        message = Message(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
             data = {
                 "type": 0,
@@ -109,6 +124,11 @@ class Context():
                 "extensions": {},
                 "timestamp": int(time() * 1000)
                 }))
+                
+        if delete_after:
+            Thread(target=self._delete, args=(message, delete_after)).start()
+
+        return message
 
     @attribute_error
     def upload_image(self, image: Union[str, BinaryIO]) -> str:
@@ -145,7 +165,7 @@ class Context():
         return image
 
     @attribute_error
-    def send_link_snippet(self, message: str, image: BinaryIO = None, resize: str="807x226") -> SResponse:
+    def send_link_snippet(self, message: str, image: BinaryIO = None, resize: str="807x226", delete_after: int= None) -> Message:
         """
         `send_link_snippet` is a function that sends a link snippet.
 
@@ -156,7 +176,7 @@ class Context():
 
         """
         image = self._prep_image(image, resize)
-        return SResponse(self._session.handler(
+        message = SResponse(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
             data = {
                 "type": 0,
@@ -173,6 +193,11 @@ class Context():
                     },
                 "timestamp": int(time() * 1000)
                 }))
+
+        if delete_after:
+            Thread(target=self._delete, args=(message, delete_after)).start()
+
+        return message
 
 class EventHandler(Context):
     """
@@ -269,15 +294,14 @@ class EventHandler(Context):
         message: Message = Message(data)
 
         command = message.content.split(" ")[0][len(self.command_prefix):]
-        command_length = len(self.command_prefix + message.content.split(" ")[0][1:])
+        command_length = len(self.command_prefix + message.content.split(" ")[0][1:]) + 1
         arg = message.content[command_length:]
 
         if command in self._commands:
-            if arg:
-                self._commands[command](self.context(message, self.request), arg)
-
-            else:
+            if len(inspect_signature(self._commands[command]).parameters) == 1:
                 self._commands[command](self.context(message, self.request))
+            else:
+                self._commands[command](self.context(message, self.request), arg)
 
     def on_error(self):
         """
