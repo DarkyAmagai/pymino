@@ -82,7 +82,7 @@ class Bot(Socket):
             self.session.headers.update({"AUID": self.userId})
             if self.debug: print(f"sid={self.sid}")
 
-            Thread(self.connect())
+            Thread(self.connect()).start()
             return response
         else:
             raise Exception("Failed to authenticate.")
