@@ -10,6 +10,7 @@ class Bot(Socket):
     - `command_prefix` - The prefix to use for commands. Defaults to `!`.
     - `community_id` - The community id to use. Defaults to `None`.
     - `debug` - Whether to print debug messages or not. Defaults to `False`.
+    - `**kwargs` - Any other keyword arguments to pass to the bot. These will be set as attributes.
 
     `**Example**`
     ```python
@@ -22,12 +23,13 @@ class Bot(Socket):
     )
     """
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, debug: Optional[bool] = False, **kwargs):
+        for key, value in kwargs.items(): setattr(self, key, value)
         self.command_prefix = command_prefix
         self.community_id = community_id
         self.debug = debug
         self.is_ready = False
         self.session = Session(
-            proxies=kwargs.get("proxies", None)
+            proxies=self.proxies if hasattr(self, "proxies") else None
             )
         self.session.headers = {
         "USER-AGENT": "Mozilla/5.0 (Linux; Android 7.0; SM-G930V Build/NRD90M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.125 Mobile Safari/537.36",
@@ -52,7 +54,7 @@ class Bot(Socket):
                 "email": email,
                 "v": 2,
                 "secret": "0 {}".format(password),
-                "deviceID": device_id(),
+                "deviceID": self.deviceId if hasattr(self, "deviceId") else device_id(),
                 "clientType": 100,
                 "action": "normal",
                 "timestamp": int(time() * 1000)
@@ -82,7 +84,7 @@ class Bot(Socket):
             self.session.headers.update({"AUID": self.userId})
             if self.debug: print(f"sid={self.sid}")
 
-            Thread(self.connect()).start()
+            self.connect()
             return response
         else:
             raise Exception("Failed to authenticate.")

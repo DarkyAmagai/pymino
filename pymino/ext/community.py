@@ -42,6 +42,22 @@ class Community:
             data={"duration": 0, "force": True, "timestamp": int(time() * 1000)}))
 
     @community
+    def fetch_object_id(self, link: str) -> linkInfoV2:
+        """
+        `fetch_object_id` is the method that fetches the object id from a link.
+
+        `**Example**`
+        ```python
+        >>> from pymino import Bot
+
+        >>> bot = Bot()
+        >>> objectId = bot.community.fetch_object_id(link="https://www.aminoapps.com.com/p/as12s34S")
+        >>> bot.run(sid=sid)
+        ```
+        """
+        return linkInfoV2(self.session.handler(method="GET", url=f"/g/s/link-resolution?q={link}")).objectId
+
+    @community
     def join_community(self) -> SResponse:
         """
         `join_community` is the method that joins the community.
@@ -843,6 +859,11 @@ class Community:
             method="GET", url=f"/x{self.community_id}/s/item/{wikiId}"))
 
     @community
+    def fetch_quiz(self, quizId: str):
+        return self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/blog/{quizId}")
+
+    @community
     def fetch_user(self, userId: str) -> User:
         """
         `fetch_user` is the method that fetches user's profile.
@@ -1093,7 +1114,7 @@ class Community:
                 }))
     
     @community
-    def fetch_user_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25) -> SResponse:
+    def fetch_user_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25) -> Comment:
         """
         `fetch_user_comments` is the method that fetches a user's comments.
         
@@ -1108,7 +1129,7 @@ class Community:
         >>> bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return Comment(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/comment?sort={sorting}&start={start}&size={size}"))
 
     @community
@@ -1193,7 +1214,7 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
-    def _prep_image(self, image: str, resize: str=None) -> BinaryIO:
+    def _prep_image(self, image: str) -> BinaryIO:
         """
         `_prep_image` is the method that prepares an image for sending.
         
@@ -1202,24 +1223,20 @@ class Community:
         >>> from pymino import Bot
         
         >>> bot = Bot()
-        >>> bot.community._prep_image(image="https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png", resize="807x226")
+        >>> bot.community._prep_image(image="https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
         >>> bot.run(sid=sid)
         ```
         """
-        if resize:
-            resize = resize.split("x")
-        
+
         if image.startswith("http"):
             [open("temp.png", "wb").write(get(image).content), image := open("temp.png", "rb")]
         else:
             image = open(image, "rb")
 
-        if not resize: return image
-        [Image.open(image).resize((int(resize[0]), int(resize[1]))).save("temp.png"), image := open("temp.png", "rb")]
-
         return image
+
     @community
-    def send_link_snippet(self, chatId: str, message: str, image: BinaryIO = None, resize: str="807x226") -> SResponse:
+    def send_link_snippet(self, chatId: str, message: str, image: BinaryIO = None) -> SResponse:
         """
         `send_link_snippet` is the method that sends a link snippet to a chat.
         
@@ -1232,7 +1249,7 @@ class Community:
         >>> bot.run(sid=sid)
         ```
         """
-        image = self._prep_image(image, resize)
+        image = self._prep_image(image)
         return SResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
             data = {
@@ -1679,3 +1696,13 @@ class Community:
             }
         ))
 
+    @community
+    def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False) -> SResponse:
+        return SResponse(self.session.handler(
+            method="POST", url=f"/x{self.community_id}/s/blog/{quizId}/quiz/result",
+            data = {
+                "quizAnswerList": quizAnswers if isinstance(quizAnswers, list) else [quizAnswers],
+                "mode": 1 if hellMode else 0,
+                "timestamp": int(time() * 1000)
+            }
+        ))

@@ -1,42 +1,132 @@
+from typing import List, Dict, Union
+
 class Objects:
     def __init__(self): pass
 
-    def fetch_key(self, data, key, List: bool=False):
+    def fetch_key(self, data: Union[Dict, List], key: str, isList: bool=False) -> Union[str, List]:
+        """
+        Fetches a key from a dictionary or list of dictionaries. 
+
+        `data` - The dictionary or list of dictionaries to fetch the key from. 
+
+        `key` - The key to fetch. [str]
+
+        `isList` - Whether you want to return a list of the keys or not. [bool]
+
+        `**Example**`:
+        ```py
+        from xamino import Objects
+
+        objects = Objects()
+        data = {
+            "timestamp": 123456789,
+            "message": "Hello, world!"
+            "author": {
+                "name": "pymino user",
+                "uid": "123456789"
+            }
+
+        print(objects.fetch_key(data=data, key="name"))
+        # Output: pymino user
+        """
         if isinstance(data, dict):
+            """
+            If the data is a dictionary, then it will return the value of the key.
+            """
             if key in data:
-                if List: return [data[key]]
+                if isList: return [data[key]]
                 else: return data[key]
             else:
-                if List: res = []
+                if isList: res = []
                 else: res = None
                 for k, v in data.items():
                     if isinstance(v, (dict, list)):
-                        if List: res += self.fetch_key(v, key, List)
-                        else: res = self.fetch_key(v, key, List)
-                        if res and not List: return res
+                        if isList: res += self.fetch_key(v, key, isList)
+                        else: res = self.fetch_key(v, key, isList)
+                        if res and not isList: return res
                 return res
 
         elif isinstance(data, list):
-            if List: res = []
+            """
+            If the data is a list, then it will return a list of the values of the key.
+            """
+            if isList: res = []
             else: res = None
             for item in data:
                 if isinstance(item, (dict, list)):
-                    if List: res += self.fetch_key(item, key, List)
-                    else: res = self.fetch_key(item, key, List)
-                    if res and not List: return res
+                    if isList: res += self.fetch_key(item, key, isList)
+                    else: res = self.fetch_key(item, key, isList)
+                    if res and not isList: return res
             return res
         else: return None
 
-class User:
-    def __init__(self, data: dict, List: bool=False):
-        self.__data__ = data
-        self.__List__ = List
+class EventTypes:
+    """
+    A class that contains the event types for Socket.
+    """
+    text_message = "0:0"
+    image_message = "0:100"
+    youtube_message = "0:103"
+    strike_message = "1:0"
+    voice_message = "2:110"
+    sticker_message = "3:113"
+    vc_not_answered = "52:0"
+    vc_not_cancelled = "53:0"
+    vc_not_declined = "54:0"
+    video_chat_not_answered = "55:0"
+    video_chat_not_cancelled = "56:0"
+    video_chat_not_declined = "57:0"
+    avatar_chat_not_answered = "58:0"
+    avatar_chat_not_cancelled = "59:0"
+    avatar_chat_not_declined = "60:0"
+    delete_message = "100:0"
+    member_join = "101:0"
+    member_leave = "102:0"
+    chat_invite = "103:0"
+    chat_background_changed = "104:0"
+    chat_title_changed = "105:0"
+    chat_icon_changed = "106:0"
+    vc_start = "107:0"
+    video_chat_start = "108:0"
+    avatar_chat_start = "109:0"
+    vc_end = "110:0"
+    video_chat_end = "111:0"
+    avatar_chat_end = "112:0"
+    chat_content_changed = "113:0"
+    screen_room_start = "114:0"
+    screen_room_end = "115:0"
+    chat_host_transfered = "116:0"
+    text_message_force_removed = "117:0"
+    chat_removed_message = "118:0"
+    mod_deleted_message = "119:0"
+    chat_tip = "120:0"
+    chat_pin_announcement = "121:0"
+    vc_permission_open_to_everyone = "122:0"
+    vc_permission_invited_and_requested = "123:0"
+    vc_permission_invite_only = "124:0"
+    chat_view_only_enabled = "125:0"
+    chat_view_only_disabled = "126:0"
+    chat_unpin_announcement = "127:0"
+    chat_tipping_enabled = "128:0"
+    chat_tipping_disabled = "129:0"
+    timestamp_message = "65281:0"
+    welcome_message = "65282:0"
+    invite_message = "65283:0"
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["userProfileList"]] if self.__List__ else self.__data__["userProfile"][key]
-        except (KeyError, TypeError):
-            return Objects().fetch_key(self.__data__, key, self.__List__)
+class User:
+    """
+    Contains the user's properties such as their username, userId, and more.
+    """
+    def __init__(self, data: dict, isList: bool=False) -> None:
+        self._json = data
+        self._list = isList
+
+    def _fetch(self, key) -> Union[str, List]:
+        """
+        Fetches a key from the user's data.
+        """
+        try: return [i[key] for i in self._json["userProfileList"]] if self._list else self._json["userProfile"][key]
+        except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
 
     @property
     def moodSticker(self) -> str: return self._fetch("moodSticker")
@@ -127,17 +217,23 @@ class User:
     @property
     def aminoId(self) -> str: return self._fetch("aminoId")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class Authenticate:
-    def __init__(self, data: dict):
-        self.__data__ = data
+    """
+    Contains the authentication properties such as the sid, secret, and more.
 
-    def _fetch(self, key: str) -> any:
-        try:
-            return self.__data__.get(key)
-        except:
-            Objects().fetch_key(self.__data__, key)
+    Usually used for login/registration.
+    """
+    def __init__(self, data: dict) -> None:
+        self._json = data
+
+    def _fetch(self, key: str) -> Union[str, List]:
+        """
+        Fetches a key from the authentication data.
+        """
+        try: return self._json.get(key)
+        except: Objects().fetch_key(self._json, key)
 
     @property
     def sid(self) -> str: return self._fetch("sid")
@@ -148,70 +244,85 @@ class Authenticate:
     @property
     def secret(self) -> str: return self._fetch("secret")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 
 class linkInfoV2:
-    def __init__(self, data: dict):
-        self.__data__ = data
+    """
+    Contains properties such as ndcId, objectId and more.
+
+    Uses fetch_key() from Objects class to fetch the key.
+    """
+    def __init__(self, data: dict) -> None:
+        self._json = data
     
     @property
-    def fullPath(self) -> str: return (Objects().fetch_key(self.__data__, "fullPath", False))
+    def fullPath(self) -> str: return (Objects().fetch_key(self._json, "fullPath", False))
     @property
-    def comId(self) -> int: return (Objects().fetch_key(self.__data__, "ndcId", False))
+    def comId(self) -> int: return (Objects().fetch_key(self._json, "ndcId", False))
     @property
-    def objectId(self) -> str: return (Objects().fetch_key(self.__data__, "objectId", False))
+    def objectId(self) -> str: return (Objects().fetch_key(self._json, "objectId", False))
     @property
-    def objectType(self) -> int: return (Objects().fetch_key(self.__data__, "objectType", False))
+    def objectType(self) -> int: return (Objects().fetch_key(self._json, "objectType", False))
     @property
-    def shortCode(self) -> str: return (Objects().fetch_key(self.__data__, "shortCode", False))
+    def shortCode(self) -> str: return (Objects().fetch_key(self._json, "shortCode", False))
     @property
-    def targetCode(self) -> int: return (Objects().fetch_key(self.__data__, "targetCode", False))
+    def targetCode(self) -> int: return (Objects().fetch_key(self._json, "targetCode", False))
     @property
-    def path(self) -> str: return (Objects().fetch_key(self.__data__, "path", False))
+    def path(self) -> str: return (Objects().fetch_key(self._json, "path", False))
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class SResponse:
-    def __init__(self, data: dict):
-        self.__data__ = data
+    """
+    Contains the response from the API.
+    """
+    def __init__(self, data: dict) -> None:
+        self._json = data
 
     @property
-    def statuscode(self) -> int: return self.__data__["api:statuscode"]
+    def statuscode(self) -> int: return self._json["api:statuscode"]
     @property
-    def duration(self) -> str: return self.__data__["api:duration"]
+    def duration(self) -> str: return self._json["api:duration"]
     @property
-    def message(self) -> str: return self.__data__["api:message"]
+    def message(self) -> str: return self._json["api:message"]
     @property
-    def timestamp(self) -> str: return self.__data__["api:timestamp"]
+    def timestamp(self) -> str: return self._json["api:timestamp"]
     @property
-    def devOptions(self) -> dict: return self.__data__["devOptions"]
+    def devOptions(self) -> dict: return self._json["devOptions"]
     @property
-    def mediaValue(self) -> str: return self.__data__["mediaValue"]
+    def mediaValue(self) -> str: return self._json["mediaValue"]
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class ResetPassword:
-    def __init__(self, data: dict):
-        self.__data__ = data
+    """
+    Contains the response from the API when resetting the password.
+    """
+    def __init__(self, data: dict) -> None:
+        self._json = data
 
     @property
-    def response(self) -> SResponse: return SResponse(self.__data__)
+    def response(self) -> SResponse: return SResponse(self._json)
     @property
-    def secret(self): return self.__data__["secret"]
+    def secret(self): return self._json["secret"]
     @property
-    def json(self): return self.__data__
+    def json(self): return self._json
 
 class Comment:
-    def __init__(self, data: dict, List: bool=False):
-        self.__data__ = data
-        self.__List__ = List
+    """
+    Contains comment properties such as content, author, and more.
+    """
+    def __init__(self, data: dict, isList: bool=False):
+        self._json = data
+        self._list = isList
 
     def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["commentList"]] if self.__List__ else self.__data__["comment"][key]
-        except (KeyError, TypeError):
-            Objects().fetch_key(self.__data__, key, self.__List__)
+        """
+        Fetches a key from the comment data.
+        """
+        try: return [i[key] for i in self._json["commentList"]] if self._list else self._json["comment"][key]
+        except (KeyError, TypeError): Objects().fetch_key(self._json, key, self._list)
 
     @property
     def modifiedTime(self) -> str: return self._fetch("modifiedTime")
@@ -230,8 +341,7 @@ class Comment:
     @property
     def votesSum(self) -> int: return self._fetch("votesSum")
     @property
-    def user(self) -> User:
-        return User([i["author"] for i in self.__data__["commentList"]], True) if self.__List__ else User(self.__data__["comment"]["author"])
+    def user(self) -> User: return User([i["author"] for i in self._json["commentList"]], True) if self._list else User(self._json["comment"]["author"])
     @property
     def content(self) -> str: return self._fetch("content")
     @property
@@ -245,18 +355,19 @@ class Comment:
     @property
     def type(self) -> int: return self._fetch("type")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class Blog:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    """
+    Contains blog properties such as title, content, and more.
+    """
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["blogList"]] if self.__List__ else self.__data__["blog"][key]
-        except (KeyError, TypeError):
-            Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return [i[key] for i in self._json["blogList"]] if self._list else self._json["blog"][key]
+        except (KeyError, TypeError): Objects().fetch_key(self._json, key, self._list)
         
     @property
     def globalVotesCount(self) -> int: return self._fetch("globalVotesCount")
@@ -303,8 +414,7 @@ class Blog:
     @property
     def language(self) -> None: return self._fetch("language")
     @property
-    def user(self) -> User:
-        return User([author["author"] for author in self.__data__], List=True)
+    def author(self) -> User: return User([author["author"] for author in self._json], isList=True)
     @property
     def extensions(self) -> dict: return self._fetch("extensions")
     @property
@@ -318,18 +428,22 @@ class Blog:
     @property
     def commentsCount(self) -> int: return self._fetch("commentsCount")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
         
 class Wiki:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    """
+    Contains wiki properties such as author, content, and more.
+    """
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["itemList"]] if self.__List__ else self.__data__["item"][key]
-        except KeyError:
-            Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        """
+        Fetches a key from the wiki data.
+        """
+        try: return [i[key] for i in self._json["itemList"]] if self._list else self._json["item"][key]
+        except KeyError: Objects().fetch_key(self._json, key, self._list)
       
     @property
     def globalVotesCount(self) -> int: return self._fetch("globalVotesCount")
@@ -344,8 +458,7 @@ class Wiki:
     @property
     def style(self) -> int: return self._fetch("style")
     @property
-    def user(self) -> User:
-        return User([author["author"] for author in self.__data__], List=True)
+    def author(self) -> User: return User([author["author"] for author in self._json], isList=True)
     @property
     def contentRating(self) -> int: return self._fetch("contentRating")
     @property
@@ -375,43 +488,46 @@ class Wiki:
     @property
     def commentsCount(self) -> int: return self._fetch("commentsCount")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class chatMembers:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data["memberList"]
-        self.__List__ = List
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data["memberList"]
+        self._list = isList
 
     @property
-    def chatMembers(self) -> User:
-        return User([user for user in self.__data__], List=True)
+    def chatMembers(self) -> User: return User([user for user in self._json], isList=True)
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
+
+class messageExtensions: #NOTE: This is a work in progress! I Have not even tested this yet.
+    def __init__(self, data: dict):
+        if data["o"]: self._json = data["o"]
+        else: self._json = data
+    @property
+    def mentionedArray(self) -> list: return self._json["chatMessage"]["extensions"]["mentionedArray"][0]["uid"]
 
 class Message:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
         self.message = ["message"]
 
         try:
-            if self.__data__["o"]:
-                self.__data__ = self.__data__["o"]
-                self.message = ["chatMessage"]
+            if self._json["o"]: self._json = self._json["o"]
+            self.message = ["chatMessage"]
         except KeyError: pass
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["messageList"]] if self.__List__ else self.__data__[self.message][key]
-        except (KeyError, TypeError):
-            return Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return [i[key] for i in self._json["messageList"]] if self._list else self._json[self.message][key]
+        except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
 
     @property
     def comId(self) -> int: return self._fetch("ndcId")
     @property
     def userId(self) -> str: return self._fetch("uid")
     @property 
-    def author(self) -> User: return User(self.__data__, List=self.__List__)
+    def author(self) -> User: return User(self._json, isList=self._list)
     @property
     def chatId(self) -> str: return self._fetch("threadId")
     @property
@@ -435,20 +551,19 @@ class Message:
     @property
     def chatBubbleVersion(self) -> int: return self._fetch("chatBubbleVersion")
     @property
-    def extensions(self) -> dict: return self._fetch("extensions")
+    def extensions(self) -> dict: return messageExtensions(self._fetch("extensions"))
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
+
 
 class chatExtensions:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__] if self.__List__ else self.__data__[key]
-        except (KeyError, TypeError):
-            return Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return [i[key] for i in self._json] if self._list else self._json[key]
+        except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
 
     @property
     def viewOnly(self) -> bool: return self._fetch("viewOnly")
@@ -489,19 +604,17 @@ class chatExtensions:
     @property
     def vvChatJoinType(self) -> int: return self._fetch("vvChatJoinType")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 
 class ChatThread:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["threadList"]] if self.__List__ else self.__data__[key]["thread"]
-        except (KeyError, TypeError):
-            return Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return [i[key] for i in self._json["threadList"]] if self._list else self._json[key]["thread"]
+        except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
 
     @property
     def userAddedTopicList(self) -> list: return self._fetch("userAddedTopicList")
@@ -546,26 +659,27 @@ class ChatThread:
     @property
     def latestActivityTime(self) -> str: return self._fetch("latestActivityTime")
     @property
-    def author(self) -> User: return User(self._fetch("author"), self.__List__)
+    def author(self) -> User: return User(self._fetch("author"), self._list)
     @property
-    def extensions(self) -> chatExtensions: return chatExtensions(self._fetch("extensions"), self.__List__)
+    def extensions(self) -> chatExtensions: return chatExtensions(self._fetch("extensions"), self._list)
     @property
-    def lastMessageSummary(self) -> Message: return Message(self._fetch("lastMessageSummary"), self.__List__)
+    def lastMessageSummary(self) -> Message: return Message(self._fetch("lastMessageSummary"), self._list)
         
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 
 class Notification:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    """
+    Contains notification properties such as object id, type, and more.
+    """
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["notificationList"]] if self.__List__ else self.__data__["notification"][key]
-        except (KeyError, TypeError):
-            return Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return [i[key] for i in self._json["notificationList"]] if self._list else self._json["notification"][key]
+        except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
 
     @property
     def parentText(self) -> str: return self._fetch("parentText")
@@ -578,7 +692,7 @@ class Notification:
     @property
     def parentId(self) -> str: return self._fetch("parentId")
     @property
-    def operator(self) -> User: return User(self._fetch("operator"), self.__List__)
+    def operator(self) -> User: return User(self._fetch("operator"), self._list)
     @property
     def createdTime(self) -> str: return self._fetch("createdTime")
     @property
@@ -596,45 +710,43 @@ class Notification:
     @property
     def objectType(self) -> int: return self._fetch("objectType")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class themePack:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
         
     @property
-    def themeColor(self) -> str: return self.__data__["themeColor"]
+    def themeColor(self) -> str: return self._json["themeColor"]
     @property
-    def themePackHash(self) -> str: return self.__data__["themePackHash"]
+    def themePackHash(self) -> str: return self._json["themePackHash"]
     @property
-    def themePackRevision(self) -> int: return self.__data__["themePackRevision"]
+    def themePackRevision(self) -> int: return self._json["themePackRevision"]
     @property
-    def themePackUrl(self) -> str: return self.__data__["themePackUrl"]
+    def themePackUrl(self) -> str: return self._json["themePackUrl"]
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class SCommunity:
-    def __init__(self, data: dict, List: bool = False):
-        self.__data__ = data
-        self.__List__ = List
+    def __init__(self, data: dict, isList: bool = False) -> None:
+        self._json = data
+        self._list = isList
 
-    def _fetch(self, key):
-        try:
-            return [i[key] for i in self.__data__["communityList"]] if self.__List__ else self.__data__[key]["community"]
-        except (KeyError, TypeError):
-            return Objects().fetch_key(self.__data__, key, self.__List__)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return [i[key] for i in self._json["communityList"]] if self._list else self._json[key]["community"]
+        except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
 
     @property
     def userAddedTopicList(self) -> list: return self._fetch("userAddedTopicList")
     @property
-    def agent(self) -> User: return User(self._fetch("agent"), self.__List__)
+    def agent(self) -> User: return User(self._fetch("agent"), self._list)
     @property
     def listedStatus(self) -> int: return self._fetch("listedStatus")
     @property
     def probationStatus(self) -> int: return self._fetch("probationStatus")
     @property
-    def themePack(self) -> themePack: return themePack(self._fetch("themePack"), self.__List__)
+    def themePack(self) -> themePack: return themePack(self._fetch("themePack"), self._list)
     @property
     def membersCount(self) -> int: return self._fetch("membersCount")
     @property
@@ -674,17 +786,15 @@ class SCommunity:
     @property
     def promotionalMediaList(self) -> list: return self._fetch("promotionalMediaList")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class CheckInHistory:
-    def __init__(self, data: dict):
-        self.__data__ = data
+    def __init__(self, data: dict) -> None:
+        self._json = data
 
-    def _fetch(self, key):
-        try:
-            return self.__data__[key]
-        except KeyError:
-            return Objects().fetch_key(self.__data__, key)
+    def _fetch(self, key) -> Union[str, List]:
+        try: return self._json[key]
+        except KeyError: return Objects().fetch_key(self._json, key)
 
     @property
     def joinedTime(self) -> int: return self._fetch("joinedTime")
@@ -705,17 +815,15 @@ class CheckInHistory:
     @property
     def history(self) -> str: return self._fetch("history")
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class CheckIn:
-    def __init__(self, data: dict):
-        self.__data__ = data
+    def __init__(self, data: dict) -> None:
+        self._json = data
     
-    def _fetch(self, key):
-        try:
-            return self.__data__[key]
-        except KeyError:
-            return Objects().fetch_key(self.__data__, key)
+    def _fetch(self, key) -> str:
+        try: return self._json[key]
+        except KeyError: return Objects().fetch_key(self._json, key)
 
     @property
     def consecutiveCheckInDays(self) -> int: return self._fetch("consecutiveCheckInDays")
@@ -730,103 +838,55 @@ class CheckIn:
     @property
     def userProfile(self) -> User: return User(self._fetch("userProfile"))
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class Wallet:
     def __init__(self, data: dict):
-        self.__data__ = data
+        self._json = data
         
     @property
-    def totalCoinsFloat(self) -> float: return self.__data__["totalCoinsFloat"]
+    def totalCoinsFloat(self) -> float: return self._json["totalCoinsFloat"]
     @property
-    def adsEnabled(self) -> bool: return self.__data__["adsEnabled"]
+    def adsEnabled(self) -> bool: return self._json["adsEnabled"]
     @property
-    def adsVideoStats(self) -> dict: return self.__data__["adsVideoStats"]
+    def adsVideoStats(self) -> dict: return self._json["adsVideoStats"]
     @property
-    def adsFlags(self) -> int: return self.__data__["adsFlags"]
+    def adsFlags(self) -> int: return self._json["adsFlags"]
     @property
-    def totalCoins(self) -> int: return self.__data__["totalCoins"]
+    def totalCoins(self) -> int: return self._json["totalCoins"]
     @property
-    def businessCoinsEnabled(self) -> bool: return self.__data__["businessCoinsEnabled"]
+    def businessCoinsEnabled(self) -> bool: return self._json["businessCoinsEnabled"]
     @property
-    def totalBusinessCoins(self) -> int: return self.__data__["totalBusinessCoins"]
+    def totalBusinessCoins(self) -> int: return self._json["totalBusinessCoins"]
     @property
-    def totalBusinessCoinsFloat(self) -> float: return self.__data__["totalBusinessCoinsFloat"]
+    def totalBusinessCoinsFloat(self) -> float: return self._json["totalBusinessCoinsFloat"]
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
 class Coupon:
     def __init__(self, data: dict):
-        self.__data__ = data
+        self._json = data
     @property
-    def expiredTime(self) -> str: return self.__data__["expiredTime"]
+    def expiredTime(self) -> str: return self._json["expiredTime"]
     @property
-    def couponId(self) -> str: return self.__data__["couponId"]
+    def couponId(self) -> str: return self._json["couponId"]
     @property
-    def scopeDesc(self) -> str: return self.__data__["scopeDesc"]
+    def scopeDesc(self) -> str: return self._json["scopeDesc"]
     @property
-    def status(self) -> int: return self.__data__["status"]
+    def status(self) -> int: return self._json["status"]
     @property
-    def modifiedTime(self) -> str: return self.__data__["modifiedTime"]
+    def modifiedTime(self) -> str: return self._json["modifiedTime"]
     @property
-    def couponValue(self) -> int: return self.__data__["couponValue"]
+    def couponValue(self) -> int: return self._json["couponValue"]
     @property
-    def expiredType(self) -> int: return self.__data__["expiredType"]
+    def expiredType(self) -> int: return self._json["expiredType"]
     @property
-    def title(self) -> str: return self.__data__["title"]
+    def title(self) -> str: return self._json["title"]
     @property
-    def couponType(self) -> int: return self.__data__["couponType"]
+    def couponType(self) -> int: return self._json["couponType"]
     @property
-    def createdTime(self) -> str: return self.__data__["createdTime"]
+    def createdTime(self) -> str: return self._json["createdTime"]
     @property
-    def json(self) -> dict: return self.__data__
+    def json(self) -> dict: return self._json
 
-class EventTypes:
-    text_message = "0:0"
-    image_message = "0:100"
-    youtube_message = "0:103"
-    strike_message = "1:0"
-    voice_message = "2:110"
-    sticker_message = "3:113"
-    vc_not_answered = "52:0"
-    vc_not_cancelled = "53:0"
-    vc_not_declined = "54:0"
-    video_chat_not_answered = "55:0"
-    video_chat_not_cancelled = "56:0"
-    video_chat_not_declined = "57:0"
-    avatar_chat_not_answered = "58:0"
-    avatar_chat_not_cancelled = "59:0"
-    avatar_chat_not_declined = "60:0"
-    delete_message = "100:0"
-    member_join = "101:0"
-    member_leave = "102:0"
-    chat_invite = "103:0"
-    chat_background_changed = "104:0"
-    chat_title_changed = "105:0"
-    chat_icon_changed = "106:0"
-    vc_start = "107:0"
-    video_chat_start = "108:0"
-    avatar_chat_start = "109:0"
-    vc_end = "110:0"
-    video_chat_end = "111:0"
-    avatar_chat_end = "112:0"
-    chat_content_changed = "113:0"
-    screen_room_start = "114:0"
-    screen_room_end = "115:0"
-    chat_host_transfered = "116:0"
-    text_message_force_removed = "117:0"
-    chat_removed_message = "118:0"
-    mod_deleted_message = "119:0"
-    chat_tip = "120:0"
-    chat_pin_announcement = "121:0"
-    vc_permission_open_to_everyone = "122:0"
-    vc_permission_invited_and_requested = "123:0"
-    vc_permission_invite_only = "124:0"
-    chat_view_only_enabled = "125:0"
-    chat_view_only_disabled = "126:0"
-    chat_unpin_announcement = "127:0"
-    chat_tipping_enabled = "128:0"
-    chat_tipping_disabled = "129:0"
-    timestamp_message = "65281:0"
-    welcome_message = "65282:0"
-    invite_message = "65283:0"
+

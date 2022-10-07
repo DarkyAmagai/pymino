@@ -1,4 +1,3 @@
-from json import JSONDecodeError
 from .generate import *
 from .context import EventHandler
 
@@ -48,6 +47,7 @@ class WSClient(EventHandler):
         self.run_forever_thread.start()
 
         self.emit("ready")
+        return None
         
     def fetch_socket(self):
         """Fetches the websocket url and connects to it. """
@@ -57,13 +57,12 @@ class WSClient(EventHandler):
         """Starts the websocket forever."""
 
         self.ws = self.fetch_socket()
-
+        
         try:
-            if self.run_forever_thread.is_alive():
-                self.run_forever_thread.join()
+            for thread in [self.ws_thread, self.run_forever_thread]:
+                thread.join()
         except (AttributeError, RuntimeError):
             pass
-
         self.ws_thread = Thread(target=self.ws.run_forever)
         self.ws_thread.start()
 
@@ -90,7 +89,7 @@ class WSClient(EventHandler):
                 self.start_forever()
 
     def _on_ws_error(self, ws: WebSocket, error: Exception) -> None:
-        if self.debug: print(f"{ws} error: {error}")
+        if self.debug: print(f"Websocket error: {error}")
         try:
             self._events["error"](error)
         except KeyError:
@@ -102,8 +101,9 @@ class WSClient(EventHandler):
         """
         `_on_ws_message` is a function that handles the websocket messages.
         """
-        if self.debug: print(f"{ws} received message: {message}")
+        if self.debug: print(f"Websocket received message: {message}")
         raw_message = loads(message)
+
         message: Message = Message(raw_message)
 
         if message.userId == self.userId: return 
@@ -126,21 +126,32 @@ class WSClient(EventHandler):
                     return 400  
 
         elif raw_message["t"] == 201: pass # TODO: Fetch channel key for agora.
-        elif raw_message["t"] == 400: pass # TODO: Topic events.
-            
+
+        elif raw_message["t"] == 400:
+                self.threads.append(Thread(target=self._handle_event, args=("user_online", message.json)))
+                return 200
             
         return 400
 
     def _on_ws_close(self, ws: WebSocket, close_status_code: int, close_msg: str):
-        if self.debug: print(f"{ws} closed with status code {close_status_code} and message {close_msg}")
+        if self.debug: print(f"Websocket closed with status code {close_status_code} and message {close_msg}")
 
     def _send_ws_message(self, message: dict):
         if self.debug: print(f"Sending message: {message}")
-        self.ws.send(dumps(message))
+        return self.ws.send(dumps(message))
 
     def stop_ws(self):
         if self.debug: print("Stopping websocket...")
-        self.ws.close()
+        return self.ws.close()
 
     def _on_ws_open(self, ws: WebSocket):
-        if self.debug: print(f"{ws} has been opened.")
+        if self.debug: print(f"Websocket has been opened.")
+        if self.community_id is not None:
+            return self._send_ws_message(
+                message = {
+                    "t": 300,
+                    "o": {
+                        "id": int(time() * 1000),
+                        "topic": f"ndtopic:x{self.community_id}:online-members",
+                        "ndcId": self.community_id
+                    }})

@@ -143,61 +143,20 @@ class Context():
             data=image.read(), content_type="image/jpg")).mediaValue
 
     @attribute_error
-    def _prep_image(self, image: str, resize: str=None) -> BinaryIO:
+    def _prep_image(self, image: str) -> BinaryIO:
         """
         `_prep_image` is a function that prepares an image to be sent.
         
         `**Parameters**`
         - `image` - The image to prepare.
-        - `resize` - The resize of the image. (ex. 807x226)
         """
-        if resize:
-            resize = resize.split("x")
         
         if image.startswith("http"):
             [open("temp.png", "wb").write(get(image).content), image := open("temp.png", "rb")]
         else:
             image = open(image, "rb")
 
-        if not resize: return image
-        [Image.open(image).resize((int(resize[0]), int(resize[1]))).save("temp.png"), image := open("temp.png", "rb")]
-
         return image
-
-    @attribute_error
-    def send_link_snippet(self, message: str, image: BinaryIO = None, resize: str="807x226", delete_after: int= None) -> Message:
-        """
-        `send_link_snippet` is a function that sends a link snippet.
-
-        `**Parameters**`
-        - `message` - The message to send.
-        - `image` - The image to send.
-        - `resize` - The resize of the image.
-
-        """
-        image = self._prep_image(image, resize)
-        message = SResponse(self._session.handler(
-            method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
-            data = {
-                "type": 0,
-                "content": message,
-                "clientRefId": int(time() / 10 % 1000000000),
-                "attachedObject": {},
-                "extensions": {
-                    "linkSnippetList": [{
-                        "link": None,
-                        "mediaType": 100,
-                        "mediaUploadValue": b64encode(image.read()).decode(),
-                        "mediaUploadValueContentType": "image/png"
-                        }]
-                    },
-                "timestamp": int(time() * 1000)
-                }))
-
-        if delete_after:
-            Thread(target=self._delete, args=(message, delete_after)).start()
-
-        return message
 
 class EventHandler(Context):
     """
@@ -236,37 +195,20 @@ class EventHandler(Context):
         @bot.task(interval=10)
         def task():
             print("Hello World!")
-        ```"""
-        def decorator(func):
-            def wrapper():
-                while True:
-                    func()
-                    sleep(interval)
-            self.start_task(wrapper)
-            return func
-        return decorator
-
-    def community_task(self, interval: int = 10):
+        ```
         """
-        `community_task` is a function that starts a task with the community as a parameter.
-
-        The task will be executed every `interval` seconds.
-
-        `**Example**`
-        ```python
-        @bot.community_task(interval=10)
-        def task(community: Community):
-            community.send_active()
-        ```"""
         def decorator(func):
             def wrapper():
                 while True:
-                    func(self.community)
+                    if len(inspect_signature(func).parameters) == 0:
+                        func()
+                    else:
+                        func(self.community)
                     sleep(interval)
             self.start_task(wrapper)
             return func
         return decorator
-
+        
     def emit(self, name: str, *args):
         """`emit` is a function that emits an event."""
         if name in self._events:
@@ -316,6 +258,16 @@ class EventHandler(Context):
         ```
         It is recommended to use this function to handle errors to prevent the bot from crashing.
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["error"] = func
@@ -335,6 +287,16 @@ class EventHandler(Context):
         It is useful if you want to know when the bot is ready.
         ```
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["ready"] = func
@@ -351,6 +313,16 @@ class EventHandler(Context):
         def text_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["text_message"] = func
@@ -367,6 +339,16 @@ class EventHandler(Context):
         def image_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["image_message"] = func
@@ -383,6 +365,16 @@ class EventHandler(Context):
         def youtube_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["youtube_message"] = func
@@ -399,6 +391,16 @@ class EventHandler(Context):
         def strike_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["strike_message"] = func
@@ -415,6 +417,16 @@ class EventHandler(Context):
         def voice_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["voice_message"] = func
@@ -431,6 +443,16 @@ class EventHandler(Context):
         def sticker_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["sticker_message"] = func
@@ -447,6 +469,16 @@ class EventHandler(Context):
         def vc_not_answered_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_not_answered"] = func
@@ -463,6 +495,16 @@ class EventHandler(Context):
         def vc_not_cancelled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_not_cancelled"] = func
@@ -479,6 +521,16 @@ class EventHandler(Context):
         def vc_not_declined_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_not_declined"] = func
@@ -509,6 +561,16 @@ class EventHandler(Context):
         def video_chat_not_cancelled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["video_chat_not_cancelled"] = func
@@ -525,6 +587,16 @@ class EventHandler(Context):
         def video_chat_not_declined_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["video_chat_not_declined"] = func
@@ -541,6 +613,16 @@ class EventHandler(Context):
         def avatar_chat_not_answered_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["avatar_chat_not_answered"] = func
@@ -557,6 +639,16 @@ class EventHandler(Context):
         def avatar_chat_not_cancelled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["avatar_chat_not_cancelled"] = func
@@ -573,6 +665,16 @@ class EventHandler(Context):
         def avatar_chat_not_declined_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["avatar_chat_not_declined"] = func
@@ -589,6 +691,16 @@ class EventHandler(Context):
         def delete_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["delete_message"] = func
@@ -605,6 +717,16 @@ class EventHandler(Context):
         def member_join_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["member_join"] = func
@@ -621,6 +743,16 @@ class EventHandler(Context):
         def member_leave_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["member_leave"] = func
@@ -637,6 +769,16 @@ class EventHandler(Context):
         def chat_invite_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_invite"] = func
@@ -653,6 +795,16 @@ class EventHandler(Context):
         def chat_background_changed_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_background_changed"] = func
@@ -669,6 +821,16 @@ class EventHandler(Context):
         def chat_title_changed_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_title_changed"] = func
@@ -685,6 +847,16 @@ class EventHandler(Context):
         def chat_icon_changed_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_icon_changed"] = func
@@ -701,6 +873,16 @@ class EventHandler(Context):
         def vc_start_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_start"] = func
@@ -717,6 +899,16 @@ class EventHandler(Context):
         def video_chat_start_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["video_chat_start"] = func
@@ -733,6 +925,16 @@ class EventHandler(Context):
         def avatar_chat_start_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["avatar_chat_start"] = func
@@ -749,6 +951,16 @@ class EventHandler(Context):
         def vc_end_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_end"] = func
@@ -765,6 +977,16 @@ class EventHandler(Context):
         def video_chat_end_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["video_chat_end"] = func
@@ -781,6 +1003,16 @@ class EventHandler(Context):
         def avatar_chat_end_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["avatar_chat_end"] = func
@@ -797,6 +1029,16 @@ class EventHandler(Context):
         def chat_content_changed_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_content_changed"] = func
@@ -813,6 +1055,16 @@ class EventHandler(Context):
         def screen_room_start_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["screen_room_start"] = func
@@ -829,6 +1081,16 @@ class EventHandler(Context):
         def screen_room_end_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["screen_room_end"] = func
@@ -845,6 +1107,16 @@ class EventHandler(Context):
         def chat_host_transfered_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_host_transfered"] = func
@@ -861,6 +1133,16 @@ class EventHandler(Context):
         def text_message_force_removed_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["text_message_force_removed"] = func
@@ -877,6 +1159,16 @@ class EventHandler(Context):
         def chat_removed_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_removed_message"] = func
@@ -893,6 +1185,16 @@ class EventHandler(Context):
         def mod_deleted_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["mod_deleted_message"] = func
@@ -909,6 +1211,16 @@ class EventHandler(Context):
         def chat_tip_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_tip"] = func
@@ -925,6 +1237,16 @@ class EventHandler(Context):
         def chat_pin_announcement_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_pin_announcement"] = func
@@ -941,6 +1263,16 @@ class EventHandler(Context):
         def vc_permission_open_to_everyone_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_permission_open_to_everyone"] = func
@@ -957,6 +1289,16 @@ class EventHandler(Context):
         def vc_permission_invited_and_requested_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_permission_invited_and_requested"] = func
@@ -973,6 +1315,16 @@ class EventHandler(Context):
         def vc_permission_invite_only_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["vc_permission_invite_only"] = func
@@ -989,6 +1341,16 @@ class EventHandler(Context):
         def chat_view_only_enabled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_view_only_enabled"] = func
@@ -1005,6 +1367,16 @@ class EventHandler(Context):
         def chat_view_only_disabled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_view_only_disabled"] = func
@@ -1021,6 +1393,16 @@ class EventHandler(Context):
         def chat_unpin_announcement_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_unpin_announcement"] = func
@@ -1037,6 +1419,16 @@ class EventHandler(Context):
         def chat_tipping_enabled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_tipping_enabled"] = func
@@ -1053,6 +1445,16 @@ class EventHandler(Context):
         def chat_tipping_disabled_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["chat_tipping_disabled"] = func
@@ -1069,6 +1471,16 @@ class EventHandler(Context):
         def timestamp_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["timestamp_message"] = func
@@ -1085,6 +1497,16 @@ class EventHandler(Context):
         def welcome_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["welcome_message"] = func
@@ -1101,9 +1523,43 @@ class EventHandler(Context):
         def invite_message_handler(ctx: Context):`
             print(ctx.message.json)`
         ```
+
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+
         """
         def decorator(func):
             self._events["invite_message"] = func
+            return func
+        return decorator
+
+    def on_user_online(self):
+        """
+        `on_user_online` is a function that notifies when a user goes online in the specified community.
+
+        `**Example**`
+        ```python
+        @bot.on_user_online()
+        def user_online_handler(ctx: Context):
+            print(ctx.message.json)
+        ```
+        `**Returns**`
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        >>> `print(ctx.message.json)` to see the raw message.
+        """
+        def decorator(func):
+            self._events["user_online"] = func
             return func
         return decorator
 
@@ -1115,7 +1571,7 @@ class EventHandler(Context):
             except KeyError:
                 return None
         return wrapper
-
+        
     @key_error
     def _handle_event(self, event: str, data: dict):
         """
@@ -1223,6 +1679,8 @@ class EventHandler(Context):
             self._events["welcome_message"](self.context(data, self.request))
         elif event == "invite_message":
             self._events["invite_message"](self.context(data, self.request))
+        elif event == "user_online":
+            self._events["user_online"](User(data))
         
 
 
