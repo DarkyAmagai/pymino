@@ -270,7 +270,7 @@ class EventHandler(Context):
 
         command = message.content.split(" ")[0][len(self.command_prefix):]
         command_length = len(self.command_prefix + message.content.split(" ")[0][1:]) + 1
-        arg = message.content[command_length:]
+        arg = message.content[command_length - 1:]
 
         if command in self._commands:
             if len(inspect_signature(self._commands[command]).parameters) == 1:

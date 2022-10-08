@@ -43,13 +43,14 @@ class Bot(Socket):
             proxies=self.proxies if hasattr(self, "proxies") else None
             )
         self.session.headers = {
-        "USER-AGENT": "Mozilla/5.0 (Linux; Android 7.0; SM-G930V Build/NRD90M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.125 Mobile Safari/537.36",
-        "ACCEPT-LANGUAGE": "en-US",
-        "CONTENT-TYPE": "application/json; charset=utf-8",
-        "HOST": "service.aminoapps.com",
-        "ACCEPT-ENCODING": "gzip",
-        "CONNECTION": "Upgrade"
-        }
+            "NDCLANG": "en",
+            "ACCEPT-LANGUAGE": "en-US",
+            "CONTENT-TYPE": "application/json; charset=utf-8",
+            "USER-AGENT": "Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-N976N Build/LYZ28N; com.narvii.amino.master/3.5.34654)",
+            "HOST": "service.aminoapps.com",
+            "CONNECTION": "Keep-Alive",
+            "ACCEPT-ENCODING": "gzip"
+            }
         self.request = RequestHandler(self.session, debug)
         self.community = Community(self.request, community_id, debug)
         #self.global = Global(self.request, debug) #NOTE: This is not implemented yet.
