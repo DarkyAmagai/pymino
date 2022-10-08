@@ -1,55 +1,69 @@
 # pymino
-# API wrapper for Amino apps
+## A Python wrapper for AminoApps API
+### Library to create bots on Amino.
+### Easily write your own bot with commands, tasks, and more.
 #
-
-# Installation
-# ------------
-# pip install pymino
-
-# Usage
-# -------
-```py
+## Installation
+```bash
+pip install pymino
+```
+#
+### Usage
+```python
 >>> from pymino import *
->>> from pymino.ext.context import Context
+>>> from pymino.ext import *
 >>>
->>> client = Client()
+>>> bot = Bot(
+...     command_prefix="!",
+...     community_id = 00000000,
+...     debug = False
+... )   # You can set proxies and deviceId here
+...
 >>>
->>> @client.on_ready()
+>>> @bot.on_ready()
 ... def ready():
-...     print(f"{client.profile.username} has logged in!")
-
->>> @client.on_text_message()
+...     print(f"{bot.profile.username} has logged in!")
+...
+>>> @bot.on_text_message()
 ... def message(ctx: Context):
 ...     print(f"{ctx.author.username}: {ctx.message.content}")
 ...     if ctx.message.content.startswith("hi"):
 ...         ctx.reply("Hello!")
-
->>> @client.on_member_join()
+...
+>>> @bot.on_member_join()
 ... def join(ctx: Context):
 ...     ctx.reply(f"Welcome to the chat, {ctx.author.username}!")
 ...
->>> @client.on_member_leave()
+>>> @bot.on_member_leave()
 ... def leave(ctx: Context):
 ...     ctx.reply(f"Goodbye!")
 ...
->>> @client.command("ping")
+>>> @bot.command("ping")
 ... def ping(ctx: Context):
 ...     ctx.reply("Pong!")
 ...
->>> @client.task(interval=10)
+>>> @bot.command("say")
+... def say(ctx: Context, message: str):
+...     ctx.reply(message)
+...
+>>> @bot.task(interval=10)
 ... def task():
 ...     print("This is a task! It will run every 10 seconds!")
 ...
->>> @client.on_error()
+>>> @bot.task(interval=30)
+... def community_task(community: Community):
+...     [...] # Do something in the community
+...     community.send_message(chatId, "Hello world!")
+...     print("This is a community task! It will run every 30 seconds.")
+...
+>>> @bot.on_error()
 ... def error(error: Exception):
 ...     print(f"An error has occurred: {error}")
 ...
->>> client.run("email", "password") or client.run("sid")
+>>> bot.run("email", "password") or bot.run("sid")
 ```
 # Documentation
-# -------------
-# https://pymino.info/index.html
-#
+### Feel free to read the documentation [here](https://pymino.info/index.html).
 #
 
 
