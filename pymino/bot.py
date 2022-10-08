@@ -170,3 +170,14 @@ class Bot(Socket):
             self.community.community_id = community_id
 
         return community_id
+
+    def set_community_id(self, community_id: Union[str, int]):
+        """
+        `set_community_id` sets the community id to `self.community_id` and `self.community.community_id`.
+        
+        `**Parameters**`
+        
+        - `community_id` - The community id to set.
+        """
+        self.community_id = community_id
+        self.community.community_id = community_id
