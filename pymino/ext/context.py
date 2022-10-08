@@ -5,14 +5,19 @@ class Context():
     `Context` handles messages sent from bot to user.
 
     `**Object Attributes**`
+
     - `message` - The message that triggered the command.
+
     - `author` - The author of the message that triggered the command.
 
     `**Object Methods**`
+
     - `reply` - Replies to the message that triggered the command.
+
     - `send` - Sends a message to the chat that triggered the command.
+
     - `send_embed` - Sends an embed to the chat that triggered the command.
-    - `send_link_snippet` - Sends a link snippet to the chat that triggered the command.
+
     """
     def __init__(self, message: Message, session):
         self._message = message
@@ -38,8 +43,15 @@ class Context():
     def reply(self, content: str, delete_after: int= None):
         """
         `**reply**` replies to the message that triggered the command.
+
+        `**Parameters**`
+
+        - `content` - The message to send.
+
+        - `delete_after` - The time in seconds to wait before deleting the message.
         
         `**Example**`
+
         ```py
         @bot.command("ping")
         def ping(ctx: Context):
@@ -70,8 +82,15 @@ class Context():
     def send(self, content: str, delete_after: int= None):
         """
         `**send**` sends a message to the chat that triggered the command.
+
+        `**Parameters**`
+
+        - `content` - The message to send.
+
+        - `delete_after` - The time in seconds to wait before deleting the message.
         
         `**Example**`
+
         ```py
         @bot.command("ping")
         def ping(ctx: Context):
@@ -95,13 +114,20 @@ class Context():
         """
         `**send_embed**` sends an embed to the chat that triggered the command.
 
-        `title` is the title of the embed.
+        `**Parameters**`
 
-        `content` is the message in the embed.
+        - `title` is the title of the embed.
 
-        `image` must be a url or a path to a file.
+        - `content` is the message in the embed.
+
+        - `image` must be a url or a path to a file.
+
+        - `link` is the link of the embed.
+
+        - `delete_after` is the time in seconds to wait before deleting the message.
 
         `**Example**`
+
         ```py
         @bot.on_member_join()
         def member_join(ctx: Context):
@@ -136,6 +162,7 @@ class Context():
         `upload_image` is a function that uploads an image to the server and returns it's link.
 
         `**Parameters**`
+
         - `image` - The image to upload.
         """
         image = open(image, "rb") if isinstance(image, str) else image
@@ -148,6 +175,7 @@ class Context():
         `_prep_image` is a function that prepares an image to be sent.
         
         `**Parameters**`
+
         - `image` - The image to prepare.
         """
         
@@ -195,6 +223,11 @@ class EventHandler(Context):
         @bot.task(interval=10)
         def task():
             print("Hello World!")
+
+        #Community task
+        @bot.task(interval=10)
+        def task2(community: Community):
+            send_message(chatId, "Hello World!")
         ```
         """
         def decorator(func):
@@ -266,7 +299,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -295,7 +328,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -321,7 +354,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -347,7 +380,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -373,7 +406,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -399,7 +432,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -425,7 +458,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -451,7 +484,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -477,7 +510,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -503,7 +536,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -529,7 +562,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -569,7 +602,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -595,7 +628,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -621,7 +654,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -647,7 +680,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -673,7 +706,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -699,7 +732,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -725,7 +758,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -751,7 +784,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -777,7 +810,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -803,7 +836,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -829,7 +862,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -855,7 +888,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -881,7 +914,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -907,7 +940,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -933,7 +966,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -959,7 +992,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -985,7 +1018,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1011,7 +1044,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1037,7 +1070,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1063,7 +1096,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1089,7 +1122,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1115,7 +1148,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1141,7 +1174,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1167,7 +1200,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1193,7 +1226,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1219,7 +1252,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1245,7 +1278,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1271,7 +1304,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1297,7 +1330,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1323,7 +1356,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1349,7 +1382,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1375,7 +1408,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1401,7 +1434,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1427,7 +1460,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1453,7 +1486,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1479,7 +1512,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1505,7 +1538,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1531,7 +1564,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
 
         """
         def decorator(func):
@@ -1556,7 +1589,7 @@ class EventHandler(Context):
         - `ctx.message` - The message.
         - `ctx.author` - The author of the message.
 
-        >>> `print(ctx.message.json)` to see the raw message.
+        `print(ctx.message.json)` to see the raw message.
         """
         def decorator(func):
             self._events["user_online"] = func

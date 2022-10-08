@@ -11,8 +11,19 @@ class Account:
     def register(self, email: str, password: str, username: str, verificationCode: str):
         """
         `**register**` - Registers a new account.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+
+        - `username` - The username of the account.
+
+        - `verificationCode` - The verification code sent to the email.
         
         `**Example**`
+
         ```py
         from pymino import *
 
@@ -46,8 +57,15 @@ class Account:
     def delete_request(self, email: str, password: str):
         """
         `**delete_request**` - Sends a delete request to the account.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
         
         `**Example**`
+
         ```py
         from pymino import *
         
@@ -68,6 +86,12 @@ class Account:
     def delete_request_cancel(self, email: str, password: str):
         """
         `**delete_request_cancel**` - Cancels the delete request.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
         
         `**Example**`
         
@@ -92,6 +116,10 @@ class Account:
     def check_device(self, deviceId: str):
         """
         `**check_device**` - Checks if the device is valid.
+
+        `**Parameters**`
+
+        - `deviceId` - The device id of the account.
         
         `**Example**`
         
@@ -133,6 +161,10 @@ class Account:
     def upload_image(self, image: str) -> SResponse:
         """
         `**upload_image**` - Uploads an image to the server.
+
+        `**Parameters**`
+
+        - `image` - The image to upload.
         
         `**Example**`
         
@@ -169,6 +201,10 @@ class Account:
     def set_amino_id(self, aminoId: str):
         """
         `**set_amino_id**` - Sets the amino id.
+
+        `**Parameters**`
+
+        - `aminoId` - The amino id to set.
         
         `**Example**`
         
@@ -208,6 +244,12 @@ class Account:
     def request_security_validation(self, email: str, resetPassword: bool = False):
         """
         `**request_security_validation**` - Requests a security validation.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `resetPassword` - Whether to reset the password or not.
         
         `**Example**`
         
@@ -233,6 +275,12 @@ class Account:
     def activate_email(self, email: str, code: str):
         """
         `**activate_email**` - Activates an email.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `code` - The code sent to the email.
         
         `**Example**`
         
@@ -259,6 +307,14 @@ class Account:
     def reset_password(self, email: str, new_password: str, code: str):
         """
         `**reset_password**` - Resets the password.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `new_password` - The new password of the account.
+
+        - `code` - The code sent to the email.
         
         `**Example**`
         
