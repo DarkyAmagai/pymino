@@ -1,0 +1,1409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>pymino.ext.account API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>pymino.ext.account</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">from . generate import *
+
+class Account:
+    &#34;&#34;&#34;
+    Account class for handling account related requests.
+    &#34;&#34;&#34;
+    def __init__(self, session: Session, debug: Optional[bool] = False):
+        self.session = session
+        self.debug = debug
+
+    def register(self, email: str, password: str, username: str, verificationCode: str):
+        &#34;&#34;&#34;
+        `**register**` - Registers a new account.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+
+        - `username` - The username of the account.
+
+        - `verificationCode` - The verification code sent to the email.
+        
+        `**Example**`
+
+        ```py
+        from pymino import *
+
+        bot = Bot()
+        bot.request_security_validation(email=email)
+        code = input(&#34;Enter the code you received: &#34;)
+        response = bot.register(email=email, password=password, username=username, verificationCode=code)
+        print(response.json)
+        ```
+        &#34;&#34;&#34;
+        return Authenticate(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/register&#34;,
+            data={
+                &#34;secret&#34;: f&#34;0 {password}&#34;,
+                &#34;deviceID&#34;: device_id(),
+                &#34;email&#34;: email,
+                &#34;clientType&#34;: 100,
+                &#34;nickname&#34;: username,
+                &#34;validationContext&#34;: {
+                    &#34;data&#34;: {
+                        &#34;code&#34;: verificationCode
+                    },
+                    &#34;type&#34;: 1,
+                    &#34;identity&#34;: email
+                },
+                &#34;type&#34;: 1,
+                &#34;identity&#34;: email,
+                &#34;timestamp&#34;: int(time() * 1000)
+            }))
+
+    def delete_request(self, email: str, password: str):
+        &#34;&#34;&#34;
+        `**delete_request**` - Sends a delete request to the account.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+        
+        `**Example**`
+
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.delete_request(email=email, password=password)
+        print(response)
+        ```&#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/account/delete-request&#34;,
+        data={
+            &#34;secret&#34;: f&#34;0 {password}&#34;,
+            &#34;deviceID&#34;: device_id(),
+            &#34;email&#34;: email,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json
+
+    def delete_request_cancel(self, email: str, password: str):
+        &#34;&#34;&#34;
+        `**delete_request_cancel**` - Cancels the delete request.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.delete_request_cancel(email=email, password=password)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/account/delete-request/cancel&#34;,
+        data={
+            &#34;secret&#34;: f&#34;0 {password}&#34;,
+            &#34;deviceID&#34;: device_id(),
+            &#34;email&#34;: email,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json
+
+    def check_device(self, deviceId: str):
+        &#34;&#34;&#34;
+        `**check_device**` - Checks if the device is valid.
+
+        `**Parameters**`
+
+        - `deviceId` - The device id of the account.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.check_device(deviceId=device_id())
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/device/check&#34;,
+        data={
+            &#34;deviceID&#34;: deviceId,
+            &#34;clientType&#34;: 100,
+            &#34;timezone&#34;: -310,
+            &#34;systemPushEnabled&#34;: True,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json
+
+    def fetch_account(self):
+        &#34;&#34;&#34;
+        `**fetch_account**` - Fetches the account information.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.fetch_account()
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(method = &#34;GET&#34;, url=&#34;/g/s/account&#34;)).json
+
+    def upload_image(self, image: str) -&gt; SResponse:
+        &#34;&#34;&#34;
+        `**upload_image**` - Uploads an image to the server.
+
+        `**Parameters**`
+
+        - `image` - The image to upload.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.upload_image(image=&#34;image.jpg&#34;)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(method=&#34;POST&#34;, url=f&#34;/g/s/media/upload&#34;,
+            data=open(image, &#34;rb&#34;).read(), content_type=&#34;image/jpg&#34;)).mediaValue
+
+    def fetch_profile(self):
+        &#34;&#34;&#34;
+        `**fetch_profile**` - Fetches the profile information.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.fetch_profile()
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;GET&#34;, url = f&#34;/g/s/user-profile/{self.userId}&#34;)).json
+
+    def set_amino_id(self, aminoId: str):
+        &#34;&#34;&#34;
+        `**set_amino_id**` - Sets the amino id.
+
+        `**Parameters**`
+
+        - `aminoId` - The amino id to set.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.set_amino_id(aminoId=&#34;aminoId&#34;)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/account/change-amino-id&#34;,
+            data={
+                &#34;aminoId&#34;: aminoId,
+                &#34;timestamp&#34;: int(time() * 1000)
+            })).json
+
+    def fetch_wallet(self):
+        &#34;&#34;&#34;
+        `**fetch_wallet**` - Fetches the wallet information.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.fetch_wallet()
+        print(response)
+        &#34;&#34;&#34;
+        return Wallet(self.session.handler(
+            method = &#34;GET&#34;, url=&#34;/g/s/wallet&#34;)).json
+
+    def request_security_validation(self, email: str, resetPassword: bool = False):
+        &#34;&#34;&#34;
+        `**request_security_validation**` - Requests a security validation.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `resetPassword` - Whether to reset the password or not.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.request_security_validation(email=email)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/request-security-validation&#34;,
+            data={
+                &#34;identity&#34;: email,
+                &#34;type&#34;: 1,
+                &#34;deviceID&#34;: device_id(),
+                &#34;level&#34;: 2 if resetPassword else None,
+                &#34;purpose&#34;: &#34;reset-password&#34; if resetPassword else None,
+                &#34;timestamp&#34;: int(time() * 1000)
+            })).json
+
+    def activate_email(self, email: str, code: str):
+        &#34;&#34;&#34;
+        `**activate_email**` - Activates an email.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `code` - The code sent to the email.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.activate_email(email=email, code=code)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/activate-email&#34;,
+            data={
+                &#34;type&#34;: 1,
+                &#34;identity&#34;: email,
+                &#34;data&#34;: {
+                    &#34;code&#34;:code
+                    },
+                &#34;deviceID&#34;: device_id(),
+                &#34;timestamp&#34;: int(time() * 1000)
+            })).json
+
+    def reset_password(self, email: str, new_password: str, code: str):
+        &#34;&#34;&#34;
+        `**reset_password**` - Resets the password.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `new_password` - The new password of the account.
+
+        - `code` - The code sent to the email.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.reset_password(email=email, new_password=new_password, code=code)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return ResetPassword(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/reset-password&#34;,
+            data={
+                &#34;updateSecret&#34;: f&#34;0 {new_password}&#34;,
+                &#34;emailValidationContext&#34;: {
+                    &#34;data&#34;: {
+                        &#34;code&#34;: code
+                    },
+                    &#34;type&#34;: 1,
+                    &#34;identity&#34;: email,
+                    &#34;level&#34;: 2,
+                    &#34;deviceID&#34;: device_id()
+                },
+                &#34;phoneNumberValidationContext&#34;: None,
+                &#34;deviceID&#34;: device_id()
+            }))</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="pymino.ext.account.Account"><code class="flex name class">
+<span>class <span class="ident">Account</span></span>
+<span>(</span><span>session: httpx.Client, debug: Optional[bool] = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Account class for handling account related requests.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Account:
+    &#34;&#34;&#34;
+    Account class for handling account related requests.
+    &#34;&#34;&#34;
+    def __init__(self, session: Session, debug: Optional[bool] = False):
+        self.session = session
+        self.debug = debug
+
+    def register(self, email: str, password: str, username: str, verificationCode: str):
+        &#34;&#34;&#34;
+        `**register**` - Registers a new account.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+
+        - `username` - The username of the account.
+
+        - `verificationCode` - The verification code sent to the email.
+        
+        `**Example**`
+
+        ```py
+        from pymino import *
+
+        bot = Bot()
+        bot.request_security_validation(email=email)
+        code = input(&#34;Enter the code you received: &#34;)
+        response = bot.register(email=email, password=password, username=username, verificationCode=code)
+        print(response.json)
+        ```
+        &#34;&#34;&#34;
+        return Authenticate(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/register&#34;,
+            data={
+                &#34;secret&#34;: f&#34;0 {password}&#34;,
+                &#34;deviceID&#34;: device_id(),
+                &#34;email&#34;: email,
+                &#34;clientType&#34;: 100,
+                &#34;nickname&#34;: username,
+                &#34;validationContext&#34;: {
+                    &#34;data&#34;: {
+                        &#34;code&#34;: verificationCode
+                    },
+                    &#34;type&#34;: 1,
+                    &#34;identity&#34;: email
+                },
+                &#34;type&#34;: 1,
+                &#34;identity&#34;: email,
+                &#34;timestamp&#34;: int(time() * 1000)
+            }))
+
+    def delete_request(self, email: str, password: str):
+        &#34;&#34;&#34;
+        `**delete_request**` - Sends a delete request to the account.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+        
+        `**Example**`
+
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.delete_request(email=email, password=password)
+        print(response)
+        ```&#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/account/delete-request&#34;,
+        data={
+            &#34;secret&#34;: f&#34;0 {password}&#34;,
+            &#34;deviceID&#34;: device_id(),
+            &#34;email&#34;: email,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json
+
+    def delete_request_cancel(self, email: str, password: str):
+        &#34;&#34;&#34;
+        `**delete_request_cancel**` - Cancels the delete request.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `password` - The password of the account.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.delete_request_cancel(email=email, password=password)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/account/delete-request/cancel&#34;,
+        data={
+            &#34;secret&#34;: f&#34;0 {password}&#34;,
+            &#34;deviceID&#34;: device_id(),
+            &#34;email&#34;: email,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json
+
+    def check_device(self, deviceId: str):
+        &#34;&#34;&#34;
+        `**check_device**` - Checks if the device is valid.
+
+        `**Parameters**`
+
+        - `deviceId` - The device id of the account.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.check_device(deviceId=device_id())
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/device/check&#34;,
+        data={
+            &#34;deviceID&#34;: deviceId,
+            &#34;clientType&#34;: 100,
+            &#34;timezone&#34;: -310,
+            &#34;systemPushEnabled&#34;: True,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json
+
+    def fetch_account(self):
+        &#34;&#34;&#34;
+        `**fetch_account**` - Fetches the account information.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.fetch_account()
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(method = &#34;GET&#34;, url=&#34;/g/s/account&#34;)).json
+
+    def upload_image(self, image: str) -&gt; SResponse:
+        &#34;&#34;&#34;
+        `**upload_image**` - Uploads an image to the server.
+
+        `**Parameters**`
+
+        - `image` - The image to upload.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.upload_image(image=&#34;image.jpg&#34;)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(method=&#34;POST&#34;, url=f&#34;/g/s/media/upload&#34;,
+            data=open(image, &#34;rb&#34;).read(), content_type=&#34;image/jpg&#34;)).mediaValue
+
+    def fetch_profile(self):
+        &#34;&#34;&#34;
+        `**fetch_profile**` - Fetches the profile information.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.fetch_profile()
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;GET&#34;, url = f&#34;/g/s/user-profile/{self.userId}&#34;)).json
+
+    def set_amino_id(self, aminoId: str):
+        &#34;&#34;&#34;
+        `**set_amino_id**` - Sets the amino id.
+
+        `**Parameters**`
+
+        - `aminoId` - The amino id to set.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.set_amino_id(aminoId=&#34;aminoId&#34;)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/account/change-amino-id&#34;,
+            data={
+                &#34;aminoId&#34;: aminoId,
+                &#34;timestamp&#34;: int(time() * 1000)
+            })).json
+
+    def fetch_wallet(self):
+        &#34;&#34;&#34;
+        `**fetch_wallet**` - Fetches the wallet information.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.fetch_wallet()
+        print(response)
+        &#34;&#34;&#34;
+        return Wallet(self.session.handler(
+            method = &#34;GET&#34;, url=&#34;/g/s/wallet&#34;)).json
+
+    def request_security_validation(self, email: str, resetPassword: bool = False):
+        &#34;&#34;&#34;
+        `**request_security_validation**` - Requests a security validation.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `resetPassword` - Whether to reset the password or not.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.request_security_validation(email=email)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/request-security-validation&#34;,
+            data={
+                &#34;identity&#34;: email,
+                &#34;type&#34;: 1,
+                &#34;deviceID&#34;: device_id(),
+                &#34;level&#34;: 2 if resetPassword else None,
+                &#34;purpose&#34;: &#34;reset-password&#34; if resetPassword else None,
+                &#34;timestamp&#34;: int(time() * 1000)
+            })).json
+
+    def activate_email(self, email: str, code: str):
+        &#34;&#34;&#34;
+        `**activate_email**` - Activates an email.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `code` - The code sent to the email.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.activate_email(email=email, code=code)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return SResponse(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/activate-email&#34;,
+            data={
+                &#34;type&#34;: 1,
+                &#34;identity&#34;: email,
+                &#34;data&#34;: {
+                    &#34;code&#34;:code
+                    },
+                &#34;deviceID&#34;: device_id(),
+                &#34;timestamp&#34;: int(time() * 1000)
+            })).json
+
+    def reset_password(self, email: str, new_password: str, code: str):
+        &#34;&#34;&#34;
+        `**reset_password**` - Resets the password.
+
+        `**Parameters**`
+
+        - `email` - The email of the account.
+
+        - `new_password` - The new password of the account.
+
+        - `code` - The code sent to the email.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.reset_password(email=email, new_password=new_password, code=code)
+        print(response)
+        ```
+        &#34;&#34;&#34;
+        return ResetPassword(self.session.handler(
+            method = &#34;POST&#34;, url=&#34;/g/s/auth/reset-password&#34;,
+            data={
+                &#34;updateSecret&#34;: f&#34;0 {new_password}&#34;,
+                &#34;emailValidationContext&#34;: {
+                    &#34;data&#34;: {
+                        &#34;code&#34;: code
+                    },
+                    &#34;type&#34;: 1,
+                    &#34;identity&#34;: email,
+                    &#34;level&#34;: 2,
+                    &#34;deviceID&#34;: device_id()
+                },
+                &#34;phoneNumberValidationContext&#34;: None,
+                &#34;deviceID&#34;: device_id()
+            }))</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="pymino.ext.account.Account.activate_email"><code class="name flex">
+<span>def <span class="ident">activate_email</span></span>(<span>self, email: str, code: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**activate_email**</code> - Activates an email.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li>
+<p><code>email</code> - The email of the account.</p>
+</li>
+<li>
+<p><code>code</code> - The code sent to the email.</p>
+</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+response = bot.activate_email(email=email, code=code)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def activate_email(self, email: str, code: str):
+    &#34;&#34;&#34;
+    `**activate_email**` - Activates an email.
+
+    `**Parameters**`
+
+    - `email` - The email of the account.
+
+    - `code` - The code sent to the email.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    response = bot.activate_email(email=email, code=code)
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/auth/activate-email&#34;,
+        data={
+            &#34;type&#34;: 1,
+            &#34;identity&#34;: email,
+            &#34;data&#34;: {
+                &#34;code&#34;:code
+                },
+            &#34;deviceID&#34;: device_id(),
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.check_device"><code class="name flex">
+<span>def <span class="ident">check_device</span></span>(<span>self, deviceId: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**check_device**</code> - Checks if the device is valid.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li><code>deviceId</code> - The device id of the account.</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+response = bot.check_device(deviceId=device_id())
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def check_device(self, deviceId: str):
+    &#34;&#34;&#34;
+    `**check_device**` - Checks if the device is valid.
+
+    `**Parameters**`
+
+    - `deviceId` - The device id of the account.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    response = bot.check_device(deviceId=device_id())
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/device/check&#34;,
+    data={
+        &#34;deviceID&#34;: deviceId,
+        &#34;clientType&#34;: 100,
+        &#34;timezone&#34;: -310,
+        &#34;systemPushEnabled&#34;: True,
+        &#34;timestamp&#34;: int(time() * 1000)
+    })).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.delete_request"><code class="name flex">
+<span>def <span class="ident">delete_request</span></span>(<span>self, email: str, password: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**delete_request**</code> - Sends a delete request to the account.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li>
+<p><code>email</code> - The email of the account.</p>
+</li>
+<li>
+<p><code>password</code> - The password of the account.</p>
+</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.delete_request(email=email, password=password)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def delete_request(self, email: str, password: str):
+    &#34;&#34;&#34;
+    `**delete_request**` - Sends a delete request to the account.
+
+    `**Parameters**`
+
+    - `email` - The email of the account.
+
+    - `password` - The password of the account.
+    
+    `**Example**`
+
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.delete_request(email=email, password=password)
+    print(response)
+    ```&#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/account/delete-request&#34;,
+    data={
+        &#34;secret&#34;: f&#34;0 {password}&#34;,
+        &#34;deviceID&#34;: device_id(),
+        &#34;email&#34;: email,
+        &#34;timestamp&#34;: int(time() * 1000)
+    })).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.delete_request_cancel"><code class="name flex">
+<span>def <span class="ident">delete_request_cancel</span></span>(<span>self, email: str, password: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**delete_request_cancel**</code> - Cancels the delete request.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li>
+<p><code>email</code> - The email of the account.</p>
+</li>
+<li>
+<p><code>password</code> - The password of the account.</p>
+</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.delete_request_cancel(email=email, password=password)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def delete_request_cancel(self, email: str, password: str):
+    &#34;&#34;&#34;
+    `**delete_request_cancel**` - Cancels the delete request.
+
+    `**Parameters**`
+
+    - `email` - The email of the account.
+
+    - `password` - The password of the account.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.delete_request_cancel(email=email, password=password)
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/account/delete-request/cancel&#34;,
+    data={
+        &#34;secret&#34;: f&#34;0 {password}&#34;,
+        &#34;deviceID&#34;: device_id(),
+        &#34;email&#34;: email,
+        &#34;timestamp&#34;: int(time() * 1000)
+    })).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.fetch_account"><code class="name flex">
+<span>def <span class="ident">fetch_account</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**fetch_account**</code> - Fetches the account information.</p>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.fetch_account()
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fetch_account(self):
+    &#34;&#34;&#34;
+    `**fetch_account**` - Fetches the account information.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.fetch_account()
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(method = &#34;GET&#34;, url=&#34;/g/s/account&#34;)).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.fetch_profile"><code class="name flex">
+<span>def <span class="ident">fetch_profile</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**fetch_profile**</code> - Fetches the profile information.</p>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.fetch_profile()
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fetch_profile(self):
+    &#34;&#34;&#34;
+    `**fetch_profile**` - Fetches the profile information.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.fetch_profile()
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;GET&#34;, url = f&#34;/g/s/user-profile/{self.userId}&#34;)).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.fetch_wallet"><code class="name flex">
+<span>def <span class="ident">fetch_wallet</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**fetch_wallet**</code> - Fetches the wallet information.</p>
+<p><code>**Example**</code></p>
+<p>```py
+from pymino import *</p>
+<p>bot = Bot()
+bot.run(email=email, password=password)
+response = bot.fetch_wallet()
+print(response)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fetch_wallet(self):
+    &#34;&#34;&#34;
+    `**fetch_wallet**` - Fetches the wallet information.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.fetch_wallet()
+    print(response)
+    &#34;&#34;&#34;
+    return Wallet(self.session.handler(
+        method = &#34;GET&#34;, url=&#34;/g/s/wallet&#34;)).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.register"><code class="name flex">
+<span>def <span class="ident">register</span></span>(<span>self, email: str, password: str, username: str, verificationCode: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**register**</code> - Registers a new account.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li>
+<p><code>email</code> - The email of the account.</p>
+</li>
+<li>
+<p><code>password</code> - The password of the account.</p>
+</li>
+<li>
+<p><code>username</code> - The username of the account.</p>
+</li>
+<li>
+<p><code>verificationCode</code> - The verification code sent to the email.</p>
+</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.request_security_validation(email=email)
+code = input(&quot;Enter the code you received: &quot;)
+response = bot.register(email=email, password=password, username=username, verificationCode=code)
+print(response.json)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register(self, email: str, password: str, username: str, verificationCode: str):
+    &#34;&#34;&#34;
+    `**register**` - Registers a new account.
+
+    `**Parameters**`
+
+    - `email` - The email of the account.
+
+    - `password` - The password of the account.
+
+    - `username` - The username of the account.
+
+    - `verificationCode` - The verification code sent to the email.
+    
+    `**Example**`
+
+    ```py
+    from pymino import *
+
+    bot = Bot()
+    bot.request_security_validation(email=email)
+    code = input(&#34;Enter the code you received: &#34;)
+    response = bot.register(email=email, password=password, username=username, verificationCode=code)
+    print(response.json)
+    ```
+    &#34;&#34;&#34;
+    return Authenticate(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/auth/register&#34;,
+        data={
+            &#34;secret&#34;: f&#34;0 {password}&#34;,
+            &#34;deviceID&#34;: device_id(),
+            &#34;email&#34;: email,
+            &#34;clientType&#34;: 100,
+            &#34;nickname&#34;: username,
+            &#34;validationContext&#34;: {
+                &#34;data&#34;: {
+                    &#34;code&#34;: verificationCode
+                },
+                &#34;type&#34;: 1,
+                &#34;identity&#34;: email
+            },
+            &#34;type&#34;: 1,
+            &#34;identity&#34;: email,
+            &#34;timestamp&#34;: int(time() * 1000)
+        }))</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.request_security_validation"><code class="name flex">
+<span>def <span class="ident">request_security_validation</span></span>(<span>self, email: str, resetPassword: bool = False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**request_security_validation**</code> - Requests a security validation.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li>
+<p><code>email</code> - The email of the account.</p>
+</li>
+<li>
+<p><code>resetPassword</code> - Whether to reset the password or not.</p>
+</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+response = bot.request_security_validation(email=email)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def request_security_validation(self, email: str, resetPassword: bool = False):
+    &#34;&#34;&#34;
+    `**request_security_validation**` - Requests a security validation.
+
+    `**Parameters**`
+
+    - `email` - The email of the account.
+
+    - `resetPassword` - Whether to reset the password or not.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    response = bot.request_security_validation(email=email)
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/auth/request-security-validation&#34;,
+        data={
+            &#34;identity&#34;: email,
+            &#34;type&#34;: 1,
+            &#34;deviceID&#34;: device_id(),
+            &#34;level&#34;: 2 if resetPassword else None,
+            &#34;purpose&#34;: &#34;reset-password&#34; if resetPassword else None,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.reset_password"><code class="name flex">
+<span>def <span class="ident">reset_password</span></span>(<span>self, email: str, new_password: str, code: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**reset_password**</code> - Resets the password.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li>
+<p><code>email</code> - The email of the account.</p>
+</li>
+<li>
+<p><code>new_password</code> - The new password of the account.</p>
+</li>
+<li>
+<p><code>code</code> - The code sent to the email.</p>
+</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.reset_password(email=email, new_password=new_password, code=code)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def reset_password(self, email: str, new_password: str, code: str):
+    &#34;&#34;&#34;
+    `**reset_password**` - Resets the password.
+
+    `**Parameters**`
+
+    - `email` - The email of the account.
+
+    - `new_password` - The new password of the account.
+
+    - `code` - The code sent to the email.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.reset_password(email=email, new_password=new_password, code=code)
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return ResetPassword(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/auth/reset-password&#34;,
+        data={
+            &#34;updateSecret&#34;: f&#34;0 {new_password}&#34;,
+            &#34;emailValidationContext&#34;: {
+                &#34;data&#34;: {
+                    &#34;code&#34;: code
+                },
+                &#34;type&#34;: 1,
+                &#34;identity&#34;: email,
+                &#34;level&#34;: 2,
+                &#34;deviceID&#34;: device_id()
+            },
+            &#34;phoneNumberValidationContext&#34;: None,
+            &#34;deviceID&#34;: device_id()
+        }))</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.set_amino_id"><code class="name flex">
+<span>def <span class="ident">set_amino_id</span></span>(<span>self, aminoId: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**set_amino_id**</code> - Sets the amino id.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li><code>aminoId</code> - The amino id to set.</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.set_amino_id(aminoId=&quot;aminoId&quot;)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_amino_id(self, aminoId: str):
+    &#34;&#34;&#34;
+    `**set_amino_id**` - Sets the amino id.
+
+    `**Parameters**`
+
+    - `aminoId` - The amino id to set.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.set_amino_id(aminoId=&#34;aminoId&#34;)
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(
+        method = &#34;POST&#34;, url=&#34;/g/s/account/change-amino-id&#34;,
+        data={
+            &#34;aminoId&#34;: aminoId,
+            &#34;timestamp&#34;: int(time() * 1000)
+        })).json</code></pre>
+</details>
+</dd>
+<dt id="pymino.ext.account.Account.upload_image"><code class="name flex">
+<span>def <span class="ident">upload_image</span></span>(<span>self, image: str) ‑> <a title="pymino.ext.objects.SResponse" href="objects.html#pymino.ext.objects.SResponse">SResponse</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>**upload_image**</code> - Uploads an image to the server.</p>
+<p><code>**Parameters**</code></p>
+<ul>
+<li><code>image</code> - The image to upload.</li>
+</ul>
+<p><code>**Example**</code></p>
+<pre><code class="language-py">from pymino import *
+
+bot = Bot()
+bot.run(email=email, password=password)
+response = bot.upload_image(image=&quot;image.jpg&quot;)
+print(response)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def upload_image(self, image: str) -&gt; SResponse:
+    &#34;&#34;&#34;
+    `**upload_image**` - Uploads an image to the server.
+
+    `**Parameters**`
+
+    - `image` - The image to upload.
+    
+    `**Example**`
+    
+    ```py
+    from pymino import *
+    
+    bot = Bot()
+    bot.run(email=email, password=password)
+    response = bot.upload_image(image=&#34;image.jpg&#34;)
+    print(response)
+    ```
+    &#34;&#34;&#34;
+    return SResponse(self.session.handler(method=&#34;POST&#34;, url=f&#34;/g/s/media/upload&#34;,
+        data=open(image, &#34;rb&#34;).read(), content_type=&#34;image/jpg&#34;)).mediaValue</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="pymino.ext" href="index.html">pymino.ext</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="pymino.ext.account.Account" href="#pymino.ext.account.Account">Account</a></code></h4>
+<ul class="">
+<li><code><a title="pymino.ext.account.Account.activate_email" href="#pymino.ext.account.Account.activate_email">activate_email</a></code></li>
+<li><code><a title="pymino.ext.account.Account.check_device" href="#pymino.ext.account.Account.check_device">check_device</a></code></li>
+<li><code><a title="pymino.ext.account.Account.delete_request" href="#pymino.ext.account.Account.delete_request">delete_request</a></code></li>
+<li><code><a title="pymino.ext.account.Account.delete_request_cancel" href="#pymino.ext.account.Account.delete_request_cancel">delete_request_cancel</a></code></li>
+<li><code><a title="pymino.ext.account.Account.fetch_account" href="#pymino.ext.account.Account.fetch_account">fetch_account</a></code></li>
+<li><code><a title="pymino.ext.account.Account.fetch_profile" href="#pymino.ext.account.Account.fetch_profile">fetch_profile</a></code></li>
+<li><code><a title="pymino.ext.account.Account.fetch_wallet" href="#pymino.ext.account.Account.fetch_wallet">fetch_wallet</a></code></li>
+<li><code><a title="pymino.ext.account.Account.register" href="#pymino.ext.account.Account.register">register</a></code></li>
+<li><code><a title="pymino.ext.account.Account.request_security_validation" href="#pymino.ext.account.Account.request_security_validation">request_security_validation</a></code></li>
+<li><code><a title="pymino.ext.account.Account.reset_password" href="#pymino.ext.account.Account.reset_password">reset_password</a></code></li>
+<li><code><a title="pymino.ext.account.Account.set_amino_id" href="#pymino.ext.account.Account.set_amino_id">set_amino_id</a></code></li>
+<li><code><a title="pymino.ext.account.Account.upload_image" href="#pymino.ext.account.Account.upload_image">upload_image</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
