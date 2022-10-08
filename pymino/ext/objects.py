@@ -502,9 +502,9 @@ class chatMembers:
 
 class ReplyMessage:
     def __init__(self, data: dict):
-        if data["chatMessage"]["extensions"]["replyMessage"]:
+        try:
             self._json = data["chatMessage"]["extensions"]["replyMessage"]
-        else:
+        except KeyError:
             self._json = data
 
     @property
@@ -541,7 +541,8 @@ class messageExtensions: #NOTE: This is a work in progress! I Have not even test
     @property
     def replyMessageId(self) -> str: return self._json["replyMessageId"]
     @property
-    def replyMessage(self) -> ReplyMessage: return ReplyMessage(self._json["replyMessage"])
+    def replyMessage(self) -> ReplyMessage:
+        return ReplyMessage(self._json["replyMessage"])
     @property
     def json(self) -> dict: return self._json
 
