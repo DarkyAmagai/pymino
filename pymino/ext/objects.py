@@ -500,12 +500,50 @@ class chatMembers:
     @property
     def json(self) -> dict: return self._json
 
+class ReplyMessage:
+    def __init__(self, data: dict):
+        if data["chatMessage"]["extensions"]["replyMessage"]:
+            self._json = data["chatMessage"]["extensions"]["replyMessage"]
+        else:
+            self._json = data
+
+    @property
+    def includedInSummary(self) -> bool: return self._json["includedInSummary"]
+    @property
+    def uid(self) -> str: return self._json["uid"]
+    @property
+    def author(self) -> User: return User(self._json["author"])
+    @property
+    def isHidden(self) -> bool: return self._json["isHidden"]
+    @property
+    def messageId(self) -> str: return self._json["messageId"]
+    @property
+    def mediaType(self) -> int: return self._json["mediaType"]
+    @property
+    def content(self) -> str: return self._json["content"]
+    @property
+    def clientRefId(self) -> int: return self._json["clientRefId"]
+    @property
+    def threadId(self) -> str: return self._json["threadId"]
+    @property
+    def createdTime(self) -> str: return self._json["createdTime"]
+    @property
+    def extensions(self) -> dict: return self._json["extensions"]
+    @property
+    def type(self) -> int: return self._json["type"]
+    @property
+    def json(self) -> dict: return self._json
+
 class messageExtensions: #NOTE: This is a work in progress! I Have not even tested this yet.
     def __init__(self, data: dict):
-        if data["o"]: self._json = data["o"]
-        else: self._json = data
+        self._json = data
+
     @property
-    def mentionedArray(self) -> list: return self._json["chatMessage"]["extensions"]["mentionedArray"][0]["uid"]
+    def replyMessageId(self) -> str: return self._json["replyMessageId"]
+    @property
+    def replyMessage(self) -> ReplyMessage: return ReplyMessage(self._json["replyMessage"])
+    @property
+    def json(self) -> dict: return self._json
 
 class Message:
     def __init__(self, data: dict, isList: bool = False) -> None:
@@ -551,7 +589,7 @@ class Message:
     @property
     def chatBubbleVersion(self) -> int: return self._fetch("chatBubbleVersion")
     @property
-    def extensions(self) -> dict: return messageExtensions(self._fetch("extensions"))
+    def extensions(self) -> messageExtensions: return messageExtensions(self._fetch("extensions"))
     @property
     def json(self) -> dict: return self._json
 

@@ -31,9 +31,10 @@ class Bot(Socket):
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, debug: Optional[bool] = False, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
         self.command_prefix = command_prefix
+        self.community_id = community_id
         try:
-            self.community_id = community_id
-            if not isinstance(community_id, int): self.community_id = int(community_id)
+            if self.community_id is not None and not isinstance(community_id, int):
+                self.community_id = int(community_id)
         except ValueError:
             raise Exception("Check your community id! It should be an integer.\nIf you're using a community link, use `fetch_community_id` instead.")
         self.debug = debug
@@ -45,7 +46,7 @@ class Bot(Socket):
         "USER-AGENT": "Mozilla/5.0 (Linux; Android 7.0; SM-G930V Build/NRD90M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.125 Mobile Safari/537.36",
         "ACCEPT-LANGUAGE": "en-US",
         "CONTENT-TYPE": "application/json; charset=utf-8",
-        "HOST": "service.narvii.com",
+        "HOST": "service.aminoapps.com",
         "ACCEPT-ENCODING": "gzip",
         "CONNECTION": "Upgrade"
         }
@@ -68,7 +69,7 @@ class Bot(Socket):
         - `password` - The password to use to login.
         """
         return SResponse(self.request.handler(
-            method="POST", url = "https://service.narvii.com/api/v1/g/s/auth/login",
+            method="POST", url = "https://service.aminoapps.com/api/v1/g/s/auth/login",
             data={
                 "email": email,
                 "v": 2,
@@ -85,7 +86,7 @@ class Bot(Socket):
 
         [This is used internally.]
         """
-        return SResponse(self.request.handler(method="GET", url="https://service.narvii.com/api/v1/g/s/account"))
+        return SResponse(self.request.handler(method="GET", url="https://service.aminoapps.com/api/v1/g/s/account"))
 
     def run(self, email: str=None, password: str=None, sid: str=None):
         """
@@ -160,7 +161,7 @@ class Bot(Socket):
         ```
         """
         community_id = linkInfoV2(self.request.handler(
-            method="GET", url=f"https://service.narvii.com/api/v1/g/s/link-resolution?q={community_link}")
+            method="GET", url=f"https://service.aminoapps.com/api/v1/g/s/link-resolution?q={community_link}")
             ).comId
 
         if set_community_id:

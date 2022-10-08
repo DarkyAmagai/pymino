@@ -32,7 +32,7 @@ class RequestHandler:
     def handler(self, method: str, url: str, data: Union[dict, bytes, None] = None, content_type: Optional[str] = None, headers: Optional[dict] = None) -> Response:
 
         if not url.startswith("http"):
-            url = f"https://service.narvii.com/api/v1{url}"
+            url = f"https://service.aminoapps.com/api/v1{url}"
 
         if not headers:
             headers = self.session.headers.copy()

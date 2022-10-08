@@ -30,63 +30,45 @@ class WSClient(EventHandler):
                     thread.start()
             sleep(0.1)
 
-    def fetch_ws_url(self):
-        """Fetches the websocket url."""
-        ws_url = get(f"https://aminoapps.com/api/chat/web-socket-url", headers=self.headers)
-
-        if ws_url.status_code != 200:
-            raise Exception(f"Failed to fetch websocket url.\n{ws_url.text}")
-            
-        return ws_url.json()['result']['url']
-
-
     def connect(self):
         """Connects to the websocket."""
+        self.started = False
         self.run_forever_thread = Thread(target=self.run_forever)
         self.ws_started_time = int(time())
         self.run_forever_thread.start()
 
         self.emit("ready")
         return None
-        
-    def fetch_socket(self):
-        """Fetches the websocket url and connects to it. """
-        return WebSocketApp(self.fetch_ws_url(), on_open=self._on_ws_open, on_message=self._on_ws_message, on_error=self._on_ws_error, on_close=self._on_ws_close)
-
-    def start_forever(self) -> None:
-        """Starts the websocket forever."""
-
-        self.ws = self.fetch_socket()
-        
-        try:
-            for thread in [self.ws_thread, self.run_forever_thread]:
-                thread.join()
-        except (AttributeError, RuntimeError):
-            pass
-        self.ws_thread = Thread(target=self.ws.run_forever)
-        self.ws_thread.start()
-
-        return None
 
     def run_forever(self):
         """Runs the websocket forever."""
+        query = f"{device_id()}|{int(time() * 1000)}"
+        self.headers = {
+            "USER-AGENT": "Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-N976N Build/LYZ28N; com.narvii.amino.master/3.5.34654)",
+            "NDCDEVICEID": device_id(),
+            "AUID": self.userId,
+            "NDC-MSG-SIG": signature(query),
+            "NDCAUTH": f"sid={self.sid}",
+            "NDCLANG": "en",
+            "ACCEPT-LANGUAGE": "en-US",
+            "UPGRADE": "websocket",
+            "CONNECTION": "Upgrade"
+        }
+        self.ws = WebSocketApp(f"wss://ws{randint(1, 4)}.aminoapps.com/?signbody={query.replace('|', '%7C')}", header=self.headers, on_open=self._on_ws_open, on_message=self._on_ws_message, on_error=self._on_ws_error, on_close=self._on_ws_close)
+        Thread(target=self._keep_alive).start()
+        self.ws.run_forever()
 
-        self.headers = {"User-Agent": "Dalvik/2.1.0 (Linux; U; Android 10; SM-G975F Build/QP1A.190711.020)", "cookie": f"sid={self.sid}"}
-        self.start_forever()
+    def _keep_alive(self):
+        if self.debug: print("Starting keep alive thread...")
+        sleep(5) # Wait for the websocket to connect.
         while True:
-            if int(time()) - self.ws_started_time > 420:
-
-                try:
-                    if self.ws.sock.connected: self.ws.close()
-                except (AttributeError, WebSocketConnectionClosedException):
-                    pass
-
-                try:
-                    if self.ws_thread.is_alive(): self.ws_thread.join()
-                except (AttributeError, RuntimeError): 
-                    pass
-
-                self.start_forever()
+            self._send_ws_message({
+                "o":{
+                    "threadChannelUserInfoList": [],
+                    "id": randint(1, 100)},
+                    "t": 116
+                    })
+            sleep(30)
 
     def _on_ws_error(self, ws: WebSocket, error: Exception) -> None:
         if self.debug: print(f"Websocket error: {error}")
@@ -135,7 +117,10 @@ class WSClient(EventHandler):
 
     def _on_ws_close(self, ws: WebSocket, close_status_code: int, close_msg: str):
         if self.debug: print(f"Websocket closed with status code {close_status_code} and message {close_msg}")
-
+        if close_status_code == None and close_msg == None:
+            self.run_forever()
+        return None
+        
     def _send_ws_message(self, message: dict):
         if self.debug: print(f"Sending message: {message}")
         return self.ws.send(dumps(message))
