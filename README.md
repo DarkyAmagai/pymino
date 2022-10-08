@@ -48,7 +48,7 @@
 ```
 # Documentation
 # -------------
-# https://pymino.readthedocs.io/en/latest/
+# https://pymino.info/index.html
 #
 #
 
