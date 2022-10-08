@@ -7,12 +7,17 @@ class Bot(Socket):
     `Bot` is the main class that handles the bot.
 
     `**Parameters**`
+
     - `command_prefix` - The prefix to use for commands. Defaults to `!`.
+
     - `community_id` - The community id to use. Defaults to `None`.
+
     - `debug` - Whether to print debug messages or not. Defaults to `False`.
+
     - `**kwargs` - Any other keyword arguments to pass to the bot. These will be set as attributes.
 
     `**Example**`
+
     ```python
     from pymino import Bot
 
@@ -21,11 +26,16 @@ class Bot(Socket):
         community_id="1234567890",
         debug=True
     )
+    ```
     """
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, debug: Optional[bool] = False, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
         self.command_prefix = command_prefix
-        self.community_id = community_id
+        try:
+            self.community_id = community_id
+            if not isinstance(community_id, int): self.community_id = int(community_id)
+        except ValueError:
+            raise Exception("Check your community id! It should be an integer.\nIf you're using a community link, use `fetch_community_id` instead.")
         self.debug = debug
         self.is_ready = False
         self.session = Session(
@@ -48,6 +58,15 @@ class Bot(Socket):
 
 
     def authenticate(self, email: str, password: str):
+        """
+        `authenticate` authenticates the bot. [This is used internally.]
+        
+        `**Parameters**`
+        
+        - `email` - The email to use to login.
+        
+        - `password` - The password to use to login.
+        """
         return SResponse(self.request.handler(
             method="POST", url = "https://service.narvii.com/api/v1/g/s/auth/login",
             data={
@@ -61,9 +80,39 @@ class Bot(Socket):
             }))
 
     def fetch_account(self):
+        """
+        `fetch_account` fetches the account of the bot to verify the sid is valid.
+
+        [This is used internally.]
+        """
         return SResponse(self.request.handler(method="GET", url="https://service.narvii.com/api/v1/g/s/account"))
 
     def run(self, email: str=None, password: str=None, sid: str=None):
+        """
+        `run` runs the bot.
+        
+        `**Parameters**`
+        
+        - `email` - The email to use to login. Defaults to `None`.
+        
+        - `password` - The password to use to login. Defaults to `None`.
+        
+        - `sid` - The sid to use to login. Defaults to `None`.
+        
+        `**Example**`
+        
+        ```python
+        
+        from pymino import Bot
+        
+        bot = Bot()
+        
+        bot.run(
+            email="email@email.com",
+            password="password"
+            )
+        ```
+        """
         if email and password:
             response = self.authenticate(email, password).json
 
@@ -95,6 +144,7 @@ class Bot(Socket):
         
         `**Parameters**`
         - `community_link` - The community link to fetch the community id from.
+
         - `set_community_id` - Whether to set the community id to the fetched community id or not. Defaults to `True`.
         
         `**Example**`
