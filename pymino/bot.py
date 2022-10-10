@@ -166,8 +166,7 @@ class Bot(Socket):
             ).comId
 
         if set_community_id:
-            self.community_id = community_id
-            self.community.community_id = community_id
+            self.set_community_id(community_id)
 
         return community_id
 

@@ -1,4 +1,4 @@
-from . generate import *
+from .generate import *
 
 class Account:
     """

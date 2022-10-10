@@ -12,6 +12,7 @@ from threading import Thread
 from websocket import WebSocket, WebSocketApp, WebSocketConnectionClosedException
 from inspect import signature as inspect_signature
 from random import randint
+from .message import PrepareMessage
 
 def device_id(data: Optional[str]=None) -> str:
     """

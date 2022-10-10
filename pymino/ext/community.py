@@ -74,6 +74,48 @@ class Community:
         return linkInfoV2(self.session.handler(method="GET", url=f"/g/s/link-resolution?q={link}")).objectId
 
     @community
+    def fetch_community(self, community_id: Union[str, int]) -> SCommunity:
+        """
+        `fetch_community` is the method that fetches the community info.
+
+        `**Parameters**`
+
+        - None
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.fetch_community(community_id="123456789").json
+        bot.run(sid=sid)
+        ```
+        """
+        return SCommunity(self.session.handler(method="GET", url=f"/g/s-x{community_id}/community/info"))
+    
+    @community
+    def joined_communities(self, start: int = 0, size: str = 50) -> SCommunity:
+        """
+        `joined_communities` is the method that fetches the communities the user has joined.
+
+        `**Parameters**`
+
+        - None
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.joined_communities().json
+        bot.run(sid=sid)
+        ```
+        """
+        return SCommunity(self.session.handler(method="GET", url=f"/g/s/community/joined?v=1&start={start}&size={size}"), True)
+
+    @community
     def join_community(self) -> SResponse:
         """
         `join_community` is the method that joins the community.
@@ -632,8 +674,9 @@ class Community:
         """
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
+                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
                 return Comment(self.session.handler(
-                    method="GET", url=f"/x{self.community_id}/s/{i.split('Id')[0] if i != 'wikiId' else 'item'}/{eval(i)}/comment?sort=newest&start={start}&size={size}"), True)
+                    method="GET", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment?sort=newest&start={start}&size={size}"), True)
 
     @community
     def set_cohost(self, chatId: str, userIds: Union[str, list]) -> SResponse:
@@ -726,7 +769,7 @@ class Community:
         ```
         """
         return SResponse(self.session.handler(
-            method="DELETE", url=f"/x{self.community_id}/s/user-profile/{userId}/member"))
+            method="DELETE", url=f"/x{self.community_id}/s/user-profile/{self.userId}/joined/{userId}"))
 
     @community
     def block(self, userId: str) -> SResponse:
@@ -917,8 +960,9 @@ class Community:
         """
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
+                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
                 return SResponse(self.session.handler(
-                    method="DELETE", url=f"/x{self.community_id}/s/{i.split('Id')[0] if i != 'wikiId' else 'item'}/{eval(i)}/comment/{commentId}"))
+                    method="DELETE", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment/{commentId}"))
 
     @community
     def comment(self, content: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None, image: Optional[str]=None) -> Comment:
@@ -949,8 +993,9 @@ class Community:
         """
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
+                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
                 return Comment(self.session.handler(
-                    method="POST", url=f"/x{self.community_id}/s/{i.split('Id')[0] if i != 'wikiId' else 'item'}/{eval(i)}/comment",
+                    method="POST", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment",
                     data = {
                         "content": content,
                         "mediaList": [self.upload_image(image, 1)] if image is not None else [],
@@ -987,8 +1032,9 @@ class Community:
         """
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
+                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
                 return SResponse(self.session.handler(
-                    method="POST", url=f"/x{self.community_id}/s/{i.split('Id')[0] if i != 'wikiId' else 'item'}/{eval(i)}/comment/{commentId}/vote",
+                    method="POST", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment/{commentId}/vote",
                     data = {
                         "value": 1,
                         "timestamp": int(time() * 1000),
@@ -1022,8 +1068,9 @@ class Community:
         """
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
+                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
                 return SResponse(self.session.handler(
-                    method="DELETE", url=f"/x{self.community_id}/s/{i.split('Id')[0] if i != 'wikiId' else 'item'}/{eval(i)}/comment/{commentId}/vote"))
+                    method="DELETE", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment/{commentId}/vote"))
 
     @community
     def like_blog(self, blogId: str, userId: Optional[str]=None) -> SResponse:
@@ -1679,48 +1726,35 @@ class Community:
         """
         return Message(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = {
-                "type": 0,
-                "content": "[c]",
-                "clientRefId": int(time() / 10 % 1000000000),
-                "attachedObject": {
-                    "link": link,
-                    "title": title,
-                    "content": content,
-                    "mediaList": [[100, self.upload_image(image), None]] if image else None
-                },
-                "extensions": {},
-                "timestamp": int(time() * 1000)
-                }))
+            data = PrepareMessage(content="[c]",
+            attachedObject={
+                "title": title,
+                "content": content,
+                "mediaList": [[100, self._prep_file(image), None]],
+                "link": link
+                }).embed_message))
 
-    def _prep_image(self, image: str) -> BinaryIO:
+    def _prep_file(self, file: str, mediaValue: bool=True) -> BinaryIO:
         """
-        `_prep_image` is the method that prepares an image for sending.
-
+        `_prep_file` is a function that prepares an file to be sent.
+        
         `**Parameters**`
 
-        - `image` - The image to prepare.
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community._prep_image(image="https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
-        bot.run(sid=sid)
-        ```
+        - `file` - The file to prepare.
         """
-
-        if image.startswith("http"):
-            [open("temp.png", "wb").write(get(image).content), image := open("temp.png", "rb")]
+        if file.startswith("http"):
+            [open(f"temp.{file.split('.')[-1]}", "wb").write(get(file).content), file := open(f"temp.{file.split('.')[-1]}", "rb")]
         else:
-            image = open(image, "rb")
+            file = open(file, "rb")
 
-        return image
+        if not mediaValue: return file
+
+        file = self.upload_image(file)
+        
+        return file
 
     @community
-    def send_link_snippet(self, chatId: str, message: str, image: BinaryIO = None) -> SResponse:
+    def send_link_snippet(self, chatId: str, content: str, image: BinaryIO = None) -> SResponse:
         """
         `send_link_snippet` is the method that sends a link snippet to a chat.
 
@@ -1728,7 +1762,7 @@ class Community:
 
         - `chatId` - The chat ID to send the link snippet to.
 
-        - `message` - The message of the link snippet.
+        - `content` - The message of the link snippet.
 
         - `image` - The image of the link snippet.
         
@@ -1738,31 +1772,22 @@ class Community:
         from pymino import Bot
         
         bot = Bot()
-        bot.community.send_link_snippet(chatId="5f4d2e0e0a0a0a0a0a0a0a0a", message="Hello World!", image="https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
+        bot.community.send_link_snippet(chatId="5f4d2e0e0a0a0a0a0a0a0a0a", content="Hello World!", image="https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
         bot.run(sid=sid)
         ```
         """
-        image = self._prep_image(image)
         return SResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = {
-                "type": 0,
-                "content": message,
-                "clientRefId": int(time() / 10 % 1000000000),
-                "attachedObject": {},
-                "extensions": {
-                    "linkSnippetList": [{
-                        "link": None,
-                        "mediaType": 100,
-                        "mediaUploadValue": b64encode(image.read()).decode(),
-                        "mediaUploadValueContentType": "image/png"
-                        }]
-                    },
-                "timestamp": int(time() * 1000)
-                }))
+            data = PrepareMessage(content=content,
+            linkSnippetList={
+                "link": None,
+                "mediaType": 100,
+                "mediaUploadValue": b64encode(self._prep_file(image, False).read()).decode(),
+                "mediaUploadValueContentType": "image/png"
+                }).link_snippet_message))
 
     @community
-    def send_message(self, chatId: str, message: str) -> Message:
+    def send_message(self, chatId: str, content: str) -> Message:
         """
         `send_message` is the method that sends a message to a chat.
 
@@ -1770,7 +1795,7 @@ class Community:
 
         - `chatId` - The chat ID to send the message to.
 
-        - `message` - The message to send.
+        - `content` - The message to send.
         
         `**Example**`
 
@@ -1778,19 +1803,13 @@ class Community:
         from pymino import Bot
         
         bot = Bot()
-        bot.community.send_message(chatId="5f4d2e0e0a0a0a0a0a0a0a0a", message="Hello World!")
+        bot.community.send_message(chatId="5f4d2e0e0a0a0a0a0a0a0a0a", content="Hello World!")
         bot.run(sid=sid)
         ```
         """
         return Message(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = {
-                "type": 0,
-                "content": message,
-                "clientRefId": int(time() / 10 % 1000000000),
-                "extensions": {},
-                "timestamp": int(time() * 1000)
-                }))
+            data = PrepareMessage(content=content).base_message))
 
     @community
     def send_image(self, chatId: str, image: Union[str, BinaryIO] = None, gif: Union[str, BinaryIO] = None) -> Message:
@@ -1815,23 +1834,37 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        image = self._prep_image(image)
         return Message(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = {
-                "type": 0,
-                "content": None,
-                "clientRefId": int(time() / 10 % 1000000000),
-                "attachedObject": None,
-                "mediaType": 100,
-                "mediaUploadValue": b64encode((image if image else gif).read()).decode(),
-                "mediaUploadValueContentType": "image/jpg" if image else "image/gif",
-                "mediaUhqEnabled": True,
-                "timestamp": int(time() * 1000)
-                }))
-                
+            data = PrepareMessage(image=b64encode((self._prep_file(image, False)).read()).decode()).image_message))
+
     @community
-    def send_sticker(self, chatId: str, stickerId: str) -> SResponse:
+    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None) -> Message: #NOTE: Not sure how long the audio can be.
+        """
+        `send_audio` is the method that sends an audio to a chat.
+
+        `**Parameters**`
+
+        - `chatId` - The chat ID to send the audio to.
+
+        - `audio` - The audio to send.
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.send_audio(chatId="5f4d2e0e0a0a0a0a0a0a0a0a", audio="output.mp3")
+        bot.run(sid=sid)
+        ```
+        """
+        return Message(self.session.handler(
+            method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
+            data = PrepareMessage(audio=b64encode((self._prep_file(audio, False)).read()).decode()).audio_message))
+
+    @community
+    def send_sticker(self, chatId: str, stickerId: str) -> SResponse: #TODO: Add this to PrepareMessage
         """
         `send_sticker` is the method that sends a sticker to a chat.
 
@@ -1853,14 +1886,7 @@ class Community:
         """
         return SResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = {
-                "type": 3,
-                "content": None,
-                "clientRefId": int(time() / 10 % 1000000000),
-                "stickerId": stickerId,
-                "extensions": {},
-                "timestamp": int(time() * 1000)
-                }))
+            data = PrepareMessage(stickerId=stickerId).sticker_message))
 
     def upload_image(self, image: Union[str, BinaryIO]) -> str:
         """
@@ -2236,6 +2262,8 @@ class Community:
                 "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
                 "initialMessageContent": message,
                 "content": content,
+                "type": 0,
+                "publishToGlobal": 0,
                 "timestamp": int(time() * 1000)
             }
         ))
@@ -2338,7 +2366,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        image = self._prep_image(backgroundImage)
+        image = self._prep_file(backgroundImage)
         return SResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member/{self.userId}/background",
             data = {

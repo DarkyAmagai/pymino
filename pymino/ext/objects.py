@@ -414,7 +414,8 @@ class Blog:
     @property
     def language(self) -> None: return self._fetch("language")
     @property
-    def author(self) -> User: return User([author["author"] for author in self._json], isList=True)
+    def author(self) -> User:
+        return User([author["author"] for author in self._json["blogList"]], isList=True)
     @property
     def extensions(self) -> dict: return self._fetch("extensions")
     @property
@@ -458,7 +459,7 @@ class Wiki:
     @property
     def style(self) -> int: return self._fetch("style")
     @property
-    def author(self) -> User: return User([author["author"] for author in self._json], isList=True)
+    def author(self) -> User: return User([author["author"] for author in self._json["itemList"]], isList=True)
     @property
     def contentRating(self) -> int: return self._fetch("contentRating")
     @property
@@ -773,60 +774,64 @@ class SCommunity:
         self._list = isList
 
     def _fetch(self, key) -> Union[str, List]:
-        try: return [i[key] for i in self._json["communityList"]] if self._list else self._json[key]["community"]
+        try: return [i["community"][key] for i in self._json["communityList"]] if self._list else self._json[key]["community"]
         except (KeyError, TypeError): return Objects().fetch_key(self._json, key, self._list)
-
+        
     @property
-    def userAddedTopicList(self) -> list: return self._fetch("userAddedTopicList")
+    def isCurrentUserJoined(self) -> bool: return self._json["isCurrentUserJoined"]
     @property
-    def agent(self) -> User: return User(self._fetch("agent"), self._list)
+    def currentUserInfo(self) -> User: return User(self._json("currentUserInfo"), self._list)
     @property
-    def listedStatus(self) -> int: return self._fetch("listedStatus")
+    def isStandaloneAppMonetizationEnabled(self) -> bool: return self._json["community"]["isStandaloneAppMonetizationEnabled"] if not self._list else self._fetch("isStandaloneAppMonetizationEnabled")
     @property
-    def probationStatus(self) -> int: return self._fetch("probationStatus")
+    def keywords(self) -> List: return self._json["community"]["keywords"] if not self._list else self._fetch("keywords")
     @property
-    def themePack(self) -> themePack: return themePack(self._fetch("themePack"), self._list)
+    def isStandaloneAppDeprecated(self) -> bool: return self._json["community"]["isStandaloneAppDeprecated"] if not self._list else self._fetch("isStandaloneAppDeprecated")
     @property
-    def membersCount(self) -> int: return self._fetch("membersCount")
+    def activeInfo(self) -> dict: return self._json["community"]["activeInfo"] if not self._list else self._fetch("activeInfo")
     @property
-    def primaryLanguage(self) -> str: return self._fetch("primaryLanguage")
+    def promotionalMediaList(self) -> List: return self._json["community"]["promotionalMediaList"] if not self._list else self._fetch("promotionalMediaList")
     @property
-    def communityHeat(self) -> int: return self._fetch("communityHeat")
+    def themePack(self) -> themePack: return themePack(self._json["community"]["themePack"]) if not self._list else themePack(self._fetch("themePack"))
     @property
-    def strategyInfo(self) -> dict: return self._fetch("strategyInfo")
+    def status(self) -> int: return self._json["community"]["status"] if not self._list else self._fetch("status")
     @property
-    def tagline(self) -> str: return self._fetch("tagline")
+    def probationStatus(self) -> int: return self._json["community"]["probationStatus"] if not self._list else self._fetch("probationStatus")
     @property
-    def joinType(self) -> int: return self._fetch("joinType")
+    def updatedTime(self) -> str: return self._json["community"]["updatedTime"] if not self._list else self._fetch("updatedTime")
     @property
-    def status(self) -> int: return self._fetch("status")
+    def primaryLanguage(self) -> str: return self._json["community"]["primaryLanguage"] if not self._list else self._fetch("primaryLanguage")
     @property
-    def launchPage(self) -> int: return self._fetch("launchPage")
+    def modifiedTime(self) -> str: return self._json["community"]["modifiedTime"] if not self._list else self._fetch("modifiedTime")
     @property
-    def modifiedTime(self) -> str: return self._fetch("modifiedTime")
+    def membersCount(self) -> int: return self._json["community"]["membersCount"] if not self._list else self._fetch("membersCount")
     @property
-    def comId(self) -> int: return self._fetch("ndcId")
+    def tagline(self) -> str: return self._json["community"]["tagline"] if not self._list else self._fetch("tagline")
     @property
-    def activeInfo(self) -> dict: return self._fetch("activeInfo")
+    def name(self) -> str: return self._json["community"]["name"] if not self._list else self._fetch("name")
     @property
-    def link(self) -> str: return self._fetch("link")
+    def endpoint(self) -> str: return self._json["community"]["endpoint"] if not self._list else self._fetch("endpoint")
     @property
-    def icon(self) -> str: return self._fetch("icon")
+    def communityHeadList(self) -> List: return self._json["community"]["communityHeadList"] if not self._list else self._fetch("communityHeadList")
     @property
-    def updatedTime(self) -> str: return self._fetch("updatedTime")
+    def listedStatus(self) -> int: return self._json["community"]["listedStatus"] if not self._list else self._fetch("listedStatus")
     @property
-    def endpoint(self) -> str: return self._fetch("endpoint")
+    def extensions(self) -> List: return self._json["community"]["extensions"] if not self._list else self._fetch("extensions")
     @property
-    def name(self) -> str: return self._fetch("name")
+    def mediaList(self) -> List: return self._json["community"]["mediaList"] if not self._list else self._fetch("mediaList")
     @property
-    def templateId(self) -> int: return self._fetch("templateId")
+    def userAddedTopicList(self) -> List: return self._json["community"]["userAddedTopicList"] if not self._list else self._fetch("userAddedTopicList")
     @property
-    def createdTime(self) -> str: return self._fetch("createdTime")
+    def communityHeat(self) -> int: return self._json["community"]["communityHeat"] if not self._list else self._fetch("communityHeat")
     @property
-    def promotionalMediaList(self) -> list: return self._fetch("promotionalMediaList")
+    def templateId(self) -> int: return self._json["community"]["templateId"] if not self._list else self._fetch("templateId")
     @property
-    def json(self) -> dict: return self._json
-
+    def searchable(self) -> bool: return self._json["community"]["searchable"] if not self._list else self._fetch("searchable")
+    @property
+    def createdTime(self) -> str: return self._json["community"]["createdTime"] if not self._list else self._fetch("createdTime")
+    @property
+    def json(self) -> dict: return self._json["community"]
+    
 class CheckInHistory:
     def __init__(self, data: dict) -> None:
         self._json = data

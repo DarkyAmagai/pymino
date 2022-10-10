@@ -34,10 +34,47 @@ class Context():
     def attribute_error(func):
         def wrapper(*args, **kwargs):
             try:
-                return func(*args, **kwargs)
+                Thread(target=func, args=args, kwargs=kwargs).start()
             except AttributeError:
                 raise AttributeError(f"Make sure you're using the {func.__name__} method in a command!")
         return wrapper
+
+    def _delete(self, message: Message, delete_after: int = 5):
+        if delete_after != 0:
+            sleep(delete_after)
+        return self._session.handler(
+            method="DELETE", url=f"/x{message.comId}/s/chat/thread/{message.chatId}/message/{message.messageId}")
+
+    def upload_image(self, image: Union[str, BinaryIO]) -> str:
+        """
+        `upload_image` is a function that uploads an image to the server and returns it's link.
+
+        `**Parameters**`
+
+        - `image` - The image to upload.
+        """
+        image = open(image, "rb") if isinstance(image, str) else image
+        return SResponse(self._session.handler(method="POST", url=f"/g/s/media/upload",
+            data=image.read(), content_type="image/jpg")).mediaValue
+
+    def _prep_file(self, file: str, mediaValue: bool=True) -> BinaryIO:
+        """
+        `_prep_file` is a function that prepares an file to be sent.
+        
+        `**Parameters**`
+
+        - `file` - The file to prepare.
+        """
+        if file.startswith("http"):
+            [open(f"temp.{file.split('.')[-1]}", "wb").write(get(file).content), file := open(f"temp.{file.split('.')[-1]}", "rb")]
+        else:
+            file = open(file, "rb")
+
+        if not mediaValue: return file
+
+        file = self.upload_image(file)
+        
+        return file
 
     @attribute_error
     def reply(self, content: str, delete_after: int= None):
@@ -60,23 +97,13 @@ class Context():
         """
         message = Message(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
-            data = {
-                "content": content,
-                "timestamp": int(time() * 1000),
-                "type": 0,
-                "replyMessageId": self._message.messageId
-            }))
+            data = PrepareMessage(content=content, replyMessageId=self.message.messageId).reply_message
+            ))
+
         if delete_after:
             Thread(target=self._delete, args=(message, delete_after)).start()
 
         return message
-
-    @attribute_error
-    def _delete(self, message: Message, delete_after: int = 5):
-        if delete_after != 0:
-            sleep(delete_after)
-        return self._session.handler(
-            method="DELETE", url=f"/x{message.comId}/s/chat/thread/{message.chatId}/message/{message.messageId}")
 
     @attribute_error
     def send(self, content: str, delete_after: int= None):
@@ -99,18 +126,15 @@ class Context():
         """
         message =  Message(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
-            data = {
-                "content": content,
-                "timestamp": int(time() * 1000),
-                "type": 0
-            }))
+            data = PrepareMessage(content=content).base_message))
+
         if delete_after:
             Thread(target=self._delete, args=(message, delete_after)).start()
 
         return message
 
     @attribute_error
-    def send_embed(self, title: str, content: str, image: str = None, link: Optional[str]=None, delete_after: int= None) -> Message:
+    def send_embed(self, title: str, content: str, image: str, link: Optional[str]=None) -> Message:
         """
         `**send_embed**` sends an embed to the chat that triggered the command.
 
@@ -134,57 +158,58 @@ class Context():
             ctx.send_embed(title="This is a test embed/", content=f"Welcome to the chat {ctx.author.username}!", image="icon.jpg")
         ```
         """
-        image = self._prep_image(image)
-        message = Message(self._session.handler(
+        return Message(self._session.handler(
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
-            data = {
-                "type": 0,
-                "content": "[c]",
-                "clientRefId": int(time() / 10 % 1000000000),
-                "attachedObject": {
-                    "link": link,
-                    "title": title,
-                    "content": content,
-                    "mediaList": [[100, self.upload_image(image), None]] if image else None
-                },
-                "extensions": {},
-                "timestamp": int(time() * 1000)
-                }))
-                
-        if delete_after:
-            Thread(target=self._delete, args=(message, delete_after)).start()
-
-        return message
+            data = PrepareMessage(content="[c]",
+            attachedObject={
+                "title": title,
+                "content": content,
+                "mediaList": [[100, self._prep_file(image), None]],
+                "link": link
+                }).embed_message))
 
     @attribute_error
-    def upload_image(self, image: Union[str, BinaryIO]) -> str:
+    def send_image(self, image: str):
         """
-        `upload_image` is a function that uploads an image to the server and returns it's link.
-
+        `**send_image**` sends an image to the chat that triggered the command.
+        
         `**Parameters**`
-
-        - `image` - The image to upload.
+        
+        - `image` must be a url or a path to a file.
+        
+        `**Example**`
+        
+        ```py
+        @bot.command("image")
+        def image(ctx: Context):
+            ctx.send_image("image.jpg")
+        ```
         """
-        image = open(image, "rb") if isinstance(image, str) else image
-        return SResponse(self._session.handler(method="POST", url=f"/g/s/media/upload",
-            data=image.read(), content_type="image/jpg")).mediaValue
+        return Message(self._session.handler(
+            method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
+            data = PrepareMessage(image=b64encode((self._prep_file(image, False)).read()).decode()).image_message))
 
     @attribute_error
-    def _prep_image(self, image: str) -> BinaryIO:
+    def send_audio(self, audio: str) -> Message: #NOTE: Not sure how long the audio can be.
         """
-        `_prep_image` is a function that prepares an image to be sent.
+        `**send_audio**` sends an audio file to the chat that triggered the command.
         
         `**Parameters**`
-
-        - `image` - The image to prepare.
-        """
         
-        if image.startswith("http"):
-            [open("temp.png", "wb").write(get(image).content), image := open("temp.png", "rb")]
-        else:
-            image = open(image, "rb")
+        - `audio` must be a url or a path to a file.
+        
+        `**Example**`
+        
+        ```py
+        @bot.command("audio")
+        def audio(ctx: Context):
+            ctx.send_audio("audio.mp3")
+        ```
+        """
+        return Message(self._session.handler(
+            method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
+            data = PrepareMessage(audio=b64encode((self._prep_file(audio, False)).read()).decode()).audio_message))
 
-        return image
 
 class EventHandler(Context):
     """
