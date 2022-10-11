@@ -1,4 +1,5 @@
 from time import time
+
 class PrepareMessage:
     def __init__(self, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
@@ -24,6 +25,14 @@ class PrepareMessage:
         self.message["mediaType"] = 100
         self.message["mediaUploadValue"] = self.image
         self.message["mediaUploadValueContentType"] = "image/jpg"
+        self.message["mediaUhqEnabled"] = True
+        return self.message
+
+    @property
+    def gif_message(self):
+        self.message["mediaType"] = 100
+        self.message["mediaUploadValue"] = self.gif
+        self.message["mediaUploadValueContentType"] = "image/gif"
         self.message["mediaUhqEnabled"] = True
         return self.message
 

@@ -1,4 +1,4 @@
-from .ext.generate import *
+from .ext.utilities.generate import *
 from .ext import Community, RequestHandler, Account, Global
 from .ext.socket import WSClient as Socket
 

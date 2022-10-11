@@ -1,4 +1,4 @@
-from .generate import *
+from .utilities.generate import *
 
 class Account:
     """
@@ -8,7 +8,7 @@ class Account:
         self.session = session
         self.debug = debug
 
-    def register(self, email: str, password: str, username: str, verificationCode: str):
+    def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
         `**register**` - Registers a new account.
 
@@ -54,7 +54,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def delete_request(self, email: str, password: str):
+    def delete_request(self, email: str, password: str) -> SResponse:
         """
         `**delete_request**` - Sends a delete request to the account.
 
@@ -81,9 +81,9 @@ class Account:
             "deviceID": device_id(),
             "email": email,
             "timestamp": int(time() * 1000)
-        })).json
+        }))
 
-    def delete_request_cancel(self, email: str, password: str):
+    def delete_request_cancel(self, email: str, password: str) -> SResponse:
         """
         `**delete_request_cancel**` - Cancels the delete request.
 
@@ -111,9 +111,9 @@ class Account:
             "deviceID": device_id(),
             "email": email,
             "timestamp": int(time() * 1000)
-        })).json
+        }))
 
-    def check_device(self, deviceId: str):
+    def check_device(self, deviceId: str) -> SResponse:
         """
         `**check_device**` - Checks if the device is valid.
 
@@ -139,7 +139,7 @@ class Account:
             "timezone": -310,
             "systemPushEnabled": True,
             "timestamp": int(time() * 1000)
-        })).json
+        }))
 
     def fetch_account(self):
         """
@@ -156,7 +156,7 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(method = "GET", url="/g/s/account")).json
+        return SResponse(self.session.handler(method = "GET", url="/g/s/account"))
 
     def upload_image(self, image: str) -> SResponse:
         """
@@ -180,7 +180,7 @@ class Account:
         return SResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
             data=open(image, "rb").read(), content_type="image/jpg")).mediaValue
 
-    def fetch_profile(self):
+    def fetch_profile(self)  -> User:
         """
         `**fetch_profile**` - Fetches the profile information.
         
@@ -195,8 +195,8 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(
-            method = "GET", url = f"/g/s/user-profile/{self.userId}")).json
+        return User(self.session.handler(
+            method = "GET", url = f"/g/s/user-profile/{self.userId}"))
 
     def set_amino_id(self, aminoId: str):
         """
@@ -222,7 +222,7 @@ class Account:
             data={
                 "aminoId": aminoId,
                 "timestamp": int(time() * 1000)
-            })).json
+            }))
 
     def fetch_wallet(self):
         """
@@ -239,9 +239,9 @@ class Account:
         print(response)
         """
         return Wallet(self.session.handler(
-            method = "GET", url="/g/s/wallet")).json
+            method = "GET", url="/g/s/wallet"))
 
-    def request_security_validation(self, email: str, resetPassword: bool = False):
+    def request_security_validation(self, email: str, resetPassword: bool = False) -> SResponse:
         """
         `**request_security_validation**` - Requests a security validation.
 
@@ -270,9 +270,9 @@ class Account:
                 "level": 2 if resetPassword else None,
                 "purpose": "reset-password" if resetPassword else None,
                 "timestamp": int(time() * 1000)
-            })).json
+            }))
 
-    def activate_email(self, email: str, code: str):
+    def activate_email(self, email: str, code: str) -> SResponse:
         """
         `**activate_email**` - Activates an email.
 
@@ -302,9 +302,9 @@ class Account:
                     },
                 "deviceID": device_id(),
                 "timestamp": int(time() * 1000)
-            })).json
+            }))
 
-    def reset_password(self, email: str, new_password: str, code: str):
+    def reset_password(self, email: str, new_password: str, code: str) -> ResetPassword:
         """
         `**reset_password**` - Resets the password.
 

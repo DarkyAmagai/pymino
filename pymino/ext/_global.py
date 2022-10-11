@@ -1,4 +1,4 @@
-from .generate import *
+from .utilities.generate import *
 
 class Global:
     def __init__(self, session: Session, debug: Optional[bool] = False):

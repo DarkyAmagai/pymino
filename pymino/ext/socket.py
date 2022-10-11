@@ -1,4 +1,4 @@
-from .generate import *
+from .utilities.generate import *
 from .context import EventHandler
 
 class WSClient(EventHandler):
@@ -18,17 +18,6 @@ class WSClient(EventHandler):
         self.debug = debug
         self.sid: Optional[str] = None
         self._ws: Optional[WebSocket] = None
-        self.threads = []
-        Thread(target=self.start_threads).start()
-
-    def start_threads(self):
-        """Starts the threads."""
-        while True:
-            for thread in self.threads:
-                if not thread.is_alive():
-                    self.threads.remove(thread)
-                    thread.start()
-            sleep(0.1)
 
     def connect(self):
         """Connects to the websocket."""
@@ -60,7 +49,7 @@ class WSClient(EventHandler):
 
     def _keep_alive(self):
         if self.debug: print("Starting keep alive thread...")
-        sleep(5) # Wait for the websocket to connect.
+        wait(5) # Wait for the websocket to connect.
         while True:
             self._send_ws_message({
                 "o":{
@@ -68,14 +57,12 @@ class WSClient(EventHandler):
                     "id": randint(1, 100)},
                     "t": 116
                     })
-            sleep(30)
+            wait(30)
 
     def _on_ws_error(self, ws: WebSocket, error: Exception) -> None:
         if self.debug: print(f"Websocket error: {error}")
-        try:
-            self._events["error"](error)
-        except KeyError:
-            pass
+        try: self._events["error"](error)
+        except KeyError: pass
 
         return None
 
@@ -83,37 +70,37 @@ class WSClient(EventHandler):
         """
         `_on_ws_message` is a function that handles the websocket messages.
         """
+        
         if self.debug: print(f"Websocket received message: {message}")
-        raw_message = loads(message)
 
+        raw_message = loads(message)
         message: Message = Message(raw_message)
 
-        if message.userId == self.userId: return 
+        if message.userId == self.userId: return None
 
         if raw_message["t"] == 1000:
-            for key, value in EventTypes.__dict__.items():
-                if value == f"{message.type}:{message.mediaType}":
+            def fetch_key():
+                message_type = f"{message.type}:{message.mediaType}"
+                for key, value in EventTypes.__dict__.items():
+                    if value == message_type:
+                        return key
+                return None
 
-                    if (message.content == None or not message.content.startswith(self.command_prefix)):
-                        self.threads.append(Thread(target=self._handle_event, args=(key, message)))
-                        return 200
-
-                    elif message.content is not None and message.content.startswith(self.command_prefix):
-                        command = message.content.split(" ")[0][len(self.command_prefix):]
-
-                        if command in self._commands:
-                            self.threads.append(Thread(target=self._handle_command(message.json)))
-                        return 200
-                    
-                    return 400  
+            key = fetch_key()
+            if key is not None:
+                if any([message.content == None, not message.content.startswith(self.command_prefix)]):
+                    return Thread(target=self._handle_event, args=(key, message)).start()
+                else:
+                    return Thread(target=self._handle_command(message.json)).start()
+            else:
+                return None
 
         elif raw_message["t"] == 201: pass # TODO: Fetch channel key for agora.
 
         elif raw_message["t"] == 400:
-                self.threads.append(Thread(target=self._handle_event, args=("user_online", message.json)))
-                return 200
+                return Thread(target=self._handle_event, args=("user_online", message.json)).start()
             
-        return 400
+        return None
 
     def _on_ws_close(self, ws: WebSocket, close_status_code: int, close_msg: str):
         if self.debug: print(f"Websocket closed with status code {close_status_code} and message {close_msg}")

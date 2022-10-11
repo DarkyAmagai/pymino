@@ -1,4 +1,4 @@
-from .generate import *
+from .utilities.generate import *
 
 class Context():
     """
@@ -41,7 +41,7 @@ class Context():
 
     def _delete(self, message: Message, delete_after: int = 5):
         if delete_after != 0:
-            sleep(delete_after)
+            wait(delete_after)
         return self._session.handler(
             method="DELETE", url=f"/x{message.comId}/s/chat/thread/{message.chatId}/message/{message.messageId}")
 
@@ -190,6 +190,27 @@ class Context():
             data = PrepareMessage(image=b64encode((self._prep_file(image, False)).read()).decode()).image_message))
 
     @attribute_error
+    def send_gif(self, gif: str):
+        """
+        `**send_gif**` sends a gif to the chat that triggered the command.
+        
+        `**Parameters**`
+        
+        - `gif` must be a url or a path to a file.
+        
+        `**Example**`
+        
+        ```py
+        @bot.command("gif")
+        def gif(ctx: Context):
+            ctx.send_gif("jiffyyyy.gif")
+        ```
+        """
+        return Message(self._session.handler(
+            method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
+            data = PrepareMessage(gif=b64encode((self._prep_file(gif, False)).read()).decode()).gif_message))
+
+    @attribute_error
     def send_audio(self, audio: str) -> Message: #NOTE: Not sure how long the audio can be.
         """
         `**send_audio**` sends an audio file to the chat that triggered the command.
@@ -262,7 +283,7 @@ class EventHandler(Context):
                         func()
                     else:
                         func(self.community)
-                    sleep(interval)
+                    wait(interval)
             self.start_task(wrapper)
             return func
         return decorator
@@ -275,6 +296,10 @@ class EventHandler(Context):
     def command(self, name: str):
         """
         `command` is a function that registers a command.
+
+        `**Parameters**`
+
+        - `name` is the name of the command.
         
         `**Example**`
         ```python
@@ -288,20 +313,28 @@ class EventHandler(Context):
         return decorator
 
     def _handle_command(self, data: dict):
-        """
-        `_handle_command` is a function that handles commands.
-        """
         message: Message = Message(data)
 
         command = message.content.split(" ")[0][len(self.command_prefix):]
-        command_length = len(self.command_prefix + message.content.split(" ")[0][1:]) + 1
-        arg = message.content[command_length - 1:]
+        def fetch_command():
+            for command_name, command_func in self._commands.items():
+                if command_name == command:
+                    return command_func
+            return None
 
-        if command in self._commands:
-            if len(inspect_signature(self._commands[command]).parameters) == 1:
-                self._commands[command](self.context(message, self.request))
+        command_func = fetch_command()
+        if command_func:
+            if len(inspect_signature(command_func).parameters) > 2:
+                return None
+            elif len(inspect_signature(command_func).parameters) > 1:
+                return command_func(
+                    self.context(message, self.request),
+                    message.content[len(self.command_prefix + command) + 1:]
+                    )
             else:
-                self._commands[command](self.context(message, self.request), arg)
+                return command_func(self.context(message, self.request))
+        else:
+            return self.emit("text_message", self.context(message, self.request))
 
     def on_error(self):
         """
@@ -368,22 +401,23 @@ class EventHandler(Context):
         `**Example**`
         ```python
         @bot.on_text_message()`
-        def text_message_handler(ctx: Context):`
-            print(ctx.message.json)`
+        def text_message(ctx: Context, message: str):`
+            print(ctx.message.json)
+            print(message)
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["text_message"] = func
+            def wrapper(ctx: Context):
+                inspect = len(inspect_signature(func).parameters)
+                if inspect > 2:
+                    return None
+                elif inspect > 1:
+                    if ctx.message.content.startswith(self.command_prefix):
+                        func(ctx, ctx.message.content[len(self.command_prefix):])
+                    else: func(ctx, ctx.message.content)
+                else:
+                    func(ctx)
+            self._events["text_message"] = wrapper
             return func
         return decorator
 
@@ -1642,7 +1676,9 @@ class EventHandler(Context):
             print(ctx.message.json)
         ```"""
         if event == "text_message":
-            self._events["text_message"](self.context(data, self.request))
+            if not data.content.startswith(self.command_prefix):
+                self._events["text_message"](self.context(data, self.request))
+            else: self._handle_command(data.json)
         elif event == "image_message":
             self._events["image_message"](self.context(data, self.request))
         elif event == "youtube_message":

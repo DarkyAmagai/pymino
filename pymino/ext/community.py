@@ -1,4 +1,4 @@
-from .generate import *
+from .utilities.generate import *
 
 class Community:
     """
@@ -21,11 +21,11 @@ class Community:
         if self.userId == None: return 
 
     def community(func):
-        def wrapper(*args, **kwargs):
+        def community_func(*args, **kwargs):
             if args[0].community_id is None:
                 raise Exception("Error: community_id in Bot Client is None. Please provide a community id!")
             return func(*args, **kwargs)
-        return wrapper
+        return community_func
 
     @community
     def invite_code(self) -> SResponse:
@@ -569,7 +569,7 @@ class Community:
         ```
         """
         return chatMembers(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member?start={start}&size={size}"), True)
+            method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"), True)
 
     @community
     def fetch_messages(self, chatId: str, start: int = 0, size: int = 25) -> Message:
@@ -1743,7 +1743,7 @@ class Community:
         - `file` - The file to prepare.
         """
         if file.startswith("http"):
-            [open(f"temp.{file.split('.')[-1]}", "wb").write(get(file).content), file := open(f"temp.{file.split('.')[-1]}", "rb")]
+            file = BytesIO(get(file).content)
         else:
             file = open(file, "rb")
 
