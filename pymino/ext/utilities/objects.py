@@ -203,7 +203,7 @@ class User:
     @property
     def defaultBubbleId(self) -> str: return self._fetch("defaultBubbleId")
     @property
-    def hideUserProfile(self) -> bool: return self._fetch("hideUserProfile")
+    def isHidden(self) -> bool: return self._fetch("hideUserProfile")
     @property
     def privilegeOfChatInviteRequest(self) -> int: return self._fetch("privilegeOfChatInviteRequest")
     @property
@@ -240,7 +240,7 @@ class Authenticate:
     @property
     def userId(self) -> str: return self._fetch("auid")
     @property
-    def user_info(self) -> User: return User(self._fetch("userProfile"))
+    def profile(self) -> User: return User(self._fetch("userProfile"))
     @property
     def secret(self) -> str: return self._fetch("secret")
     @property
@@ -497,7 +497,7 @@ class chatMembers:
         self._list = isList
 
     @property
-    def chatMembers(self) -> User: return User([user for user in self._json], isList=True)
+    def members(self) -> User: return User([user for user in self._json], isList=True)
     @property
     def json(self) -> dict: return self._json
 
@@ -644,6 +644,9 @@ class chatExtensions:
     @property
     def vvChatJoinType(self) -> int: return self._fetch("vvChatJoinType")
     @property
+    def isDisabled(self) -> str: return self._fetch("__disabledTime__")
+
+    @property
     def json(self) -> dict: return self._json
 
 
@@ -671,13 +674,13 @@ class ChatThread:
     @property
     def isPinned(self) -> bool: return self._fetch("isPinned")
     @property
-    def chatTitle(self) -> str: return self._fetch("title")
+    def title(self) -> str: return self._fetch("title")
     @property
     def tipInfo(self) -> dict: return self._fetch("tipInfo")
     @property
     def membershipStatus(self) -> int: return self._fetch("membershipStatus")
     @property
-    def chatDescription(self) -> str: return self._fetch("content")
+    def description(self) -> str: return self._fetch("content")
     @property
     def needHidden(self) -> bool: return self._fetch("needHidden")
     @property
@@ -880,7 +883,7 @@ class CheckIn:
     @property
     def checkInHistory(self) -> CheckInHistory: return CheckInHistory(self._fetch("checkInHistory"))
     @property
-    def userProfile(self) -> User: return User(self._fetch("userProfile"))
+    def profile(self) -> User: return User(self._fetch("userProfile"))
     @property
     def json(self) -> dict: return self._json
 
