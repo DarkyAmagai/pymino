@@ -13,5 +13,4 @@ from threading import Thread
 from websocket import WebSocket, WebSocketApp, WebSocketConnectionClosedException
 from inspect import signature as inspect_signature
 from random import randint
-from numpy import array, append
 from ..message import PrepareMessage

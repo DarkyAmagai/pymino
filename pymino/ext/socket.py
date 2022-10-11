@@ -88,7 +88,7 @@ class WSClient(EventHandler):
 
             key = fetch_key()
             if key is not None:
-                if any([message.content == None, not message.content.startswith(self.command_prefix)]):
+                if any([message.content == None or not message.content.startswith(self.command_prefix)]):
                     return Thread(target=self._handle_event, args=(key, message)).start()
                 else:
                     return Thread(target=self._handle_command(message.json)).start()
