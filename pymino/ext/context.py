@@ -31,12 +31,20 @@ class Context():
     def author(self) -> User:
         return self._message.author
 
-    def attribute_error(func):
+    def run(func):
         def wrapper(*args, **kwargs):
             try:
-                Thread(target=func, args=args, kwargs=kwargs).start()
-            except AttributeError:
-                raise AttributeError(f"Make sure you're using the {func.__name__} method in a command!")
+
+                if args[0].__class__.__name__ != "Context":
+                    raise Exception(
+                        f"You must use this method as ctx.{func.__name__} not bot.{func.__name__}"
+                        )
+                else:
+                    return Thread(target=func, args=args, kwargs=kwargs).start()
+
+            except (AttributeError, TypeError):
+                raise Exception(f"Make sure you're using the {func.__name__} method in a command!")
+
         return wrapper
 
     def _delete(self, message: Message, delete_after: int = 5):
@@ -66,7 +74,7 @@ class Context():
         - `file` - The file to prepare.
         """
         if file.startswith("http"):
-            [open(f"temp.{file.split('.')[-1]}", "wb").write(get(file).content), file := open(f"temp.{file.split('.')[-1]}", "rb")]
+            file = BytesIO(get(file).content)
         else:
             file = open(file, "rb")
 
@@ -76,7 +84,7 @@ class Context():
         
         return file
 
-    @attribute_error
+    @run
     def reply(self, content: str, delete_after: int= None):
         """
         `**reply**` replies to the message that triggered the command.
@@ -105,7 +113,7 @@ class Context():
 
         return message
 
-    @attribute_error
+    @run
     def send(self, content: str, delete_after: int= None):
         """
         `**send**` sends a message to the chat that triggered the command.
@@ -133,7 +141,7 @@ class Context():
 
         return message
 
-    @attribute_error
+    @run
     def send_embed(self, title: str, content: str, image: str, link: Optional[str]=None) -> Message:
         """
         `**send_embed**` sends an embed to the chat that triggered the command.
@@ -168,7 +176,7 @@ class Context():
                 "link": link
                 }).embed_message))
 
-    @attribute_error
+    @run
     def send_image(self, image: str):
         """
         `**send_image**` sends an image to the chat that triggered the command.
@@ -189,7 +197,7 @@ class Context():
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
             data = PrepareMessage(image=b64encode((self._prep_file(image, False)).read()).decode()).image_message))
 
-    @attribute_error
+    @run
     def send_gif(self, gif: str):
         """
         `**send_gif**` sends a gif to the chat that triggered the command.
@@ -210,7 +218,7 @@ class Context():
             method="POST", url=f"/x{self._message.comId}/s/chat/thread/{self._message.chatId}/message",
             data = PrepareMessage(gif=b64encode((self._prep_file(gif, False)).read()).decode()).gif_message))
 
-    @attribute_error
+    @run
     def send_audio(self, audio: str) -> Message: #NOTE: Not sure how long the audio can be.
         """
         `**send_audio**` sends an audio file to the chat that triggered the command.

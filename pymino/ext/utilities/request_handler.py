@@ -4,7 +4,8 @@ class RequestHandler:
     """
     A class that handles all requests
     """
-    def __init__(self, session: Session, debug: Optional[bool] = False):
+    def __init__(self, bot, session: Session, debug: Optional[bool] = False):
+        self.bot = bot
         self.session = session
         self.debug = debug
         self._responses = []
@@ -20,7 +21,7 @@ class RequestHandler:
 
     @device_id
     def handler(self, method: str, url: str, data: Union[dict, bytes, None] = None, content_type: Optional[str] = None, headers: Optional[dict] = None) -> Response:
-
+        
         if not url.startswith("http"):
             url = f"https://service.aminoapps.com/api/v1{url}"
 
@@ -42,7 +43,6 @@ class RequestHandler:
         if method.upper() == "POST":
             if not content_type:
                 data = dumps(data)
-
             else:
                 headers.update({"Content-Type": content_type})
 
@@ -58,10 +58,16 @@ class RequestHandler:
         if self.debug:
             print(f'\n"Method": {method},\n"URL": {url},\n"Headers": {headers},\n"Response": {response.text}\n\n')
 
-        if response.status_code  != 200:
-            raise Exception(response.text)
+        if response.status_code != 200:
+
+            def reauthenticate():
+                if hasattr(self, "email") and hasattr(self, "password"):
+                    try:
+                        if response.json().get("api:statuscode") == 105:
+                            return self.bot.run(self.email, self.password)
+                    except:
+                        pass
+                raise Exception(response.text)
+            reauthenticate()
 
         return loads(response.text)
-
-        
-

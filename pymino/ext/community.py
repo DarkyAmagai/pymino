@@ -1620,10 +1620,10 @@ class Community:
         ```
         """
         return Comment(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/comment?sort={sorting}&start={start}&size={size}"))
+            method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/comment?sort={sorting}&start={start}&size={size}"), True)
 
     @community
-    def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 25) -> Blog:
+    def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5) -> Blog:
         """
         `fetch_user_blogs` is the method that fetches a user's blogs.
 
@@ -1646,7 +1646,7 @@ class Community:
         ```
         """
         return Blog(self.session.handler(
-            method="GET", url=f"x{self.community_id}/s/blog?type=user&q={userId}&start={start}&size={size}"))
+            method="GET", url=f"/x{self.community_id}/s/blog?type=user&q={userId}&start={start}&size={size}"), True)
 
     @community
     def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25) -> Wiki:
@@ -1673,7 +1673,7 @@ class Community:
 
         """
         return Wiki(self.session.handler(
-            method="GET", url=f"x{self.community_id}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"))
+            method="GET", url=f"/x{self.community_id}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"), True)
 
     @community
     def fetch_user_check_ins(self, userId: str) -> SResponse:
@@ -1906,9 +1906,7 @@ class Community:
         bot.run(sid=sid)
         """
         if isinstance(image, str) and image.startswith("http"):
-            image = get(image).content
-            open("temp.jpg", "wb").write(image)
-            image = open("temp.jpg", "rb")
+            image = BytesIO(get(image).content)
         elif isinstance(image, str) and not image.startswith("http"):
             image = open(image, "rb")
         return SResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",

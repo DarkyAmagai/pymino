@@ -30,19 +30,15 @@ class Bot(Socket):
     """
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, debug: Optional[bool] = False, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
-        self.command_prefix = command_prefix
-        self.community_id = community_id
-        try:
-            if self.community_id is not None and not isinstance(community_id, int):
-                self.community_id = int(community_id)
-        except ValueError:
-            raise Exception("Check your community id! It should be an integer.\nIf you're using a community link, use `fetch_community_id` instead.")
-        self.debug = debug
-        self.is_ready = False
+
+        self.command_prefix:    Optional[str] = command_prefix
+        self.community_id:      Union[str, int] = community_id
+        self.debug:             Optional[bool] = debug
+        self.is_ready:          Optional[bool] = False
+
         self.session = Session(
-            proxies=self.proxies if hasattr(self, "proxies") else None
-            )
-        self.session.headers = {
+            proxies=self.proxies if hasattr(self, "proxies") else None,
+            headers={
             "NDCLANG": "en",
             "ACCEPT-LANGUAGE": "en-US",
             "CONTENT-TYPE": "application/json; charset=utf-8",
@@ -50,11 +46,27 @@ class Bot(Socket):
             "HOST": "service.aminoapps.com",
             "CONNECTION": "Keep-Alive",
             "ACCEPT-ENCODING": "gzip"
-            }
-        self.request = RequestHandler(self.session, debug)
-        self.community = Community(self.request, community_id, debug)
-        #self.global = Global(self.request, debug) #NOTE: This is not implemented yet.
-        self.account = Account(self.request, debug)
+            })
+        self.request: RequestHandler = RequestHandler(
+            bot=self,
+            session=self.session,
+            debug=self.debug
+            )
+        self.community: Community = Community(
+            session=self.request,
+            community_id=self.community_id,
+            debug=self.debug
+            )
+        #self.global: Global = Global(
+        #    session=self.request,
+        #    debug=self.debug
+        #    )
+        self.account: Account = Account(
+            session=self.request,
+            debug=self.debug
+            )
+            
+        if self.community_id: self.set_community_id(community_id)
 
         Socket.__init__(self, client=self, debug=debug)
 
@@ -79,7 +91,7 @@ class Bot(Socket):
                 "clientType": 100,
                 "action": "normal",
                 "timestamp": int(time() * 1000)
-            }))
+            })).json
 
     def fetch_account(self):
         """
@@ -116,7 +128,9 @@ class Bot(Socket):
         ```
         """
         if email and password:
-            response = self.authenticate(email, password).json
+            for key, value in {"email": email, "password": password}.items():
+                setattr(self.request, key, value)
+            response = self.authenticate(email, password)
 
         elif sid:
             self.session.headers.update({"NDCAUTH": f"sid={sid}"})
@@ -125,17 +139,21 @@ class Bot(Socket):
             raise Exception("You're missing either an email and password or a sid.")
 
         if response:
-            if response['api:statuscode'] != 0:
-                input(response), exit()
+            if response['api:statuscode'] != 0: input(response), exit()
 
             self.profile: User = User(response)
-            [self.sid, self.userId] = [sid if sid else response['sid'], response["account"]['uid']]
-            [self.community.userId, self.is_ready] = [self.userId, True]
-            self.session.headers.update({"NDCAUTH": f"sid={self.sid}"})
-            self.session.headers.update({"AUID": self.userId})
+
+            self.sid:               str = sid if sid else response['sid']
+            self.userId:            str = response["account"]['uid']
+            self.community.userId:  str = self.userId
+            self.session.headers.update({"NDCAUTH": f"sid={self.sid}", "AUID": self.userId})
+
             if self.debug: print(f"sid={self.sid}")
 
-            self.connect()
+            if not self.is_ready:
+                self.is_ready = True
+                self.connect()
+
             return response
         else:
             raise Exception("Failed to authenticate.")
@@ -170,7 +188,7 @@ class Bot(Socket):
 
         return community_id
 
-    def set_community_id(self, community_id: Union[str, int]):
+    def set_community_id(self, community_id: Union[str, int]) -> None:
         """
         `set_community_id` sets the community id to `self.community_id` and `self.community.community_id`.
         
@@ -178,5 +196,15 @@ class Bot(Socket):
         
         - `community_id` - The community id to set.
         """
+        try:
+            if community_id is not None and not isinstance(community_id, int):
+                community_id = int(community_id)
+        except ValueError:
+            raise Exception(
+                "Check your community id! It should be an integer.\nIf you're using a community link, use `fetch_community_id` instead."
+                )
+
         self.community_id = community_id
         self.community.community_id = community_id
+
+        return None
