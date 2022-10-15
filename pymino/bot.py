@@ -1,8 +1,8 @@
 from .ext.utilities.generate import *
 from .ext import Community, RequestHandler, Account, Global
-from .ext.socket import WSClient as Socket
+from .ext.socket import WSClient
 
-class Bot(Socket):
+class Bot(WSClient):
     """
     `Bot` is the main class that handles the bot.
 
@@ -11,8 +11,6 @@ class Bot(Socket):
     - `command_prefix` - The prefix to use for commands. Defaults to `!`.
 
     - `community_id` - The community id to use. Defaults to `None`.
-
-    - `debug` - Whether to print debug messages or not. Defaults to `False`.
 
     - `**kwargs` - Any other keyword arguments to pass to the bot. These will be set as attributes.
 
@@ -23,18 +21,15 @@ class Bot(Socket):
 
     bot = Bot(
         command_prefix="!",
-        community_id="1234567890",
-        debug=True
-    )
+        community_id="1234567890"
+        )
     ```
     """
-    def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, debug: Optional[bool] = False, **kwargs):
+    def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
-
+        self.is_ready = False
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
-        self.debug:             Optional[bool] = debug
-        self.is_ready:          Optional[bool] = False
 
         self.session = Session(
             proxies=self.proxies if hasattr(self, "proxies") else None,
@@ -49,26 +44,22 @@ class Bot(Socket):
             })
         self.request: RequestHandler = RequestHandler(
             bot=self,
-            session=self.session,
-            debug=self.debug
+            session=self.session
             )
         self.community: Community = Community(
             session=self.request,
-            community_id=self.community_id,
-            debug=self.debug
+            community_id=self.community_id
             )
         #self.global: Global = Global(
-        #    session=self.request,
-        #    debug=self.debug
+        #    session=self.request
         #    )
         self.account: Account = Account(
-            session=self.request,
-            debug=self.debug
+            session=self.request
             )
             
         if self.community_id: self.set_community_id(community_id)
 
-        Socket.__init__(self, client=self, debug=debug)
+        WSClient.__init__(self, client=self)
 
 
     def authenticate(self, email: str, password: str):
@@ -148,10 +139,9 @@ class Bot(Socket):
             self.community.userId:  str = self.userId
             self.session.headers.update({"NDCAUTH": f"sid={self.sid}", "AUID": self.userId})
 
-            if self.debug: print(f"sid={self.sid}")
-
             if not self.is_ready:
                 self.is_ready = True
+            if not hasattr(self, "disable_socket") or not self.disable_socket:
                 self.connect()
 
             return response

@@ -10,13 +10,10 @@ class Community:
 
     - `community_id` - The community id to use. Defaults to `None`.
 
-    - `debug` - Whether to print debug messages or not. Defaults to `False`.
-
     """
-    def __init__(self, session: Session, community_id: Optional[str]=None, debug: Optional[bool] = False) -> None:
+    def __init__(self, session: Session, community_id: Optional[str]=None) -> None:
         self.session = session
         self.community_id = community_id
-        self.debug = debug
         self.userId: Optional[str] = None
         if self.userId == None: return 
 

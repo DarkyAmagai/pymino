@@ -304,45 +304,48 @@ class EventHandler(Context):
     def command(self, name: str):
         """
         `command` is a function that registers a command.
-
+        
         `**Parameters**`
-
+        
         - `name` is the name of the command.
         
         `**Example**`
-        ```python
+        ```py
+        # Simple no parameter function
         @bot.command("hello")
         def hello(ctx: Context):
             ctx.reply("Hello World!")
-        ```"""
+        
+        # Function with parameters
+        @bot.command("hello")
+        def hello(ctx: Context, message: str, username: str, userId: str):
+            ctx.reply(f"Hello {username}! You said {message}!")
+        ```
+        """
         def decorator(func):
             self._commands[name] = func
             return func
         return decorator
 
     def _handle_command(self, data: dict):
+        """`_handle_command` is a function that handles commands."""
         message: Message = Message(data)
+        potential_parameters = {
+            "ctx": self.context(message, self.request),
+            "message": message.content[2:],
+            "username": message.author.username,
+            "userId": message.author.userId
+        }
+        command_func = self._commands[message.content.split(" ")[0][len(self.command_prefix):]]
 
-        command = message.content.split(" ")[0][len(self.command_prefix):]
-        def fetch_command():
-            for command_name, command_func in self._commands.items():
-                if command_name == command:
-                    return command_func
-            return None
-
-        command_func = fetch_command()
         if command_func:
-            if len(inspect_signature(command_func).parameters) > 2:
-                return None
-            elif len(inspect_signature(command_func).parameters) > 1:
-                return command_func(
-                    self.context(message, self.request),
-                    message.content[len(self.command_prefix + command) + 1:]
-                    )
-            else:
-                return command_func(self.context(message, self.request))
-        else:
-            return self.emit("text_message", self.context(message, self.request))
+            parameters = []
+            for parameter in inspect_signature(command_func).parameters:
+                parameters.append(potential_parameters.get(parameter, None))
+
+            return command_func(*parameters)
+
+        return self.emit("text_message", potential_parameters["ctx"])
 
     def on_error(self):
         """
@@ -404,103 +407,137 @@ class EventHandler(Context):
 
     def on_text_message(self):
         """
-        `on_text_message` is a function that handles text messages.
+        `on_text_message` is a function that handles all chat messages the bot receives while connected to the websocket.
         
+        `**Parameters**`
+        
+        - `ctx` - The context of the message.
+
+        `**ctx attributes**`
+        - `ctx.message` - The message.
+        - `ctx.author` - The author of the message.
+
+        `print(ctx.message.json)` to see the raw message.
+
         `**Example**`
         ```python
-        @bot.on_text_message()`
-        def text_message(ctx: Context, message: str):`
-            print(ctx.message.json)
-            print(message)
+        # Simple no parameter function
+        @bot.on_text_message()
+        def on_text_message(ctx: Context):
+            ctx.reply("Hello World!")
+
+        # Function with parameters
+        @bot.on_text_message()
+        def on_text_message(ctx: Context, message: str, username: str, userId: str):
+            ctx.reply(f"Hello {username}! You said {message}!")
+            print(userId)
         ```
         """
         def decorator(func):
             def wrapper(ctx: Context):
-                inspect = len(inspect_signature(func).parameters)
-                if inspect > 2:
-                    return None
-                elif inspect > 1:
-                    if ctx.message.content.startswith(self.command_prefix):
-                        func(ctx, ctx.message.content[len(self.command_prefix):])
-                    else: func(ctx, ctx.message.content)
+                if any([ctx.message.content.startswith(x) for x in self.command_prefix]):
+                    command_name = ctx.message.content.split(" ")[0][len(self.command_prefix):]
                 else:
-                    func(ctx)
+                    command_name = None
+                
+                potential_parameters = {
+                    "ctx": ctx,
+                    "message": ctx.message.content[len(command_name) + len(self.command_prefix) + 1:] if command_name else ctx.message.content,
+                    "username": ctx.author.username,
+                    "userId": ctx.author.userId
+                }
+                parameters = []
+                for parameter in inspect_signature(func).parameters:
+                    parameters.append(potential_parameters.get(parameter, None))
+                func(*parameters)
             self._events["text_message"] = wrapper
             return func
         return decorator
 
     def on_image_message(self):
         """
-        `on_image_message` is a function that handles image messages.
-        
+        `on_image_message` is a function that handles all image messages the bot receives while connected to the websocket.
+
+        `**Parameters**`
+
+        - `ctx` allows you to access the message content and take actions on it.
+
+            - `ctx.message` is a `Message` object.
+
+            - `ctx.author` is a `User` object.
+
+        - `image` is the link of the image.
+
         `**Example**`
-        ```python
-        @bot.on_image_message()`
-        def image_message_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_image_message()
+        def on_image_message(ctx: Context):
+            ctx.reply("Received image!")
+
+        # Function with parameters
+        @bot.on_image_message()
+        def on_image_message(ctx: Context, image: str):
+            print(image) # Prints the image link to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["image_message"] = func
+            def wrapper(ctx: Context):
+                potential_parameters = {
+                    "ctx": ctx,
+                    "image": ctx.message.mediaValue
+                }
+                parameters = []
+                for parameter in inspect_signature(func).parameters:
+                    parameters.append(potential_parameters.get(parameter, None))
+                func(*parameters)
+            self._events["image_message"] = wrapper
             return func
         return decorator
 
     def on_youtube_message(self):
         """
-        `on_youtube_message` is a function that handles youtube messages.
-        
+        `on_youtube_message` is a function that handles all youtube messages the bot receives while connected to the websocket.
+
+        `**Parameters**`
+
+        - `ctx` allows you to access the message content and take actions on it.
+
+            - `ctx.message` is a `Message` object.
+
+            - `ctx.author` is a `User` object.
+
+        - `title` is the title of the youtube video.
+
         `**Example**`
-        ```python
-        @bot.on_youtube_message()`
-        def youtube_message_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_youtube_message()
+        def on_youtube_message(ctx: Context):
+            ctx.reply("Received youtube video!")
+
+        # Function with parameters
+        @bot.on_youtube_message()
+        def on_youtube_message(ctx: Context, title: str):
+            print(title) # Prints the youtube video title to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["youtube_message"] = func
+            def wrapper(ctx: Context):
+                potential_parameters = {
+                    "ctx": ctx,
+                    "title": ctx.message.content
+                }
+                parameters = []
+                for parameter in inspect_signature(func).parameters:
+                    parameters.append(potential_parameters.get(parameter, None))
+                func(*parameters)
+            self._events["youtube_message"] = wrapper
             return func
-        return decorator
 
     def on_strike_message(self):
         """
-        `on_strike_message` is a function that handles strike messages.
-        
-        `**Example**`
-        ```python
-        @bot.on_strike_message()`
-        def strike_message_handler(ctx: Context):`
-            print(ctx.message.json)`
-        ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
+        `on_strike_message` is a function that handles all strike messages the bot receives while connected to the websocket.
         """
         def decorator(func):
             self._events["strike_message"] = func
@@ -509,53 +546,81 @@ class EventHandler(Context):
 
     def on_voice_message(self):
         """
-        `on_voice_message` is a function that handles voice messages.
+        `on_voice_message` is a function that handles all voice messages the bot receives while connected to the websocket.
         
+        `**Parameters**`
+        
+        - `ctx` allows you to access the message content and take actions on it.
+        
+            - `ctx.message` is a `Message` object.
+            
+            - `ctx.author` is a `User` object.
+            
+            - `voice` is the link of the voice message.
+            
         `**Example**`
-        ```python
-        @bot.on_voice_message()`
-        def voice_message_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_voice_message()
+        def on_voice_message(ctx: Context):
+            ctx.reply("Received voice message!")
+
+        # Function with parameters
+        @bot.on_voice_message()
+        def on_voice_message(ctx: Context, voice: str):
+            print(voice) # Prints the voice message link to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["voice_message"] = func
+            def wrapper(ctx: Context):
+                inspect = len(inspect_signature(func).parameters)
+                if inspect > 2:
+                    return None
+                elif inspect > 1:
+                    func(ctx, ctx.message.mediaValue)
+                else:
+                    func(ctx)
+            self._events["voice_message"] = wrapper
             return func
         return decorator
 
     def on_sticker_message(self):
         """
-        `on_sticker_message` is a function that handles sticker messages.
-        
+        `on_sticker_message` is a function that handles all sticker messages the bot receives while connected to the websocket.
+
+        `**Parameters**`
+
+        - `ctx` allows you to access the message content and take actions on it.
+
+            - `ctx.message` is a `Message` object.
+
+            - `ctx.author` is a `User` object.
+
+        - `sticker` is the id of the sticker.
+
         `**Example**`
-        ```python
-        @bot.on_sticker_message()`
-        def sticker_message_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_sticker_message()
+        def on_sticker_message(ctx: Context):
+            ctx.reply("Received sticker!")
+
+        # Function with parameters
+        @bot.on_sticker_message()
+        def on_sticker_message(ctx: Context, sticker: str):
+            print(sticker) # Prints the sticker id to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["sticker_message"] = func
+            def wrapper(ctx: Context):
+                inspect = len(inspect_signature(func).parameters)
+                if inspect > 2:
+                    return None
+                elif inspect > 1:
+                    func(ctx, ctx.message.mediaValue.split("://")[1])
+                else:
+                    func(ctx)
+            self._events["sticker_message"] = wrapper
             return func
         return decorator
 
@@ -783,79 +848,121 @@ class EventHandler(Context):
 
     def on_delete_message(self):
         """
-        `on_delete_message` is a function that handles delete messages.
-        
+        `on_delete_message` is a function that handles all deleted messages the bot receives while connected to the websocket.
+
+        `**Parameters**`
+
+        - `ctx` allows you to access the message content and take actions on it.
+
+            - `ctx.message` is a `Message` object.
+
+            - `ctx.author` is a `User` object.
+
         `**Example**`
-        ```python
-        @bot.on_delete_message()`
-        def delete_message_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_delete_message()
+        def on_delete_message(ctx: Context):
+            ctx.reply("Message deleted!")
+
+        # Function with parameters
+        @bot.on_delete_message()
+        def on_delete_message(ctx: Context, messageId: str):
+            print(messageId) # Prints the message id to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["delete_message"] = func
+            def wrapper(ctx: Context):
+                inspect = len(inspect_signature(func).parameters)
+                if inspect > 2:
+                    return None
+                elif inspect > 1:
+                    func(ctx, ctx.message.messageId)
+                else:
+                    func(ctx)
+            self._events["delete_message"] = wrapper
             return func
         return decorator
 
     def on_member_join(self):
         """
-        `on_member_join` is a function that handles member join messages.
+        `on_member_join` is a function that handles all member join messages the bot receives while connected to the websocket.
+
+        `**Parameters**`
+
+        - `ctx` allows you to access the message content and take actions on it.
         
+            - `ctx.message` is a `Message` object.
+
+            - `ctx.author` is a `User` object.
+
         `**Example**`
-        ```python
-        @bot.on_member_join()`
-        def member_join_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_member_join()
+        def on_member_join(ctx: Context):
+            ctx.send("Welcome to the chat {ctx.author.username}!")
+
+        # Function with parameters
+        @bot.on_member_join()
+        def on_member_join(ctx: Context, username: str, userId: str):
+            print(username) # Prints the username to the console.
+            print(userId) # Prints the user id to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["member_join"] = func
+            def wrapper(ctx: Context):
+                potential_parameters = {
+                    "ctx": ctx,
+                    "username": ctx.author.username,
+                    "userId": ctx.author.userId
+                }
+                parameters = []
+                for parameter in inspect_signature(func).parameters:
+                    parameters.append(potential_parameters.get(parameter, None))
+                func(*parameters)
+            self._events["member_join"] = wrapper
             return func
         return decorator
 
     def on_member_leave(self):
         """
-        `on_member_leave` is a function that handles member leave messages.
-        
+        `on_member_leave` is a function that handles all member leave messages the bot receives while connected to the websocket.
+
+        `**Parameters**`
+
+        - `ctx` allows you to access the message content and take actions on it.
+
+            - `ctx.message` is a `Message` object.
+
+            - `ctx.author` is a `User` object.
+
         `**Example**`
-        ```python
-        @bot.on_member_leave()`
-        def member_leave_handler(ctx: Context):`
-            print(ctx.message.json)`
+        ```py
+        # Simple no parameter function
+        @bot.on_member_leave()
+        def on_member_leave(ctx: Context):
+            ctx.send("Goodbye {ctx.author.username}!")
+
+        # Function with parameters
+        @bot.on_member_leave()
+        def on_member_leave(ctx: Context, username: str, userId: str):
+            print(username) # Prints the username to the console.
+            print(userId) # Prints the user id to the console.
         ```
-
-        `**Returns**`
-        - `ctx` - The context of the message.
-
-        `**ctx attributes**`
-        - `ctx.message` - The message.
-        - `ctx.author` - The author of the message.
-
-        `print(ctx.message.json)` to see the raw message.
-
         """
         def decorator(func):
-            self._events["member_leave"] = func
+            def wrapper(ctx: Context):
+                potential_parameters = {
+                    "ctx": ctx,
+                    "username": ctx.author.username,
+                    "userId": ctx.author.userId
+                }
+                parameters = []
+                for parameter in inspect_signature(func).parameters:
+                    parameters.append(potential_parameters.get(parameter, None))
+                func(*parameters)
+            self._events["member_leave"] = wrapper
             return func
         return decorator
 
@@ -1685,104 +1792,104 @@ class EventHandler(Context):
         ```"""
         if event == "text_message":
             if not data.content.startswith(self.command_prefix):
-                self._events["text_message"](self.context(data, self.request))
-            else: self._handle_command(data.json)
+                return self._events["text_message"](self.context(data, self.request))
+            return self._handle_command(data.json)
         elif event == "image_message":
-            self._events["image_message"](self.context(data, self.request))
+            return self._events["image_message"](self.context(data, self.request))
         elif event == "youtube_message":
-            self._events["youtube_message"](self.context(data, self.request))
+            return self._events["youtube_message"](self.context(data, self.request))
         elif event == "strike_message":
-            self._events["strike_message"](self.context(data, self.request))
+            return self._events["strike_message"](self.context(data, self.request))
         elif event == "voice_message":
-            self._events["voice_message"](self.context(data, self.request))
+            return self._events["voice_message"](self.context(data, self.request))
         elif event == "sticker_message":
-            self._events["sticker_message"](self.context(data, self.request))
+            return self._events["sticker_message"](self.context(data, self.request))
         elif event == "vc_not_answered":
-            self._events["vc_not_answered"](self.context(data, self.request))
+            return self._events["vc_not_answered"](self.context(data, self.request))
         elif event == "vc_not_cancelled":
-            self._events["vc_not_cancelled"](self.context(data, self.request))
+            return self._events["vc_not_cancelled"](self.context(data, self.request))
         elif event == "vc_not_declined":
-            self._events["vc_not_declined"](self.context(data, self.request))
+            return self._events["vc_not_declined"](self.context(data, self.request))
         elif event == "video_chat_not_answered":
-            self._events["video_chat_not_answered"](self.context(data, self.request))
+            return self._events["video_chat_not_answered"](self.context(data, self.request))
         elif event == "video_chat_not_cancelled":
-            self._events["video_chat_not_cancelled"](self.context(data, self.request))
+            return self._events["video_chat_not_cancelled"](self.context(data, self.request))
         elif event == "video_chat_not_declined":
-            self._events["video_chat_not_declined"](self.context(data, self.request))
+            return self._events["video_chat_not_declined"](self.context(data, self.request))
         elif event == "avatar_chat_not_answered":
-            self._events["avatar_chat_not_answered"](self.context(data, self.request))
+            return self._events["avatar_chat_not_answered"](self.context(data, self.request))
         elif event == "avatar_chat_not_cancelled":
-            self._events["avatar_chat_not_cancelled"](self.context(data, self.request))
+            return self._events["avatar_chat_not_cancelled"](self.context(data, self.request))
         elif event == "avatar_chat_not_declined":
-            self._events["avatar_chat_not_declined"](self.context(data, self.request))
+            return self._events["avatar_chat_not_declined"](self.context(data, self.request))
         elif event == "delete_message":
-            self._events["delete_message"](self.context(data, self.request))
+            return self._events["delete_message"](self.context(data, self.request))
         elif event == "member_join":
-            self._events["member_join"](self.context(data, self.request))
+            return self._events["member_join"](self.context(data, self.request))
         elif event == "member_leave":
-            self._events["member_leave"](self.context(data, self.request))
+            return self._events["member_leave"](self.context(data, self.request))
         elif event == "chat_invite":
-            self._events["chat_invite"](self.context(data, self.request))
+            return self._events["chat_invite"](self.context(data, self.request))
         elif event == "chat_background_changed":
-            self._events["chat_background_changed"](self.context(data, self.request))
+            return self._events["chat_background_changed"](self.context(data, self.request))
         elif event == "chat_title_changed":
-            self._events["chat_title_changed"](self.context(data, self.request))
+            return self._events["chat_title_changed"](self.context(data, self.request))
         elif event == "chat_icon_changed":
-            self._events["chat_icon_changed"](self.context(data, self.request))
+            return self._events["chat_icon_changed"](self.context(data, self.request))
         elif event == "vc_start":
-            self._events["vc_start"](self.context(data, self.request))
+            return self._events["vc_start"](self.context(data, self.request))
         elif event == "video_chat_start":
-            self._events["video_chat_start"](self.context(data, self.request))
+            return self._events["video_chat_start"](self.context(data, self.request))
         elif event == "avatar_chat_start":
-            self._events["avatar_chat_start"](self.context(data, self.request))
+            return self._events["avatar_chat_start"](self.context(data, self.request))
         elif event == "vc_end":
-            self._events["vc_end"](self.context(data, self.request))
+            return self._events["vc_end"](self.context(data, self.request))
         elif event == "video_chat_end":
-            self._events["video_chat_end"](self.context(data, self.request))
+            return self._events["video_chat_end"](self.context(data, self.request))
         elif event == "avatar_chat_end":
-            self._events["avatar_chat_end"](self.context(data, self.request))
+            return self._events["avatar_chat_end"](self.context(data, self.request))
         elif event == "chat_content_changed":
-            self._events["chat_content_changed"](self.context(data, self.request))
+            return self._events["chat_content_changed"](self.context(data, self.request))
         elif event == "screen_room_start":
-            self._events["screen_room_start"](self.context(data, self.request))
+            return self._events["screen_room_start"](self.context(data, self.request))
         elif event == "screen_room_end":
-            self._events["screen_room_end"](self.context(data, self.request))
+            return self._events["screen_room_end"](self.context(data, self.request))
         elif event == "chat_host_transfered":
-            self._events["chat_host_transfered"](self.context(data, self.request))
+            return self._events["chat_host_transfered"](self.context(data, self.request))
         elif event == "text_message_force_removed":
-            self._events["text_message_force_removed"](self.context(data, self.request))
+            return self._events["text_message_force_removed"](self.context(data, self.request))
         elif event == "chat_removed_message":
-            self._events["chat_removed_message"](self.context(data, self.request))
+            return self._events["chat_removed_message"](self.context(data, self.request))
         elif event == "mod_deleted_message":
-            self._events["mod_deleted_message"](self.context(data, self.request))
+            return self._events["mod_deleted_message"](self.context(data, self.request))
         elif event == "chat_tip":
-            self._events["chat_tip"](self.context(data, self.request))
+            return self._events["chat_tip"](self.context(data, self.request))
         elif event == "chat_pin_announcement":
-            self._events["chat_pin_announcement"](self.context(data, self.request))
+            return self._events["chat_pin_announcement"](self.context(data, self.request))
         elif event == "vc_permission_open_to_everyone":
-            self._events["vc_permission_open_to_everyone"](self.context(data, self.request))
+            return self._events["vc_permission_open_to_everyone"](self.context(data, self.request))
         elif event == "vc_permission_invited_and_requested":
-            self._events["vc_permission_invited_and_requested"](self.context(data, self.request))
+            return self._events["vc_permission_invited_and_requested"](self.context(data, self.request))
         elif event == "vc_permission_invite_only":
-            self._events["vc_permission_invite_only"](self.context(data, self.request))
+            return self._events["vc_permission_invite_only"](self.context(data, self.request))
         elif event == "chat_view_only_enabled":
-            self._events["chat_view_only_enabled"](self.context(data, self.request))
+            return self._events["chat_view_only_enabled"](self.context(data, self.request))
         elif event == "chat_view_only_disabled":
-            self._events["chat_view_only_disabled"](self.context(data, self.request))
+            return self._events["chat_view_only_disabled"](self.context(data, self.request))
         elif event == "chat_unpin_announcement":
-            self._events["chat_unpin_announcement"](self.context(data, self.request))
+            return self._events["chat_unpin_announcement"](self.context(data, self.request))
         elif event == "chat_tipping_enabled":
-            self._events["chat_tipping_enabled"](self.context(data, self.request))
+            return self._events["chat_tipping_enabled"](self.context(data, self.request))
         elif event == "chat_tipping_disabled":
-            self._events["chat_tipping_disabled"](self.context(data, self.request))
+            return self._events["chat_tipping_disabled"](self.context(data, self.request))
         elif event == "timestamp_message":
-            self._events["timestamp_message"](self.context(data, self.request))
+            return self._events["timestamp_message"](self.context(data, self.request))
         elif event == "welcome_message":
-            self._events["welcome_message"](self.context(data, self.request))
+            return self._events["welcome_message"](self.context(data, self.request))
         elif event == "invite_message":
-            self._events["invite_message"](self.context(data, self.request))
+            return self._events["invite_message"](self.context(data, self.request))
         elif event == "user_online":
-            self._events["user_online"](User(data))
+            return self._events["user_online"](User(data))
         
 
 

@@ -4,18 +4,15 @@ class RequestHandler:
     """
     A class that handles all requests
     """
-    def __init__(self, bot, session: Session, debug: Optional[bool] = False):
+    def __init__(self, bot, session: Session):
         self.bot = bot
         self.session = session
-        self.debug = debug
         self._responses = []
 
     def device_id(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             args[0].session.headers.update({"NDCDEVICEID": device_id()})
-            if args[0].debug:
-                print(f"Device ID: {args[0].session.headers.get('NDCDEVICEID')}")
             return func(*args, **kwargs)
         return wrapper
 
@@ -54,9 +51,6 @@ class RequestHandler:
                 self.session.post(url=url, data=data, headers=headers).text
         
         response: Response = self._responses.pop(0)
-
-        if self.debug:
-            print(f'\n"Method": {method},\n"URL": {url},\n"Headers": {headers},\n"Response": {response.text}\n\n')
 
         if response.status_code != 200:
 

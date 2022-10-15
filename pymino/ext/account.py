@@ -4,9 +4,8 @@ class Account:
     """
     Account class for handling account related requests.
     """
-    def __init__(self, session: Session, debug: Optional[bool] = False):
+    def __init__(self, session: Session):
         self.session = session
-        self.debug = debug
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
