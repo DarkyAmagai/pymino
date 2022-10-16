@@ -336,16 +336,17 @@ class EventHandler(Context):
             "username": message.author.username,
             "userId": message.author.userId
         }
-        command_func = self._commands[message.content.split(" ")[0][len(self.command_prefix):]]
-
-        if command_func:
+        command_name = message.content[len(self.command_prefix):].split(" ")[0]
+        if command_name in self._commands:
+            command = self._commands[command_name]
             parameters = []
-            for parameter in inspect_signature(command_func).parameters:
-                parameters.append(potential_parameters.get(parameter, None))
+            for parameter in inspect_signature(command).parameters:
+                if parameter in potential_parameters:
+                    parameters.append(potential_parameters[parameter])
 
-            return command_func(*parameters)
+            return command(*parameters)
 
-        return self.emit("text_message", potential_parameters["ctx"])
+        return self.emit("text_message", self.context(message, self.request))
 
     def on_error(self):
         """
