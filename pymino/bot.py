@@ -28,6 +28,7 @@ class Bot(WSClient):
         self.is_ready:          bool = False
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
+        self.device_id:         Optional[str] = kwargs.get("device_id", None)
         self.session:           ClientSession = ClientSession(
                                 headers={
                                 "NDCLANG": "en",
@@ -72,7 +73,7 @@ class Bot(WSClient):
                 "email": email,
                 "v": 2,
                 "secret": "0 {}".format(password),
-                "deviceID": self.deviceId if hasattr(self, "deviceId") else device_id(),
+                "deviceID": self.device_id if self.device_id else device_id(),
                 "clientType": 100,
                 "action": "normal",
                 "timestamp": int(time() * 1000)

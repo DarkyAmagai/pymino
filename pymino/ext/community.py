@@ -2472,7 +2472,7 @@ class Community:
                 "ndcId": self.community_id,
                 "threadId": chatId,
                 "joinRole": 1,
-                "id": "2250161"
+                "id": randint(0, 100)
             },
             "t": 112
             })
@@ -2480,7 +2480,7 @@ class Community:
             "o": {
                 "ndcId": self.community_id,
                 "threadId": chatId,
-                "id": "337496"
+                "id": randint(0, 100)
             },
             "t": 200
             })
