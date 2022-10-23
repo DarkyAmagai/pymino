@@ -1,67 +1,45 @@
 from .generate import *
 
 class RequestHandler:
-    """
-    A class that handles all requests
-    """
-    def __init__(self, bot, session: Session):
+    """A class that handles all requests"""
+    def __init__(self, bot, session: ClientSession):
         self.bot = bot
         self.session = session
-        self._responses = []
+        self.queue = Queue()
+        self.loop = get_event_loop()
 
-    def device_id(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            args[0].session.headers.update({"NDCDEVICEID": device_id()})
-            return func(*args, **kwargs)
-        return wrapper
+    def handler(self, **kwargs) -> dict:
+        if any([kwargs.get("wait"), kwargs.get("wait") is None]):
+            response = self.loop.run_until_complete(self.process(**kwargs))
+            return response if response else {}
 
-    @device_id
-    def handler(self, method: str, url: str, data: Union[dict, bytes, None] = None, content_type: Optional[str] = None, headers: Optional[dict] = None) -> Response:
+        async def create_task():
+            await self.queue.put(await self.process(**kwargs))
+        with suppress(Exception):
+            return [self.queue.get_nowait(self.loop.run_until_complete(self.loop.create_task(create_task())))]
+
+    async def process(self, method: str, url: str, data: Union[dict, bytes, None] = None, content_type: Optional[str] = None, **kwargs):
+        url = f"https://service.aminoapps.com/api/v1{url}"
+
+        headers = {**self.session.headers, "NDCDEVICEID": device_id()}
+        request_methods = {"GET": self.session.get, "POST": self.session.post, "DELETE": self.session.delete}
         
-        if not url.startswith("http"):
-            url = f"https://service.aminoapps.com/api/v1{url}"
+        if any([data, content_type]):
+            data = dumps(data).decode() if not isinstance(data, bytes) else data
+            headers.update({
+                "CONTENT-LENGTH": f"{len(data)}",
+                "NDC-MSG-SIG": signature(data),
+                "CONTENT-TYPE": content_type if content_type is not None else "application/json; charset=utf-8"
+                })
 
-        if not headers:
-            headers = self.session.headers.copy()
+        response: ClientResponse = await request_methods[method](url, data=data, headers=headers)
 
-        if method.upper() == "GET":
-            try:
-                Thread(self._responses.append(self.session.get(url=url, headers=headers))).start()
-            except ReadTimeout:
-                self.session.get(url=url, headers=headers).text
-            
-        if method.upper() == "DELETE":
-            try:
-                Thread(self._responses.append(self.session.delete(url=url, headers=headers))).start()
-            except ReadTimeout:
-                self.session.delete(url=url, headers=headers).text
+        if response.status != 200:
+            with suppress(Exception):
+                response_json: dict = loads(await response.text())
+                # TODO: Handle exceptions.
+                if response_json.get("api:statuscode") == 105: return self.bot.run(self.email, self.password)
 
-        if method.upper() == "POST":
-            if not content_type:
-                data = dumps(data)
-            else:
-                headers.update({"Content-Type": content_type})
+            raise Exception(await response.text())
 
-            headers.update({"CONTENT-LENGTH": f"{len(data)}"})
-            headers.update({"NDC-MSG-SIG": signature(data)})
-            try:
-                Thread(self._responses.append(self.session.post(url=url, data=data, headers=headers))).start()
-            except ReadTimeout:
-                self.session.post(url=url, data=data, headers=headers).text
-        
-        response: Response = self._responses.pop(0)
-
-        if response.status_code != 200:
-
-            def reauthenticate():
-                if hasattr(self, "email") and hasattr(self, "password"):
-                    try:
-                        if response.json().get("api:statuscode") == 105:
-                            return self.bot.run(self.email, self.password)
-                    except:
-                        pass
-                raise Exception(response.text)
-            reauthenticate()
-
-        return loads(response.text)
+        return loads(await response.text())

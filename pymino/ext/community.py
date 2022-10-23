@@ -6,12 +6,15 @@ class Community:
     
     `**Parameters**`
 
+    - `bot` - The bot client.
+
     - `session` - The session to use.
 
     - `community_id` - The community id to use. Defaults to `None`.
 
     """
-    def __init__(self, session: Session, community_id: Optional[str]=None) -> None:
+    def __init__(self, bot, session: ClientSession, community_id: Optional[str]=None) -> None:
+        self.bot = bot
         self.session = session
         self.community_id = community_id
         self.userId: Optional[str] = None
@@ -25,7 +28,7 @@ class Community:
         return community_func
 
     @community
-    def invite_code(self) -> SResponse:
+    def invite_code(self) -> CommunityInvitation:
         """
         `invite_code` is the method that gets the invite code for the community.
 
@@ -46,12 +49,14 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
-            method="POST", url=f"/g/s-x{self.community_id}/community/invitation",
-            data={"duration": 0, "force": True, "timestamp": int(time() * 1000)}))
+        return CommunityInvitation(self.session.handler(
+            method="POST",
+            url=f"/g/s-x{self.community_id}/community/invitation",
+            data = {"duration": 0, "force": True, "timestamp": int(time() * 1000)}
+            ))
 
     @community
-    def fetch_object_id(self, link: str) -> linkInfoV2:
+    def fetch_object_id(self, link: str) -> LinkInfo:
         """
         `fetch_object_id` is the method that fetches the object id from a link.
 
@@ -68,10 +73,31 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return linkInfoV2(self.session.handler(method="GET", url=f"/g/s/link-resolution?q={link}")).objectId
+        return LinkInfo(self.session.handler(method="GET", url=f"/g/s/link-resolution?q={link}")).objectId
 
     @community
-    def fetch_community(self, community_id: Union[str, int]) -> SCommunity:
+    def fetch_object_info(self, link: str) -> LinkInfo:
+        """
+        `fetch_object_info` is the method that fetches the object info from a link.
+
+        `**Parameters**`
+
+        - `link` - The link to fetch the object info from.
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+        objectInfo = bot.community.fetch_object_info(link="https://www.aminoapps.com.com/p/as12s34S")
+        bot.run(sid=sid)
+        ```
+        """
+        return LinkInfo(self.session.handler(method="GET", url=f"/g/s/link-resolution?q={link}"))
+ 
+    @community
+    def fetch_community(self, community_id: Union[str, int]) -> CCommunity:
         """
         `fetch_community` is the method that fetches the community info.
 
@@ -89,10 +115,10 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SCommunity(self.session.handler(method="GET", url=f"/g/s-x{community_id}/community/info"))
+        return CCommunity(self.session.handler(method="GET", url=f"/g/s-x{community_id}/community/info"))
     
     @community
-    def joined_communities(self, start: int = 0, size: str = 50) -> SCommunity:
+    def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
         `joined_communities` is the method that fetches the communities the user has joined.
 
@@ -110,10 +136,10 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SCommunity(self.session.handler(method="GET", url=f"/g/s/community/joined?v=1&start={start}&size={size}"), True)
+        return CCommunityList(self.session.handler(method="GET", url=f"/g/s/community/joined?v=1&start={start}&size={size}"))
 
     @community
-    def join_community(self) -> SResponse:
+    def join_community(self) -> ApiResponse:
         """
         `join_community` is the method that joins the community.
         
@@ -130,12 +156,12 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/community/join", 
             data={"timestamp": int(time() * 1000)}))
 
     @community
-    def leave_community(self) -> SResponse:
+    def leave_community(self) -> ApiResponse:
         """
         `leave_community` is the method that leaves the community.
 
@@ -152,12 +178,12 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/community/leave", 
             data={"timestamp": int(time() * 1000)}))
 
     @community
-    def request_join(self, message: str) -> SResponse:
+    def request_join(self, message: str) -> ApiResponse:
         """
         `request_join` is the method that requests to join the community.
 
@@ -174,12 +200,12 @@ class Community:
         bot.community.request_join("Hello, I would like to join your community!")
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/community/membership-request", 
             data={"message": message, "timestamp": int(time() * 1000)}))
 
     @community
-    def flag_community(self, reason: str, flagType: int) -> SResponse:
+    def flag_community(self, reason: str, flagType: int) -> ApiResponse:
         """
         `flag_community` is the method that flags the community.
 
@@ -197,7 +223,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/community/flag", 
             data={
             "objectId": self.community_id,
@@ -231,7 +257,7 @@ class Community:
             data={"timezone": timezone, "timestamp": int(time() * 1000)}))
 
     @community
-    def play_lottery(self, timezone: Optional[int] = -300) -> SResponse:
+    def play_lottery(self, timezone: Optional[int] = -300) -> ApiResponse:
         """
         `play_lottery` is the method that plays the lottery in the community.
 
@@ -249,12 +275,12 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/check-in/lottery",
             data={"timezone": timezone, "timestamp": int(time() * 1000)}))
     
     @community
-    def online_status(self, status: Optional[int] = 1) -> SResponse:
+    def online_status(self, status: Optional[int] = 1) -> ApiResponse:
         """
         `online_status` is the method that sets the online status of the community.
 
@@ -274,7 +300,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/user-profile/{self.userId}/online-status",
             data={"status": status, "timestamp": int(time() * 1000)}))
 
@@ -298,7 +324,9 @@ class Community:
         ```
         """
         return Coupon(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/coupon/new-user-coupon"))
+            method="GET",
+            url=f"/x{self.community_id}/s/coupon/new-user-coupon"
+            ))
 
     @community
     def fetch_notifications(self, size: Optional[int] = 25) -> Notification:
@@ -320,10 +348,10 @@ class Community:
         ```
         """
         return Notification(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/notification?pagingType=t&size={size}"), True)
+            method="GET", url=f"/x{self.community_id}/s/notification?pagingType=t&size={size}"))
 
     @community
-    def fetch_user(self, userId: str) -> User:
+    def fetch_user(self, userId: str) -> UserProfile:
         """
         `fetch_user` is the method that fetches a user.
 
@@ -341,11 +369,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
+        return UserProfile(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}"))
 
     @community
-    def fetch_users(self, type: Optional[str] = "recent", start: Optional[int] = 0, size: Optional[int] = 25) -> User:
+    def fetch_users(self, type: Optional[str] = "recent", start: Optional[int] = 0, size: Optional[int] = 25) -> UserProfileList:
         """
         `fetch_users` is the method that fetches users.
 
@@ -367,11 +395,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/user-profile?type={type}&start={start}&size={size}"), True)
+        return UserProfileList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/user-profile?type={type}&start={start}&size={size}"))
 
     @community
-    def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25) -> User:
+    def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25) -> UserProfileList:
         """
         `fetch_online_users` is the method that fetches online users.
 
@@ -391,11 +419,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/live-layer?topic=ndtopic:x{self.community_id}:online-members&start={start}&size={size}"), True)
+        return UserProfileList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/live-layer?topic=ndtopic:x{self.community_id}:online-members&start={start}&size={size}"))
 
     @community
-    def fetch_followers(self, userId: str, start: int = 0, size: int = 25) -> User:
+    def fetch_followers(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
         """
         `fetch_followers` is the method that fetches followers.
 
@@ -417,11 +445,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/member?start={start}&size={size}"), True)
+        return UserProfileList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/member?start={start}&size={size}"))
 
     @community
-    def fetch_following(self, userId: str, start: int = 0, size: int = 25) -> User:
+    def fetch_following(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
         """
         `fetch_following` is the method that fetches following.
 
@@ -443,11 +471,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/joined?start={start}&size={size}"), True)
+        return UserProfileList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/joined?start={start}&size={size}"))
 
     @community
-    def fetch_chat(self, chatId: str) -> ChatThread:
+    def fetch_chat(self, chatId: str) -> CThread:
         """
         `fetch_chat` is the method that fetches a chat.
 
@@ -465,11 +493,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return ChatThread(self.session.handler(
+        return CThread(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}"))
 
     @community
-    def fetch_chats(self, start: int = 0, size: int = 25) -> ChatThread:
+    def fetch_chats(self, start: int = 0, size: int = 25) -> CThreadList:
         """
         `fetch_chats` is the method that fetches chats.
 
@@ -489,11 +517,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return ChatThread(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/chat/thread?type=joined-me&start={start}&size={size}"), True)
+        return CThreadList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/chat/thread?type=joined-me&start={start}&size={size}"))
 
     @community
-    def fetch_live_chats(self, start: int = 0, size: int = 25) -> ChatThread:
+    def fetch_live_chats(self, start: int = 0, size: int = 25) -> CThreadList:
         """
         `fetch_live_chats` is the method that fetches live chats.
 
@@ -513,11 +541,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return ChatThread(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/live-layer/public-live-chats?start={start}&size={size}"), True)
+        return CThreadList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/live-layer/public-live-chats?start={start}&size={size}"))
 
     @community
-    def fetch_public_chats(self, type: str = "recommended", start: int = 0, size: int = 25) -> ChatThread:
+    def fetch_public_chats(self, type: str = "recommended", start: int = 0, size: int = 25) -> CThreadList:
         """
         `fetch_public_chats` is the method that fetches public chats.
 
@@ -539,11 +567,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return ChatThread(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}"), True)
+        return CThreadList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}"))
 
     @community
-    def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25) -> chatMembers:
+    def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25) -> ApiResponse: #TODO: Add CMemberList
         """
         `fetch_chat_members` is the method that fetches chat members.
 
@@ -565,11 +593,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return chatMembers(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"), True)
+        return ApiResponse(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"))
 
     @community
-    def fetch_messages(self, chatId: str, start: int = 0, size: int = 25) -> Message:
+    def fetch_messages(self, chatId: str, start: int = 0, size: int = 25) -> CMessages:
         """
         `fetch_messages` is the method that fetches messages.
 
@@ -591,11 +619,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Message(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message?start={start}&size={size}&type=default"), True)
+        return CMessages(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message?start={start}&size={size}&type=default"))
 
     @community
-    def fetch_blogs(self, size: int = 25) -> Blog:
+    def fetch_blogs(self, size: int = 25) -> CBlogList:
         """
         `fetch_blogs` is the method that fetches blogs.
 
@@ -613,11 +641,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Blog(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/feed/blog-all?pagingType=t&size={size}"), True)
+        return CBlogList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/feed/blog-all?pagingType=t&size={size}"))
 
     @community
-    def fetch_leaderboard(self, leaderboard: int = 1, start: int = 0, size: int = 20) -> User:
+    def fetch_leaderboard(self, leaderboard: int = 1, start: int = 0, size: int = 20) -> UserProfileList:
         """
         `fetch_leaderboard` is the method that fetches leaderboard.
 
@@ -639,11 +667,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/community/leaderboard?rankingType={leaderboard}&start={start}&size={size}"), True)
+        return UserProfileList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/community/leaderboard?rankingType={leaderboard}&start={start}&size={size}"))
 
     @community
-    def fetch_comments(self, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None, start: int=0, size: int=25) -> Comment:
+    def fetch_comments(self, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None, start: int=0, size: int=25) -> ApiResponse: #TODO: Add CCommentList
         """
         `fetch_comments` is the method that fetches comments.
 
@@ -672,11 +700,11 @@ class Community:
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
                 object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return Comment(self.session.handler(
-                    method="GET", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment?sort=newest&start={start}&size={size}"), True)
+                return ApiResponse(self.session.handler(
+                    method="GET", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment?sort=newest&start={start}&size={size}"))
 
     @community
-    def set_cohost(self, chatId: str, userIds: Union[str, list]) -> SResponse:
+    def set_cohost(self, chatId: str, userIds: Union[str, list]) -> ApiResponse:
         """
         `set_cohost` is the method that sets co-host.
 
@@ -696,12 +724,12 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/cohost",
             data={"userIds": userIds if isinstance(userIds, list) else [userIds]}))
 
     @community
-    def remove_cohost(self, chatId: str, userId: str) -> SResponse:
+    def remove_cohost(self, chatId: str, userId: str) -> ApiResponse:
         """
         `remove_cohost` is the method that removes co-host.
 
@@ -721,11 +749,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}/co-host/{userId}"))
 
     @community
-    def follow(self, userId: str) -> SResponse:
+    def follow(self, userId: str) -> ApiResponse:
         """
         `follow` is the method that follows user.
 
@@ -743,11 +771,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/user-profile/{userId}/member"))
 
     @community
-    def unfollow(self, userId: str) -> SResponse:
+    def unfollow(self, userId: str) -> ApiResponse:
         """
         `unfollow` is the method that unfollows user.
 
@@ -765,11 +793,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/user-profile/{self.userId}/joined/{userId}"))
 
     @community
-    def block(self, userId: str) -> SResponse:
+    def block(self, userId: str) -> ApiResponse:
         """
         `block` is the method that blocks user.
 
@@ -787,11 +815,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/block/{userId}"))
 
     @community
-    def unblock(self, userId: str) -> SResponse:
+    def unblock(self, userId: str) -> ApiResponse:
         """
         `unblock` is the method that unblocks user.
 
@@ -809,11 +837,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/block/{userId}"))
 
     @community
-    def post_blog(self, title: str, content: str, image: Optional[str]=None) -> Blog:
+    def post_blog(self, title: str, content: str, image: Optional[str]=None) -> CBlog:
         """
         `post_blog` is the method that posts blog.
 
@@ -836,7 +864,7 @@ class Community:
         ```
         """
 
-        return Blog(self.session.handler(
+        return CBlog(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog",
             data = {
                 "title": title,
@@ -846,7 +874,7 @@ class Community:
             }))
         
     @community
-    def delete_blog(self, blogId: str) -> SResponse:
+    def delete_blog(self, blogId: str) -> ApiResponse:
         """
         `delete_blog` is the method that deletes blog.
 
@@ -864,11 +892,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/blog/{blogId}"))
 
     @community
-    def post_wiki(self, title: str, content: str, image: Optional[str]=None, keyword: Optional[str]=None, value: int=5, type: str="levelStar") -> Wiki:
+    def post_wiki(self, title: str, content: str, image: Optional[str]=None, keyword: Optional[str]=None, value: int=5, type: str="levelStar") -> ApiResponse: #TODO: Add wiki class
         """
         `post_wiki` is the method that posts wiki.
 
@@ -896,7 +924,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Wiki(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/item",
             data = {
                 "label": title,
@@ -909,7 +937,7 @@ class Community:
                 }))
 
     @community
-    def delete_wiki(self, wikiId: str) -> SResponse:
+    def delete_wiki(self, wikiId: str) -> ApiResponse:
         """
         `delete_wiki` is the method that deletes wiki.
 
@@ -927,11 +955,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/item/{wikiId}"))
 
     @community
-    def delete_comment(self, commentId: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None) -> SResponse:
+    def delete_comment(self, commentId: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None) -> ApiResponse:
         """
         `delete_comment` is the method that deletes comment.
 
@@ -958,11 +986,11 @@ class Community:
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
                 object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return SResponse(self.session.handler(
+                return ApiResponse(self.session.handler(
                     method="DELETE", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment/{commentId}"))
 
     @community
-    def comment(self, content: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None, image: Optional[str]=None) -> Comment:
+    def comment(self, content: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None, image: Optional[str]=None) -> ApiResponse: #TODO: Add comment class
         """
         `comment` is the method that comments.
 
@@ -991,7 +1019,7 @@ class Community:
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
                 object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return Comment(self.session.handler(
+                return ApiResponse(self.session.handler(
                     method="POST", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment",
                     data = {
                         "content": content,
@@ -1003,7 +1031,7 @@ class Community:
                         }))
 
     @community
-    def like_comment(self, commentId: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None) -> SResponse:
+    def like_comment(self, commentId: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None) -> ApiResponse:
         """
         `like_comment` is the method that likes a comment.
 
@@ -1030,7 +1058,7 @@ class Community:
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
                 object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return SResponse(self.session.handler(
+                return ApiResponse(self.session.handler(
                     method="POST", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment/{commentId}/vote",
                     data = {
                         "value": 1,
@@ -1039,7 +1067,7 @@ class Community:
                         }))
 
     @community
-    def unlike_comment(self, commentId: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None) -> SResponse:
+    def unlike_comment(self, commentId: str, userId: Optional[str]=None, blogId: Optional[str]=None, wikiId: Optional[str]=None) -> ApiResponse:
         """
         `unlike_comment` is the method that unlikes a comment.
 
@@ -1066,11 +1094,11 @@ class Community:
         for i in ["userId", "blogId", "wikiId"]:
             if eval(i) is not None:
                 object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return SResponse(self.session.handler(
+                return ApiResponse(self.session.handler(
                     method="DELETE", url=f"/x{self.community_id}/s/{object}/{eval(i)}/comment/{commentId}/vote"))
 
     @community
-    def like_blog(self, blogId: str, userId: Optional[str]=None) -> SResponse:
+    def like_blog(self, blogId: str, userId: Optional[str]=None) -> ApiResponse:
         """
         `like_blog` is the method that likes a blog.
 
@@ -1090,7 +1118,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog/{blogId}/vote",
             data = {
                 "value": 4,
@@ -1099,7 +1127,7 @@ class Community:
                 }))
 
     @community
-    def unlike_blog(self, blogId: str) -> SResponse:
+    def unlike_blog(self, blogId: str) -> ApiResponse:
         """
         `unlike_blog` is the method that unlikes a blog.
 
@@ -1117,11 +1145,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/blog/{blogId}/vote"))
 
     @community
-    def upvote_comment(self, blogId: str, commentId: str) -> SResponse:
+    def upvote_comment(self, blogId: str, commentId: str) -> ApiResponse:
         """
         `upvote_comment` is the method that upvotes a comment.
 
@@ -1141,7 +1169,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog/{blogId}/comment/{commentId}/vote",
             data = {
                 "value": 1,
@@ -1150,7 +1178,7 @@ class Community:
                 }))
 
     @community
-    def downvote_comment(self, blogId: str, commentId: str) -> SResponse:
+    def downvote_comment(self, blogId: str, commentId: str) -> ApiResponse:
         """
         `downvote_comment` is the method that downvotes a comment.
 
@@ -1170,7 +1198,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog/{blogId}/comment/{commentId}/vote",
             data = {
                 "value": -1,
@@ -1179,7 +1207,7 @@ class Community:
                 }))
 
     @community
-    def fetch_blog(self, blogId: str) -> Blog:
+    def fetch_blog(self, blogId: str) -> CBlog:
         """
         `fetch_blog` is the method that fetches a blog's information.
 
@@ -1197,11 +1225,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Blog(self.session.handler(
+        return CBlog(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/blog/{blogId}"))
 
     @community
-    def fetch_wiki(self, wikiId: str) -> Wiki:
+    def fetch_wiki(self, wikiId: str) -> ApiResponse: #TODO: Add Wiki class
         """
         `fetch_wiki` is the method that fetches a wiki's information.
 
@@ -1219,7 +1247,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Wiki(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/item/{wikiId}"))
 
     @community
@@ -1245,7 +1273,7 @@ class Community:
             method="GET", url=f"/x{self.community_id}/s/blog/{quizId}")
 
     @community
-    def fetch_user(self, userId: str) -> User:
+    def fetch_user(self, userId: str) -> UserProfile:
         """
         `fetch_user` is the method that fetches user's profile.
 
@@ -1263,11 +1291,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return User(self.session.handler(
+        return UserProfile(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}"))
 
     @community
-    def reply_wall(self, userId: str, commentId: str, message: str) -> SResponse:
+    def reply_wall(self, userId: str, commentId: str, message: str) -> ApiResponse:
         """
         `reply_wall` is the method that replies to a comment on user's wall.
 
@@ -1289,7 +1317,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/user-profile/{userId}/comment",
             data = {
                 "content": message,
@@ -1301,7 +1329,7 @@ class Community:
                 }))
 
     @community
-    def vote_poll(self, blogId: str, optionId: str) -> SResponse:
+    def vote_poll(self, blogId: str, optionId: str) -> ApiResponse:
         """
         `vote_poll` is the method that votes on a poll.
 
@@ -1321,7 +1349,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog/{blogId}/poll/option/{optionId}/vote",
             data = {
                 "value": 1,
@@ -1330,7 +1358,7 @@ class Community:
                 }))
 
     @community
-    def repost(self, content: str = None, blogId: str = None, wikiId: str = None) -> Blog:
+    def repost(self, content: str = None, blogId: str = None, wikiId: str = None) -> CBlog:
         """
         `repost` is the method that reposts a blog or wiki.
 
@@ -1352,7 +1380,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Blog(self.session.handler(
+        return CBlog(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog",
             data = {
                 "content": content,
@@ -1363,7 +1391,7 @@ class Community:
                 }))
 
     @community
-    def ban(self, userId: str, reason: str, banType: int = None) -> SResponse:
+    def ban(self, userId: str, reason: str, banType: int = None) -> ApiResponse:
         """
         `ban` is the method that bans a user.
 
@@ -1385,7 +1413,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/user-profile/{userId}/ban",
             data = {
                 "reasonType": banType,
@@ -1396,7 +1424,7 @@ class Community:
                 }))
 
     @community
-    def unban(self, userId: str, reason: str) -> SResponse:
+    def unban(self, userId: str, reason: str) -> ApiResponse:
         """
         `unban` is the method that unbans a user.
 
@@ -1416,7 +1444,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/user-profile/{userId}/unban",
             data = {
                 "note": {
@@ -1426,7 +1454,7 @@ class Community:
                 }))
 
     @community
-    def strike(self, userId: str, time: int = 5, title: str = None, reason: str = None) -> SResponse:
+    def strike(self, userId: str, time: int = 5, title: str = None, reason: str = None) -> ApiResponse:
         """
         `strike` is the method that strikes a user.
 
@@ -1463,7 +1491,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/notice",
             data = {
                 "uid": userId,
@@ -1481,7 +1509,7 @@ class Community:
                 }))
 
     @community
-    def warn(self, userId: str, reason: str = None) -> SResponse:
+    def warn(self, userId: str, reason: str = None) -> ApiResponse:
         """
         `warn` is the method that warns a user.
 
@@ -1501,7 +1529,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/notice",
             data = {
                 "uid": userId,
@@ -1518,7 +1546,7 @@ class Community:
                 }))
 
     @community
-    def edit_titles(self, userId: str, titles: list, colors: list) -> SResponse:
+    def edit_titles(self, userId: str, titles: list, colors: list) -> ApiResponse:
         """
         `edit_titles` is the method that edits a user's titles.
 
@@ -1540,7 +1568,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/user-profile/{userId}/admin",
             data = {
                 "adminOpName": 207,
@@ -1551,7 +1579,7 @@ class Community:
                 }))
 
     @community
-    def fetch_mod_history(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, size: int = 25) -> SResponse:
+    def fetch_mod_history(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, size: int = 25) -> ApiResponse:
         """
         `fetch_mod_history` is the method that fetches a user's moderation history.
 
@@ -1579,7 +1607,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/admin/operation",
             params = {
                 "objectId": blogId if blogId is not None else wikiId if wikiId is not None else quizId if quizId is not None else fileId if fileId is not None else userId,
@@ -1589,7 +1617,7 @@ class Community:
                 }))
     
     @community
-    def fetch_user_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25) -> Comment:
+    def fetch_user_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25) -> ApiResponse: #TODO: Add CCommentList class
         """
         `fetch_user_comments` is the method that fetches a user's comments.
 
@@ -1616,11 +1644,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Comment(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/user-profile/{userId}/comment?sort={sorting}&start={start}&size={size}"), True)
 
     @community
-    def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5) -> Blog:
+    def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5) -> CBlogList:
         """
         `fetch_user_blogs` is the method that fetches a user's blogs.
 
@@ -1642,11 +1670,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Blog(self.session.handler(
-            method="GET", url=f"/x{self.community_id}/s/blog?type=user&q={userId}&start={start}&size={size}"), True)
+        return CBlogList(self.session.handler(
+            method="GET", url=f"/x{self.community_id}/s/blog?type=user&q={userId}&start={start}&size={size}"))
 
     @community
-    def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25) -> Wiki:
+    def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25) -> ApiResponse: #TODO: Add WikiList
         """
         `fetch_user_wikis` is the method that fetches a user's wikis.
 
@@ -1669,11 +1697,11 @@ class Community:
         ```
 
         """
-        return Wiki(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"), True)
 
     @community
-    def fetch_user_check_ins(self, userId: str) -> SResponse:
+    def fetch_user_check_ins(self, userId: str) -> ApiResponse:
         """
         `fetch_user_check_ins` is the method that fetches a user's check-ins.
 
@@ -1691,11 +1719,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="GET", url=f"/x{self.community_id}/s/check-in/stats/{userId}?timezone=-300"))
             
     @community
-    def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str]=None) -> Message:
+    def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str]=None) -> CMessage:
         """
         `send_embed` is the method that sends an embed to a chat.
 
@@ -1721,7 +1749,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Message(self.session.handler(
+        return CMessage(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content="[c]",
             attachedObject={
@@ -1729,29 +1757,24 @@ class Community:
                 "content": content,
                 "mediaList": [[100, self._prep_file(image), None]],
                 "link": link
-                }).embed_message))
+                }).json()))
 
     def _prep_file(self, file: str, mediaValue: bool=True) -> BinaryIO:
         """
-        `_prep_file` is a function that prepares an file to be sent.
+        `prep_file` - Prepares a file to be uploaded.
         
         `**Parameters**`
-
         - `file` - The file to prepare.
+        - `mediaValue` - Whether to upload file and fetch mediaValue.
+
+        `**Returns**`
+        - `BinaryIO` - The binary file.
         """
-        if file.startswith("http"):
-            file = BytesIO(get(file).content)
-        else:
-            file = open(file, "rb")
-
-        if not mediaValue: return file
-
-        file = self.upload_image(file)
-        
-        return file
+        file = BytesIO(get(file).content) if file.startswith("http") else open(file, "rb")
+        return self.upload_image(file) if mediaValue else file
 
     @community
-    def send_link_snippet(self, chatId: str, content: str, image: BinaryIO = None) -> SResponse:
+    def send_link_snippet(self, chatId: str, content: str, image: BinaryIO = None) -> ApiResponse:
         """
         `send_link_snippet` is the method that sends a link snippet to a chat.
 
@@ -1773,7 +1796,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content,
             linkSnippetList={
@@ -1781,10 +1804,11 @@ class Community:
                 "mediaType": 100,
                 "mediaUploadValue": b64encode(self._prep_file(image, False).read()).decode(),
                 "mediaUploadValueContentType": "image/png"
-                }).link_snippet_message))
+                }).json()
+                ))
 
     @community
-    def send_message(self, chatId: str, content: str) -> Message:
+    def send_message(self, chatId: str, content: str) -> CMessage:
         """
         `send_message` is the method that sends a message to a chat.
 
@@ -1804,12 +1828,13 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Message(self.session.handler(
+        return CMessage(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content=content).base_message))
+            data = PrepareMessage(content=content).json()
+            ))
 
     @community
-    def send_image(self, chatId: str, image: Union[str, BinaryIO] = None, gif: Union[str, BinaryIO] = None) -> Message:
+    def send_image(self, chatId: str, image: Union[str, BinaryIO] = None, gif: Union[str, BinaryIO] = None) -> CMessage:
         """
         `send_image` is the method that sends an image to a chat.
 
@@ -1831,12 +1856,17 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Message(self.session.handler(
+        return CMessage(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(image=b64encode((self._prep_file(image, False)).read()).decode()).image_message))
+            data = PrepareMessage(
+                mediaType = 100,
+                mediaUploadValue=b64encode((self._prep_file(image, False)).read()).decode(),
+                mediaUploadValueContentType = "image/jpg",
+                mediaUhqEnabled = True).json()
+                ))
 
     @community
-    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None) -> Message: #NOTE: Not sure how long the audio can be.
+    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None) -> CMessage: #NOTE: Not sure how long the audio can be.
         """
         `send_audio` is the method that sends an audio to a chat.
 
@@ -1856,12 +1886,17 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Message(self.session.handler(
-            method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(audio=b64encode((self._prep_file(audio, False)).read()).decode()).audio_message))
+        return CMessage(self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
+            data = PrepareMessage(
+                type=2,
+                mediaType=110,
+                mediaUploadValue=b64encode((self._prep_file(audio, False)).read()).decode()).json()
+                ))
 
     @community
-    def send_sticker(self, chatId: str, stickerId: str) -> SResponse: #TODO: Add this to PrepareMessage
+    def send_sticker(self, chatId: str, stickerId: str) -> ApiResponse:
         """
         `send_sticker` is the method that sends a sticker to a chat.
 
@@ -1881,11 +1916,9 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
-            method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(stickerId=stickerId).sticker_message))
+        pass #TODO: Finish this method.
 
-    def upload_image(self, image: Union[str, BinaryIO]) -> str:
+    def upload_image(self, image: Union[str, BinaryIO]) -> ApiResponse:
         """
         `upload_image` is the method that uploads an image to the community.
 
@@ -1906,11 +1939,11 @@ class Community:
             image = BytesIO(get(image).content)
         elif isinstance(image, str) and not image.startswith("http"):
             image = open(image, "rb")
-        return SResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
+        return ApiResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
             data=image.read(), content_type="image/jpg")).mediaValue
 
     @community
-    def join_chat(self, chatId: str) -> SResponse:
+    def join_chat(self, chatId: str) -> ApiResponse:
         """
         `join_chat` is the method that joins a chat.
 
@@ -1928,11 +1961,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member/{self.userId}"))
 
     @community
-    def leave_chat(self, chatId: str) -> SResponse:
+    def leave_chat(self, chatId: str) -> ApiResponse:
         """
         `leave_chat` is the method that leaves a chat.
 
@@ -1949,11 +1982,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member/{self.userId}"))
 
     @community
-    def kick(self, userId: str, chatId: str, allowRejoin: bool = True):
+    def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> ApiResponse:
         """
         `kick` is the method that kicks a user from a chat.
 
@@ -1978,11 +2011,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"))
 
     @community
-    def delete_chat(self, chatId: str) -> SResponse:
+    def delete_chat(self, chatId: str) -> ApiResponse:
         """
         `delete_chat` is the method that deletes a chat.
 
@@ -2000,11 +2033,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}"))
 
     @community
-    def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None) -> SResponse:
+    def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None) -> ApiResponse:
         """
         `delete_message` is the method that deletes a message from a chat.
 
@@ -2035,14 +2068,14 @@ class Community:
         if asStaff and reason:
             data["adminOpNote"] = {"content": reason}
 
-        if not asStaff: return SResponse(self.session.handler(
-            method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}"))
-        else: return SResponse(self.session.handler(
+        if not asStaff: return ApiResponse(self.session.handler(
+            method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}", wait=False))
+        else: return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}/admin",
             data=data))
 
     @community
-    def transfer_host(self, chatId: str, userId: str):
+    def transfer_host(self, chatId: str, userId: str) -> ApiResponse:
         """
         `transfer_host` is the method that transfers the host of a chat.
 
@@ -2062,7 +2095,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/transfer-organizer",
             data = {
                 "uidList": [userId],
@@ -2070,7 +2103,7 @@ class Community:
                 }))
 
     @community
-    def accept_host(self, chatId: str, requestId: str):
+    def accept_host(self, chatId: str, requestId: str) -> ApiResponse:
         """
         `accept_host` is the method that accepts the host of a chat.
 
@@ -2090,11 +2123,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"))
 
     @community
-    def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None):
+    def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None) -> ApiResponse:
         """"
         `subscribe` is the method that subscribes to a user.
 
@@ -2117,7 +2150,7 @@ class Community:
         ```
         """
         if not transactionId: transactionId = str(uuid4())
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/influencer/{userId}/subscribe",
             data = {
                 "paymentContext": {
@@ -2128,7 +2161,7 @@ class Community:
                 }))
 
     @community
-    def thank_props(self, chatId: str, userId: str):
+    def thank_props(self, chatId: str, userId: str) -> ApiResponse:
         """
         `thank_props` is the method that thanks a user for props.
 
@@ -2148,11 +2181,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"))
 
     @community
-    def send_active(self, timezone: int=-300, start: int=time() * 1000, end: int=time() * 1000, timers: list=None) -> SResponse:
+    def send_active(self, timezone: int=-300, start: int=time() * 1000, end: int=time() * 1000, timers: list=None) -> ApiResponse:
         """
         `send_active` is the method that sends the active time of the user.
 
@@ -2185,11 +2218,11 @@ class Community:
         else:
             data["userActiveTimeChunkList"] = [{"start": start, "end": end}]
 
-        return Response(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/community/stats/user-active-time", data=data))
 
     @community
-    def send_coins(self, coins: int, blogId: str = None, chatId: str = None, wikiId: str = None, transactionId: str = None) -> SResponse:
+    def send_coins(self, coins: int, blogId: str = None, chatId: str = None, wikiId: str = None, transactionId: str = None) -> ApiResponse:
         """
         `send_coins` is the method that sends coins to a user.
 
@@ -2215,7 +2248,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url= f'/x{self.community_id}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId if blogId else chatId if chatId else wikiId}/tipping',
             data = {
                 "coins": coins,
@@ -2225,7 +2258,7 @@ class Community:
             ))
 
     @community
-    def start_chat(self, userIds: list, title: str = None, message: str = None, content: str = None) -> SResponse:
+    def start_chat(self, userIds: list, title: str = None, message: str = None, content: str = None) -> ApiResponse:
         """
         `start_chat` is the method that starts a chat with a user.
 
@@ -2250,7 +2283,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread",
             data = {
                 "title": title,
@@ -2264,7 +2297,7 @@ class Community:
         ))
 
     @community
-    def invite_chat(self, chatId: str, userIds: list) -> SResponse:
+    def invite_chat(self, chatId: str, userIds: list) -> ApiResponse:
         """
         `invite_chat` is the method that invites a user to a chat.
 
@@ -2284,7 +2317,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member/invite",
             data = {
                 "uids": userIds if isinstance(userIds, list) else [userIds],
@@ -2293,7 +2326,7 @@ class Community:
         ))
 
     @community
-    def view_only(self, chatId: str, viewOnly: bool = True) -> SResponse:
+    def view_only(self, chatId: str, viewOnly: bool = True) -> ApiResponse:
         """
         `view_only` is the method that makes a chat view only.
 
@@ -2313,11 +2346,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id}/s/chat/thread/{chatId}/view-only/disable"))
 
     @community
-    def members_can_invite(self, chatId: str, canInvite: bool = True) -> SResponse:
+    def members_can_invite(self, chatId: str, canInvite: bool = True) -> ApiResponse:
         """
         `members_can_invite` is the method that makes a chat members can invite.
 
@@ -2337,11 +2370,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/members-can-invite/enable" if canInvite else f"/x{self.community_id}/s/chat/thread/{chatId}/members-can-invite/disable"))
 
     @community
-    def change_chat_background(self, chatId: str, backgroundImage: str = None) -> SResponse:
+    def change_chat_background(self, chatId: str, backgroundImage: str = None) -> ApiResponse:
         """
         `change_chat_background` is the method that changes the background of a chat.
 
@@ -2362,7 +2395,7 @@ class Community:
         ```
         """
         image = self._prep_file(backgroundImage)
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/member/{self.userId}/background",
             data = {
                 "media": [100, self.upload_image(image), None],
@@ -2371,7 +2404,7 @@ class Community:
         ))
         
     @community
-    def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False) -> SResponse:
+    def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False) -> ApiResponse:
         """
         `solve_quiz` is the method that solves a quiz.
 
@@ -2393,7 +2426,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method="POST", url=f"/x{self.community_id}/s/blog/{quizId}/quiz/result",
             data = {
                 "quizAnswerList": quizAnswers if isinstance(quizAnswers, list) else [quizAnswers],
@@ -2401,3 +2434,53 @@ class Community:
                 "timestamp": int(time() * 1000)
             }
         ))
+
+    @community
+    def set_channel(self, chatId: str) -> None:
+        """
+        `set_channel` is the method that sets the channel of a chat.
+
+        `**Parameters**`
+
+        - `chatId` - The chat ID to set the channel of.
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+
+        @bot.command("play")
+        def play(ctx: Context, message: str):
+            bot.community.set_channel(chatId=ctx.chatId)
+            sleep(1)
+            if bot.channel == None:
+                return ctx.reply("Start a voice call first!")
+            else:
+                # This is just an example, you can do whatever you want here.
+                rtc.joinChannel(
+                    bot.channel.channelKey,
+                    bot.channel.channelName,
+                    None,
+                    bot.channel.channelUid
+                    )
+        
+        """
+        self.bot.send_websocket_message({
+            "o": {
+                "ndcId": self.community_id,
+                "threadId": chatId,
+                "joinRole": 1,
+                "id": "2250161"
+            },
+            "t": 112
+            })
+        self.bot.send_websocket_message({
+            "o": {
+                "ndcId": self.community_id,
+                "threadId": chatId,
+                "id": "337496"
+            },
+            "t": 200
+            })

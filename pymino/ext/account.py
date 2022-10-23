@@ -4,7 +4,7 @@ class Account:
     """
     Account class for handling account related requests.
     """
-    def __init__(self, session: Session):
+    def __init__(self, session: ClientSession):
         self.session = session
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
@@ -53,7 +53,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def delete_request(self, email: str, password: str) -> SResponse:
+    def delete_request(self, email: str, password: str) -> ApiResponse:
         """
         `**delete_request**` - Sends a delete request to the account.
 
@@ -73,7 +73,7 @@ class Account:
         response = bot.delete_request(email=email, password=password)
         print(response)
         ```"""
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method = "POST", url="/g/s/account/delete-request",
         data={
             "secret": f"0 {password}",
@@ -82,7 +82,7 @@ class Account:
             "timestamp": int(time() * 1000)
         }))
 
-    def delete_request_cancel(self, email: str, password: str) -> SResponse:
+    def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
         """
         `**delete_request_cancel**` - Cancels the delete request.
 
@@ -103,7 +103,7 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method = "POST", url="/g/s/account/delete-request/cancel",
         data={
             "secret": f"0 {password}",
@@ -112,7 +112,7 @@ class Account:
             "timestamp": int(time() * 1000)
         }))
 
-    def check_device(self, deviceId: str) -> SResponse:
+    def check_device(self, deviceId: str) -> ApiResponse:
         """
         `**check_device**` - Checks if the device is valid.
 
@@ -130,7 +130,7 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method = "POST", url="/g/s/device/check",
         data={
             "deviceID": deviceId,
@@ -155,9 +155,9 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(method = "GET", url="/g/s/account"))
+        return ApiResponse(self.session.handler(method = "GET", url="/g/s/account"))
 
-    def upload_image(self, image: str) -> SResponse:
+    def upload_image(self, image: str) -> ApiResponse:
         """
         `**upload_image**` - Uploads an image to the server.
 
@@ -176,10 +176,10 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
+        return ApiResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
             data=open(image, "rb").read(), content_type="image/jpg")).mediaValue
 
-    def fetch_profile(self)  -> User:
+    def fetch_profile(self)  -> UserProfile:
         """
         `**fetch_profile**` - Fetches the profile information.
         
@@ -194,7 +194,7 @@ class Account:
         print(response)
         ```
         """
-        return User(self.session.handler(
+        return UserProfile(self.session.handler(
             method = "GET", url = f"/g/s/user-profile/{self.userId}"))
 
     def set_amino_id(self, aminoId: str):
@@ -216,7 +216,7 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method = "POST", url="/g/s/account/change-amino-id",
             data={
                 "aminoId": aminoId,
@@ -240,7 +240,7 @@ class Account:
         return Wallet(self.session.handler(
             method = "GET", url="/g/s/wallet"))
 
-    def request_security_validation(self, email: str, resetPassword: bool = False) -> SResponse:
+    def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
         """
         `**request_security_validation**` - Requests a security validation.
 
@@ -260,7 +260,7 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method = "POST", url="/g/s/auth/request-security-validation",
             data={
                 "identity": email,
@@ -271,7 +271,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def activate_email(self, email: str, code: str) -> SResponse:
+    def activate_email(self, email: str, code: str) -> ApiResponse:
         """
         `**activate_email**` - Activates an email.
 
@@ -291,7 +291,7 @@ class Account:
         print(response)
         ```
         """
-        return SResponse(self.session.handler(
+        return ApiResponse(self.session.handler(
             method = "POST", url="/g/s/auth/activate-email",
             data={
                 "type": 1,
