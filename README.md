@@ -16,8 +16,7 @@ pip install pymino
 >>> bot = Bot(
 ...     command_prefix="!",
 ...     community_id = 00000000,
-...     debug = False
-... )   # You can set proxies and deviceId here
+... )   # You can set proxies and device_id here
 ...
 >>>
 >>> @bot.on_ready()
@@ -51,7 +50,7 @@ pip install pymino
 ...     print("This is a task! It will run every 10 seconds!")
 ...
 >>> @bot.task(interval=30)
-... def community_task(community: Community):
+... def task(community: Community):
 ...     [...] # Do something in the community
 ...     community.send_message(chatId, "Hello world!")
 ...     print("This is a community task! It will run every 30 seconds.")
