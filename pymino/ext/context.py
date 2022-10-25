@@ -91,7 +91,7 @@ class Context():
         message = self._session.handler(
             method="POST",
             url=f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
-            data = PrepareMessage(content=content, replyMessageId=self.message.messageId), 
+            data = PrepareMessage(content=content, replyMessageId=self.message.messageId).json(), 
             wait = True if delete_after else False)
 
         return self._delete(CMessage(message), delete_after) if delete_after else None
