@@ -1,4 +1,5 @@
 from .utilities.generate import *
+from .utilities.commands import *
 
 class Context():
     """
@@ -42,7 +43,8 @@ class Context():
         return self._session.handler(
             method = "DELETE",
             url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}",
-            wait = False)
+            wait = False
+            )
 
     def _upload_image(self, image: Union[str, BinaryIO]) -> str:
         """
@@ -160,7 +162,8 @@ class Context():
                 "title": embed_title,
                 "content": embed_content,
                 "mediaList": [[100, self._prep_file(embed_image), None]],
-                "link": embed_link}).json(), wait = False)
+                "link": embed_link}
+            ).json(), wait = False)
 
     @_run
     def send_image(self, image: str) -> None:
@@ -186,7 +189,8 @@ class Context():
                 mediaType = 100,
                 mediaUploadValue=b64encode((self._prep_file(image, False)).read()).decode(),
                 mediaUploadValueContentType = "image/jpg",
-                mediaUhqEnabled = True).json(), wait=False)
+                mediaUhqEnabled = True
+            ).json(), wait=False)
 
     @_run
     def send_gif(self, gif: str) -> None:
@@ -212,7 +216,8 @@ class Context():
                 mediaType = 100,
                 mediaUploadValue=b64encode((self._prep_file(gif, False)).read()).decode(),
                 mediaUploadValueContentType = "image/gif",
-                mediaUhqEnabled = True).json(), wait=False)
+                mediaUhqEnabled = True
+            ).json(), wait=False)
 
     @_run
     def send_audio(self, audio: str) -> None:
@@ -234,7 +239,11 @@ class Context():
         return self._session.handler(
             method="POST",
             url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
-            data = PrepareMessage(type=2, mediaType=110, mediaUploadValue=b64encode((self._prep_file(audio, False)).read()).decode()).json(), wait=False)
+            data = PrepareMessage(
+                type=2,
+                mediaType=110,
+                mediaUploadValue=b64encode((self._prep_file(audio, False)).read()).decode()
+            ).json(), wait=False)
 
 class EventHandler(Context):
     """
@@ -249,7 +258,7 @@ class EventHandler(Context):
         self.command_prefix:    str = self.command_prefix
         self.context:           Context = Context
         self._events:           dict = {}
-        self._commands:         dict = {}
+        self._commands:         Commands = Commands()
 
     def start_task(self, func):
         """`start_task` - This starts a task."""
@@ -302,47 +311,85 @@ class EventHandler(Context):
         """`emit` is a function that emits an event."""
         if name in self._events:
             self._events[name](*args) 
-                       
-    def command(self, command_name: str):
+
+    def command(self, command_name: str, command_description: str=None, aliases: list=[], cooldown: int=0) -> Callable:
         """
         `command` - This creates a command.
         
         `**Parameters**``
         - `command_name` - The name of the command.
+        - `command_description` - The description of the command.
+        - `aliases` - The other names the command can be called by.
+        - `cooldown` - The cooldown of the command in seconds.
         
         `**Example**``
         ```py
         @bot.command(command_name="ping")
         def ping(ctx: Context):
             ctx.send(content="Pong!")
+
+        @bot.command(command_name="ping", aliases=["alive", "test"])
+        def ping(ctx: Context):
+            # This command can be called by "ping", "alive", and "test".
+            ctx.send(content="Pong!")
+
+        @bot.command(command_name="ping", cooldown=5)
+        def ping(ctx: Context):
+            # This command can only be called every 5 seconds.
+            ctx.send(content="Pong!")
         ```
         """
-        def decorator(func):
-            self._commands[command_name] = func
+        def decorator(func: Callable) -> Callable:
+            self._commands.add_command(Command(func, command_name, command_description=command_description, aliases=aliases, cooldown=cooldown))
             return func
         return decorator
+
+    def command_exists(self, command_name: str) -> bool:
+        """
+        `command_exists` - This checks if a command exists.
+        
+        `**Parameters**``
+        - `command_name` - The name of the command.
+        
+        `**Returns**`` - bool
+        """
+        return any([
+            command_name in self._commands.__command_names__(),
+            command_name in self._commands.__command_aliases__()
+            ])
+
+    def fetch_command(self, command_name: str) -> Command:
+        """
+        `fetch_command` - This fetches a command.
+        
+        `**Parameters**``
+        - `command_name` - The name of the command.
+        
+        `**Returns**`` - Command
+        """
+        return self._commands.fetch_command(command_name)
 
     def _handle_command(self, data: Message):
         """`_handle_command` is a function that handles commands."""
         command_name = data.content[len(self.command_prefix):].split(" ")[0]
-        parameters = []
-        pparameters = {
+        if not self.command_exists(command_name): return self._handle_text_message(data)
+
+        parameters = [{
             "ctx": self.context(data, self.request),
             "message": data.content[len(self.command_prefix) + len(command_name) + 1:],
             "username": data.author.username,
             "userId": data.author.userId
-        }
-        if command_name in self._commands:
-            command = self._commands[command_name]
-            
-            for parameter in inspect_signature(command).parameters:
-                if parameter in pparameters:
-                    parameters.append(pparameters[parameter])
+        }.get(i) for i in inspect_signature(self.fetch_command(command_name).func).parameters]
 
-            return command(*parameters)
+        command_name = dict(self._commands.__command_aliases__().copy()).get(command_name, command_name)  
 
-        return self._handle_text_message(data)
+        if self._commands.fetch_command(command_name).cooldown > 0:
+            if self._commands.fetch_cooldown(command_name, data.author.userId) > time():
+                return self.context(data, self.request).reply(f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
+            self._commands.set_cooldown(command_name, self._commands.fetch_command(command_name).cooldown, data.author.userId)
 
+        return self._commands.fetch_command(command_name).func(*parameters)
+        
     def on_error(self):
         """
         `on_error` - This is an event that handles errors to prevent the bot from crashing.
@@ -402,22 +449,21 @@ class EventHandler(Context):
         """`_handle_text_message` is a function that handles text messages."""
 
         ctx: Context = self.context(data, self.request)
+        
         if data.content.startswith(self.command_prefix):
             command_name = data.content.split(" ")[0][len(self.command_prefix):]
-        else: command_name = None
+            if command_name == "help":
+                return self.context(data, self.request).reply(self._commands.__help__())
+        else:
+            command_name = None
 
-        parameters = []
-        pparameters = {
+        parameters = [{
             "ctx": ctx,
             "command": self.command_prefix + command_name if command_name != None else "Command not found",
             "message": ctx.message.content[len(command_name) + len(self.command_prefix) + 1:] if command_name else ctx.message.content,
             "username": ctx.author.username,
             "userId": ctx.author.userId
-        }
-        
-        for parameter in inspect_signature(self._events["text_message"]).parameters:
-            if parameter in pparameters:
-                parameters.append(pparameters[parameter])
+        }.get(i) for i in inspect_signature(self._events["text_message"]).parameters]
 
         return self._events["text_message"](*parameters)
 

@@ -2,7 +2,7 @@ from base64 import b64encode
 from contextlib import suppress
 from hashlib import sha1
 from hmac import new
-from typing import Optional, Union, BinaryIO
+from typing import Optional, Union, BinaryIO, Callable
 from uuid import uuid4
 from io import BytesIO
 from time import time, sleep as wait
