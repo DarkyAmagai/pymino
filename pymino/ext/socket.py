@@ -45,13 +45,14 @@ class WSClient(EventHandler):
 
     def websocket_worker(self):
         while True:
-            wait(30)
-            self.send_websocket_message({
-                "o":{
-                    "threadChannelUserInfoList": [],
-                    "id": randint(1, 100)},
-                    "t": 116
-                    })
+            with suppress(WebSocketConnectionClosedException):
+                wait(randint(25, 50))
+                self.send_websocket_message({
+                    "o":{
+                        "threadChannelUserInfoList": [],
+                        "id": randint(1, 100)},
+                        "t": 116
+                        })
 
     def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
         with suppress(KeyError): return self._events["error"](error)
@@ -108,3 +109,4 @@ class WSClient(EventHandler):
                     "topic": f"ndtopic:x{self.community_id}:online-members",
                     "id": int(time() * 1000)
                 }})
+        return None

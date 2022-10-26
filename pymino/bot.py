@@ -29,6 +29,7 @@ class Bot(WSClient):
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
         self.device_id:         Optional[str] = kwargs.get("device_id", None)
+        # get proxies from kwargs
         self.session:           ClientSession = ClientSession(
                                 headers={
                                 "NDCLANG": "en",
@@ -41,7 +42,8 @@ class Bot(WSClient):
                                 })
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
-                                session=self.session
+                                session=self.session,
+                                proxy=kwargs.get("proxy", None),
                                 )
         self.community:         Community = Community(
                                 bot = self,

@@ -10,10 +10,11 @@ from threading import Thread
 from inspect import signature as inspect_signature
 from random import randint
 from orjson import dumps, loads
-from websocket import WebSocket, WebSocketApp
+from websocket import WebSocket, WebSocketApp, WebSocketConnectionClosedException
 from httpx import get
 from aiohttp import ClientSession, ClientResponse
-from asyncio import Queue, get_event_loop
+from aiohttp.client_exceptions import ServerDisconnectedError, ClientConnectorError
+from asyncio import Queue, get_event_loop, AbstractEventLoop
 from ..entities.messages import *
 from ..entities.threads import *
 from ..entities.userprofile import *
