@@ -17,6 +17,11 @@ class Context():
     def author(self) -> MessageAuthor:
         """The author of the message."""
         return self.message.author
+
+    @property
+    def __isCommunity__(self) -> str:
+        """Sets the url to community/global."""
+        return f"x{self.message.comId}" if self.message.comId != 0 else "g"
     
     def _run(func):
         def wrapper(*args, **kwargs):
@@ -36,7 +41,7 @@ class Context():
         wait(delete_after)
         return self._session.handler(
             method = "DELETE",
-            url = f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}",
+            url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}",
             wait = False)
 
     def _upload_image(self, image: Union[str, BinaryIO]) -> str:
@@ -90,7 +95,7 @@ class Context():
         """
         message = self._session.handler(
             method="POST",
-            url=f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
+            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(content=content, replyMessageId=self.message.messageId).json(), 
             wait = True if delete_after else False)
 
@@ -116,7 +121,7 @@ class Context():
         """
         message =  self._session.handler(
             method="POST",
-            url=f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
+            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(content=content).json(),
             wait = True if delete_after is not None else False)
 
@@ -150,7 +155,7 @@ class Context():
         ```
         """
         return self._session.handler(
-            method = "POST", url = f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
+            method = "POST", url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(content = message, attachedObject = {
                 "title": embed_title,
                 "content": embed_content,
@@ -176,7 +181,7 @@ class Context():
         """
         return self._session.handler(
             method = "POST",
-            url = f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
+            url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(
                 mediaType = 100,
                 mediaUploadValue=b64encode((self._prep_file(image, False)).read()).decode(),
@@ -202,7 +207,7 @@ class Context():
         """
         return self._session.handler(
             method="POST",
-            url=f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
+            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(
                 mediaType = 100,
                 mediaUploadValue=b64encode((self._prep_file(gif, False)).read()).decode(),
@@ -228,7 +233,7 @@ class Context():
         """
         return self._session.handler(
             method="POST",
-            url=f"/x{self.message.comId}/s/chat/thread/{self.message.chatId}/message",
+            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(type=2, mediaType=110, mediaUploadValue=b64encode((self._prep_file(audio, False)).read()).decode()).json(), wait=False)
 
 class EventHandler(Context):
