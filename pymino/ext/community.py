@@ -13,7 +13,7 @@ class Community:
     - `community_id` - The community id to use. Defaults to `None`.
 
     """
-    def __init__(self, bot, session: ClientSession, community_id: Optional[str]=None) -> None:
+    def __init__(self, bot, session: HTTPClient, community_id: Optional[str]=None) -> None:
         self.bot = bot
         self.session = session
         self.community_id = community_id
@@ -2061,18 +2061,15 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        data = {
-            "adminOpName": 102,
-            "timestamp": int(time() * 1000)
-        }
-        if asStaff and reason:
-            data["adminOpNote"] = {"content": reason}
-
-        if not asStaff: return ApiResponse(self.session.handler(
-            method="DELETE", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}", wait=False))
-        else: return ApiResponse(self.session.handler(
-            method="POST", url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}/admin",
-            data=data))
+        return ApiResponse(
+            self.session.handler(
+                method="POST",
+                url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}/admin",
+                data = {"adminOpName": 102, "adminOpNote": {"content": reason}, "timestamp": int(time() * 1000)}
+                )) if asStaff else ApiResponse(self.session.handler(
+                    method="DELETE",
+                    url=f"/x{self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
+                    ))
 
     @community
     def transfer_host(self, chatId: str, userId: str) -> ApiResponse:

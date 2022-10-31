@@ -1,7 +1,9 @@
 from .generate import *
 
 class Command:
-    def __init__(self, func: Callable, command_name: str, command_description: str=None, aliases: list=[], cooldown: int=0):
+    def __init__(self, func: Callable, command_name: str, command_description: str=None, aliases: list = None, cooldown: int=0):
+        if aliases is None:
+            aliases = []
         self.func:           Callable = func
         self.name:           str = command_name
         self.description:    str = command_description
@@ -18,19 +20,13 @@ class Commands:
         return command
 
     def fetch_command(self, command_name: str) -> Command:
-        for command in self.commands:
-            if command.name == command_name or command_name in command.aliases:
-                return command
-        return None
+        return next((command for command in self.commands if command.name == command_name or command_name in command.aliases), None)
 
     def fetch_commands(self) -> Command:
         return self.commands
 
     def __command_functions__(self) -> list:
-        functions = {}
-        for command in self.commands:
-            functions[command.name] = command.func
-        return functions
+        return {command.name: command.func for command in self.commands}
 
     def __command_names__(self) -> list:
         return [command.name for command in self.commands]
@@ -43,16 +39,10 @@ class Commands:
         return aliases
 
     def __command_descriptions__(self) -> list:
-        descriptions = {}
-        for command in self.commands:
-            descriptions[command.name] = command.description
-        return descriptions
+        return {command.name: command.description for command in self.commands}
 
     def __command_cooldowns__(self) -> list:
-        cooldowns = {}
-        for command in self.commands:
-            cooldowns[command.name] = command.cooldown
-        return cooldowns
+        return {command.name: command.cooldown for command in self.commands}
 
     def set_cooldown(self, command_name: str, cooldown: int, userId: str):
         self.cooldowns[command_name][userId] = time() + cooldown
@@ -65,8 +55,8 @@ class Commands:
         return self.cooldowns[command_name][userId]
 
     def __help__(self):
-        help_message = "[bcu]Commands\n"
-        help_message += "\n[ic]This is a list of all the commands available on this bot.\n"
+        help_message = "[bcu]Commands\n" + "\n[ic]This is a list of all the commands available on this bot.\n"
+
         for command in self.commands:
             help_message += f"\n[uc]{command.name}\n[ic]{command.description}"
         help_message += "\n\n[ic]This message was generated automatically. If you have any questions, please contact the bot owner."

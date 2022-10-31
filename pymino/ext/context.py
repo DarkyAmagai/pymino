@@ -17,10 +17,10 @@ class Context():
     @property
     def author(self) -> MessageAuthor:
         """The author of the message."""
-        return self.message.author
+        with suppress(AttributeError): return self.message.author
 
     @property
-    def __isCommunity__(self) -> str:
+    def communityId(self) -> str:
         """Sets the url to community/global."""
         return f"x{self.message.comId}" if self.message.comId != 0 else "g"
     
@@ -42,8 +42,7 @@ class Context():
         wait(delete_after)
         return self._session.handler(
             method = "DELETE",
-            url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}",
-            wait = False
+            url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}"
             )
 
     def _upload_image(self, image: Union[str, BinaryIO]) -> str:
@@ -97,9 +96,9 @@ class Context():
         """
         message = self._session.handler(
             method="POST",
-            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
-            data = PrepareMessage(content=content, replyMessageId=self.message.messageId).json(), 
-            wait = True if delete_after else False)
+            url=f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message",
+            data = PrepareMessage(content=content, replyMessageId=self.message.messageId).json()
+            )
 
         return self._delete(CMessage(message), delete_after) if delete_after else None
 
@@ -123,9 +122,8 @@ class Context():
         """
         message =  self._session.handler(
             method="POST",
-            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
-            data = PrepareMessage(content=content).json(),
-            wait = True if delete_after is not None else False)
+            url=f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message",
+            data = PrepareMessage(content=content).json())
 
         return self._delete(CMessage(message), delete_after) if delete_after else None
 
@@ -157,13 +155,13 @@ class Context():
         ```
         """
         return self._session.handler(
-            method = "POST", url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
+            method = "POST", url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(content = message, attachedObject = {
                 "title": embed_title,
                 "content": embed_content,
                 "mediaList": [[100, self._prep_file(embed_image), None]],
-                "link": embed_link}
-            ).json(), wait = False)
+                "link": embed_link}).json()
+                )
 
     @_run
     def send_image(self, image: str) -> None:
@@ -184,13 +182,13 @@ class Context():
         """
         return self._session.handler(
             method = "POST",
-            url = f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
+            url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(
                 mediaType = 100,
                 mediaUploadValue=b64encode((self._prep_file(image, False)).read()).decode(),
                 mediaUploadValueContentType = "image/jpg",
-                mediaUhqEnabled = True
-            ).json(), wait=False)
+                mediaUhqEnabled = True).json()
+                )
 
     @_run
     def send_gif(self, gif: str) -> None:
@@ -211,13 +209,13 @@ class Context():
         """
         return self._session.handler(
             method="POST",
-            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
+            url=f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(
                 mediaType = 100,
                 mediaUploadValue=b64encode((self._prep_file(gif, False)).read()).decode(),
                 mediaUploadValueContentType = "image/gif",
-                mediaUhqEnabled = True
-            ).json(), wait=False)
+                mediaUhqEnabled = True).json()
+                )
 
     @_run
     def send_audio(self, audio: str) -> None:
@@ -238,12 +236,12 @@ class Context():
         """
         return self._session.handler(
             method="POST",
-            url=f"/{self.__isCommunity__}/s/chat/thread/{self.message.chatId}/message",
+            url=f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message",
             data = PrepareMessage(
                 type=2,
                 mediaType=110,
                 mediaUploadValue=b64encode((self._prep_file(audio, False)).read()).decode()
-            ).json(), wait=False)
+                ).json())
 
 class EventHandler(Context):
     """
@@ -644,17 +642,7 @@ class EventHandler(Context):
 
     def on_member_leave(self):
         def decorator(func):
-            def wrapper(ctx: Context):
-                potential_parameters = {
-                    "ctx": ctx,
-                    "username": ctx.author.username,
-                    "userId": ctx.author.userId
-                }
-                parameters = []
-                for parameter in inspect_signature(func).parameters:
-                    parameters.append(potential_parameters.get(parameter, None))
-                func(*parameters)
-            self._events["member_leave"] = wrapper
+            self._events["member_leave"] = func
             return func
         return decorator
 

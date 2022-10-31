@@ -4,7 +4,7 @@ class Account:
     """
     Account class for handling account related requests.
     """
-    def __init__(self, session: ClientSession):
+    def __init__(self, session: HTTPClient):
         self.session = session
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
@@ -131,7 +131,7 @@ class Account:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/device/check",
+            method = "POST", url="/g/s/device",
         data={
             "deviceID": deviceId,
             "clientType": 100,
@@ -176,7 +176,7 @@ class Account:
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
+        return ApiResponse(self.session.handler(method="POST", url="/g/s/media/upload",
             data=open(image, "rb").read(), content_type="image/jpg")).mediaValue
 
     def fetch_profile(self)  -> UserProfile:

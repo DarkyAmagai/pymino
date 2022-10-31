@@ -7,9 +7,15 @@ class Bot(WSClient):
     `Bot` - This is the main client.
 
     `**Parameters**``
-    - `command_prefix` - The prefix to use for commands. Defaults to `!`.
-    - `community_id` - The community id to use for the bot. Defaults to `None`.
+    - `command_prefix` - The prefix to use for commands. `Defaults` to `!`.
+    - `community_id` - The community id to use for the bot. `Defaults` to `None`.
     - `**kwargs` - Any other parameters to use for the bot.
+
+        - `device_id` - The device id to use for the bot.
+
+        - `proxy` - The proxy to use for the bot. `proxy` must be `str`.
+
+        - `disable_socket` - Whether to disable the socket.
 
     `**Example**``
     ```python
@@ -28,21 +34,12 @@ class Bot(WSClient):
         self.is_ready:          bool = False
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
-        self.device_id:         Optional[str] = kwargs.get("device_id", None)
-        self.session:           ClientSession = ClientSession(
-                                headers={
-                                "NDCLANG": "en",
-                                "ACCEPT-LANGUAGE": "en-US",
-                                "CONTENT-TYPE": "application/json; charset=utf-8",
-                                "USER-AGENT": "Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-N976N Build/LYZ28N; com.narvii.amino.master/3.5.34654)",
-                                "HOST": "service.aminoapps.com",
-                                "CONNECTION": "Keep-Alive",
-                                "ACCEPT-ENCODING": "gzip"
-                                })
+        self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
+        self.session:           HTTPClient = HTTPClient()
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
                                 session=self.session,
-                                proxy=kwargs.get("proxy", None),
+                                proxy=kwargs.get("proxy", None)
                                 )
         self.community:         Community = Community(
                                 bot = self,
@@ -52,7 +49,7 @@ class Bot(WSClient):
         self.account:           Account = Account(
                                 session=self.request
                                 )
-            
+
         if self.community_id:   self.set_community_id(community_id)
 
         WSClient.__init__(self, client=self)
@@ -73,8 +70,8 @@ class Bot(WSClient):
             data = {
                 "email": email,
                 "v": 2,
-                "secret": "0 {}".format(password),
-                "deviceID": self.device_id if self.device_id else device_id(),
+                "secret": f"0 {password}",
+                "deviceID": self.device_id,
                 "clientType": 100,
                 "action": "normal",
                 "timestamp": int(time() * 1000)
@@ -126,23 +123,26 @@ class Bot(WSClient):
             raise Exception("You're missing either an email and password or a sid.")
 
         if response:
-            if response['api:statuscode'] != 0: input(response), exit()
-            
-            self.profile:           UserProfile = UserProfile(response)
-
-            self.sid:               str = sid if sid else response['sid']
-            self.userId:            str = response["account"]['uid']
-            self.community.userId:  str = self.userId
-            self.session.headers.update({"NDCAUTH": f"sid={self.sid}", "AUID": self.userId})
-
-            if not self.is_ready:
-                self.is_ready = True
-            if not hasattr(self, "disable_socket") or not self.disable_socket:
-                self.connect()
-
-            return response
+            return self.__run__(response, sid)
         else:
             raise Exception("Failed to authenticate.")
+
+    def __run__(self, response: dict, sid: str):
+        if response['api:statuscode'] != 0: input(response), exit()
+
+        self.profile:           UserProfile = UserProfile(response)
+
+        self.sid:               str = sid or response['sid']
+        self.userId:            str = response["account"]['uid']
+        self.community.userId:  str = self.userId
+        self.request.headers.update({"NDCAUTH": f"sid={self.sid}", "AUID": self.userId})
+
+        if not self.is_ready:
+            self.is_ready = True
+        if not hasattr(self, "disable_socket") or not self.disable_socket:
+            self.connect()
+
+        return response
 
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True):
         """
@@ -192,10 +192,10 @@ class Bot(WSClient):
         try:
             if community_id is not None and not isinstance(community_id, int):
                 community_id = int(community_id)
-        except ValueError:
-            raise Exception(
+        except ValueError as error:
+            raise ValueError(
                 "Check your community id! It should be an integer.\nIf you're using a community link, use `fetch_community_id` instead."
-                )
+                ) from error
 
         self.community_id = community_id
         self.community.community_id = community_id

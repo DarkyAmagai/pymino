@@ -5,7 +5,7 @@ class CThreadExtensions:
         self.coHost:                        list = parser('coHost', None)
         self.language:                      str = parser('language', None)
         self.membersCanInvite:              int = parser('membersCanInvite', None)
-        self.bm:                            list = parser('bm', None)
+        self.background:                    list = parser('bm', None)
         self.creatorUid:                    str = parser('creatorUid', None)
         self.visibility:                    int = parser('visibility', None)
         self.lastMembersSummaryUpdateTime:  dict = parser('lastMembersSummaryUpdateTime', None)
@@ -14,7 +14,7 @@ class CThreadExtensions:
         self.vvChatJoinType:                int = parser('vvChatJoinType', None)
         self.avchatMemberUidList:           list = parser('avchatMemberUidList', None)
         self.screeningRoomPermission:       dict = parser('screeningRoomPermission', None)
-        self.__disabledTime__:              int = parser('disabledTime', None)
+        self.disabledTime:                  int = parser('__disabledTime__', None)
 
     def __parser__(self, key: str, default=None): return [i.get(key, default) for i in self.data]
 

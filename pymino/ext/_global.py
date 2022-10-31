@@ -1,7 +1,7 @@
 from .utilities.generate import *
 
 class Global:
-    def __init__(self, session: ClientSession):
+    def __init__(self, session: HTTPClient):
         """
         WIP - TO BE FINISHED LATER
         """

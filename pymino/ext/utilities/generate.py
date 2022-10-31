@@ -9,12 +9,11 @@ from time import time, sleep as wait
 from threading import Thread
 from inspect import signature as inspect_signature
 from random import randint
-from orjson import dumps, loads
+from ujson import dumps, loads
 from websocket import WebSocket, WebSocketApp, WebSocketConnectionClosedException
-from httpx import get
-from aiohttp import ClientSession, ClientResponse
-from aiohttp.client_exceptions import ServerDisconnectedError, ClientConnectorError
-from asyncio import Queue, get_event_loop, AbstractEventLoop
+from requests import get, Session as HTTPClient, Response as HTTPResponse
+from requests.exceptions import ConnectionError, ReadTimeout, SSLError, ProxyError, ConnectTimeout
+from urllib.parse import urlencode
 from ..entities.messages import *
 from ..entities.threads import *
 from ..entities.userprofile import *
@@ -38,13 +37,13 @@ def device_id(data: Optional[str]=None) -> str:
         encoded_data = sha1(str(data).encode("utf-8")).digest()
     else:
         encoded_data = sha1(str(uuid4()).encode("utf-8")).digest()
-        
+
     digest = new(
         b'\x02\xb2X\xc65Y\xd8\x80C!\xc5\xd5\x06Z\xf3 5\x8d6o',
         b"\x42" + encoded_data,
         sha1).hexdigest()
-    
-    return "42" + encoded_data.hex() + digest
+
+    return f"42{encoded_data.hex()}{digest}"
 
 def signature(data: str) -> str:
     """

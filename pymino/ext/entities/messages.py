@@ -15,38 +15,37 @@ class PrepareMessage:
 class MessageAuthor:
     def __init__(self, data: dict):
         self.data = data
-        self.uid                         = self.data.get("uid", None)
-        self.userId                      = self.uid
-        self.status                      = self.data.get("status", None)
-        self.icon                        = self.data.get("icon", None)
-        self.avatar                      = self.icon
-        self.reputation                  = self.data.get("reputation", None)
-        self.role                        = self.data.get("role", None)
-        self.nickname                    = self.data.get("nickname", None)
-        self.username                    = self.nickname
-        self.level                       = self.data.get("level", None)
-        self.accountMembershipStatus     = self.data.get("accountMembershipStatus", None)
-        self.avatarFrame                 = self.data.get("avatarFrame", None)
+        self.uid:                         str = self.data.get("uid", None)
+        self.userId:                      str = self.uid
+        self.status:                      int = self.data.get("status", None)
+        self.icon:                        str = self.data.get("icon", None)
+        self.avatar:                      str = self.icon
+        self.reputation:                  int = self.data.get("reputation", None)
+        self.role:                        int = self.data.get("role", None)
+        self.nickname:                    str = self.data.get("nickname", None)
+        self.username:                    str = self.nickname
+        self.level:                       int = self.data.get("level", None)
+        self.accountMembershipStatus:     int = self.data.get("accountMembershipStatus", None)
+        self.avatarFrame:                 str = self.data.get("avatarFrame", None)
         
     def json(self): return self.data
 
 class CMessage:
     def __init__(self, data: dict):
-        self.data                = data.get('message', data)
-        self.includedInSummary   = self.data.get('includedInSummary', None)
-        self.uid                 = self.data.get('uid', None)
-        self.author              = MessageAuthor(self.data.get('author', None))
-        self.isHidden            = self.data.get('isHidden', None)
-        self.messageId           = self.data.get('messageId', None)
-        self.mediaType           = self.data.get('mediaType', None)
-        self.content             = self.data.get('content', None)
-        self.clientRefId         = self.data.get('clientRefId', None)
-        self.threadId            = self.data.get('threadId', None)
-        self.createdTime         = self.data.get('createdTime', None)
-        self.extensions          = self.data.get('extensions', None)
-        self.type                = self.data.get('type', None)
-        self.mediaValue          = self.data.get('mediaValue', None)
-
+        self.data                 = data.get('message', data)
+        self.includedInSummary:   str = self.data.get('includedInSummary', None)
+        self.uid:                 str = self.data.get('uid', None)
+        self.author:              MessageAuthor = MessageAuthor(self.data.get('author', None))
+        self.isHidden:            bool = self.data.get('isHidden', None)
+        self.messageId:           str = self.data.get('messageId', None)
+        self.mediaType:           int = self.data.get('mediaType', None)
+        self.content:             str = self.data.get('content', None)
+        self.clientRefId:         int = self.data.get('clientRefId', None)
+        self.threadId:            str = self.data.get('threadId', None)
+        self.createdTime:         str = self.data.get('createdTime', None)
+        self.extensions:          dict = self.data.get('extensions', None)
+        self.type:                int = self.data.get('type', None)
+        self.mediaValue:          str = self.data.get('mediaValue', None)
 
     def json(self): return self.data
 
@@ -95,7 +94,8 @@ class Message:
         self.ndcId:             int = self.data.get('ndcId', None)
         self.comId:             int = self.ndcId
         self.chatMessage:       dict = self.data.get('chatMessage', None)
-        self.author:            MessageAuthor = MessageAuthor(self.chatMessage.get('author', None))
+        if self.chatMessage.get('author', None) is not None:
+            self.author:        MessageAuthor = MessageAuthor(self.chatMessage.get('author', None))
         self.mediaValue:        str = self.chatMessage.get('mediaValue', None)
         self.threadId:          str = self.chatMessage.get('threadId', None)
         self.chatId:            str = self.threadId
