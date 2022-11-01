@@ -57,7 +57,7 @@ class Context():
         """
         return ApiResponse(self._session.handler(
             method = "POST",
-            url = f"/g/s/media/upload",
+            url = "/g/s/media/upload",
             data = (open(image, "rb") if isinstance(image, str) else image).read(),
             content_type = "image/jpg"
             )).mediaValue
@@ -370,7 +370,14 @@ class EventHandler(Context):
     def _handle_command(self, data: Message):
         """`_handle_command` is a function that handles commands."""
         command_name = data.content[len(self.command_prefix):].split(" ")[0]
-        if not self.command_exists(command_name): return self._handle_text_message(data)
+
+        if self.command_exists(command_name) != True:
+            if command_name == "help":
+                return self.context(data, self.request).reply(self._commands.__help__())
+            elif "text_message" in self._events:
+                return self._handle_text_message(data)
+            else:
+                return None
 
         parameters = [{
             "ctx": self.context(data, self.request),
@@ -450,8 +457,6 @@ class EventHandler(Context):
         
         if data.content.startswith(self.command_prefix):
             command_name = data.content.split(" ")[0][len(self.command_prefix):]
-            if command_name == "help":
-                return self.context(data, self.request).reply(self._commands.__help__())
         else:
             command_name = None
 

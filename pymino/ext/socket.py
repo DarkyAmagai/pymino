@@ -66,7 +66,9 @@ class WSClient(EventHandler):
 
     def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
         """Handles websocket errors."""
-        with suppress(KeyError): return self._events["error"](error)
+        with suppress(KeyError):
+            self._events["error"](error)
+        return None
 
     def on_websocket_message(self, ws: WebSocket, message: dict):
         """Handles websocket messages."""
