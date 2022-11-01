@@ -137,9 +137,8 @@ class Bot(WSClient):
         self.community.userId:  str = self.userId
         self.request.headers.update({"NDCAUTH": f"sid={self.sid}", "AUID": self.userId})
 
-        if not self.is_ready:
+        if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
             self.is_ready = True
-        if not hasattr(self, "disable_socket") or not self.disable_socket:
             self.connect()
 
         return response
