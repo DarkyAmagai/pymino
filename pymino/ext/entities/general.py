@@ -1,3 +1,4 @@
+from re import findall
 from .userprofile import UserProfile, UserProfileList
 
 class ApiResponse:
@@ -95,6 +96,8 @@ class CCommunity:
         self.templateId:                            int = self.data.get("templateId")
         self.searchable:                            bool = self.data.get("searchable")
         self.createdTime:                           str = self.data.get("createdTime")
+        self.ndcId:                                 int = self.data.get("ndcId") or int(findall(r'\d+', self.data.get("linkInfoV2").get("path"))[0])
+        self.comId:                                 int = self.ndcId
         
     def json(self) -> dict: return self.data
 
@@ -126,6 +129,8 @@ class CCommunityList:
         self.templateId:                            list = [x.templateId for x in parser]
         self.searchable:                            list = [x.searchable for x in parser]
         self.createdTime:                           list = [x.createdTime for x in parser]
+        self.ndcId:                                 list = [x.ndcId for x in parser]
+        self.comId:                                 list = [x.comId for x in parser]
     
     def json(self) -> dict: return self.data
 

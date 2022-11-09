@@ -163,7 +163,7 @@ class Bot(WSClient):
         bot.fetch_community_id("https://aminoapps.com/c/CommunityName")
         ```
         """
-        community_id = LinkInfo(self.request.handler(
+        community_id = CCommunity(self.request.handler(
             method="GET", url=f"/g/s/link-resolution?q={community_link}")
             ).comId
 

@@ -28,6 +28,8 @@ class RequestHandler:
                 "NDC-MSG-SIG": signature(data),
                 "CONTENT-TYPE": content_type if content_type is not None else "application/json; charset=utf-8"
                 })
+        else:
+            headers["CONTENT-TYPE"] = "application/json; charset=utf-8"
         try:
             response: HTTPResponse = request_methods[method](url, data=data, headers=headers, proxies=self.proxy)
         except (ConnectionError, ReadTimeout, SSLError, ProxyError, ConnectTimeout):
