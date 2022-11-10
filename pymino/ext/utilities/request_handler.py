@@ -12,7 +12,8 @@ class RequestHandler:
                             "USER-AGENT": "Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-N976N Build/LYZ28N; com.narvii.amino.master/3.5.34654)",
                             "HOST": "service.aminoapps.com",
                             "CONNECTION": "Keep-Alive",
-                            "ACCEPT-ENCODING": "gzip"
+                            "ACCEPT-ENCODING": "gzip",
+                            "CONTENT-TYPE": "application/json; charset=utf-8"
                             }
 
     def handler(self, method: str, url: str, data: Union[dict, bytes, None] = None, content_type: Optional[str] = None):
@@ -28,8 +29,7 @@ class RequestHandler:
                 "NDC-MSG-SIG": signature(data),
                 "CONTENT-TYPE": content_type if content_type is not None else "application/json; charset=utf-8"
                 })
-        else:
-            headers["CONTENT-TYPE"] = "application/json; charset=utf-8"
+
         try:
             response: HTTPResponse = request_methods[method](url, data=data, headers=headers, proxies=self.proxy)
         except (ConnectionError, ReadTimeout, SSLError, ProxyError, ConnectTimeout):

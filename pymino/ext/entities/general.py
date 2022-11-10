@@ -15,15 +15,16 @@ class ApiResponse:
 class LinkInfo:
     def __init__(self, data: dict):
         self.data:               dict = data
-        self.linkInfoV2:         dict = self.data.get('linkInfoV2', None)
-        self.path:               str = self.data.get('path', None)
-        self.objectId:           str = self.data.get('objectId', None)
-        self.targetCode:         str = self.data.get('targetCode', None)
-        self.ndcId:              int = self.data.get('ndcId', None)
-        self.comId:              int = self.ndcId
-        self.fullPath:           str = self.data.get('fullPath', None)
-        self.shortCode:          str = self.data.get('shortCode', None)
-        self.objectType:         int = self.data.get('objectType', None)
+        self.linkInfoV2:         dict = self.data.get('linkInfoV2', None) 
+        self.path:               str = self.data.get('path', None) or self.linkInfoV2.get('path', None)
+        self.extensions:         dict = self.data.get('extensions', None) or self.linkInfoV2.get('extensions', None)
+        self.objectId:           str = self.data.get('objectId', None) or self.extensions.get('linkInfo', {}).get('objectId', None)
+        self.targetCode:         str = self.data.get('targetCode', None) or self.extensions.get('linkInfo', {}).get('targetCode', None)
+        self.ndcId:              int = self.data.get('ndcId', None) or self.extensions.get('linkInfo', {}).get('ndcId', None)
+        self.comId:              int = self.ndcId 
+        self.fullPath:           str = self.data.get('fullPath', None) or self.extensions.get('linkInfo', {}).get('fullPath', None)
+        self.shortCode:          str = self.data.get('shortCode', None) or self.extensions.get('linkInfo', {}).get('shortCode', None)
+        self.objectType:         int = self.data.get('objectType', None) or self.extensions.get('linkInfo', {}).get('objectType', None)
 
     def json(self): return self.data
 

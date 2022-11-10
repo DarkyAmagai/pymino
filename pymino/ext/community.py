@@ -56,7 +56,7 @@ class Community:
             ))
 
     @community
-    def fetch_object_id(self, link: str) -> LinkInfo:
+    def fetch_object_id(self, link: str) -> str:
         """
         `fetch_object_id` is the method that fetches the object id from a link.
 
