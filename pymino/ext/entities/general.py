@@ -8,7 +8,7 @@ class ApiResponse:
         self.statuscode:         int = self.data.get('api:statuscode', None)
         self.duration:           str = self.data.get('api:duration', None)
         self.timestamp:          str = self.data.get('api:timestamp', None)
-        self.mediaValue:         str = self.data.get('mediaValue', None)
+        self.mediaValue:         str = self.data.get('mediaValue', None) or self.data.get('result', {}).get('mediaValue', None)
 
     def json(self): return self.data
 

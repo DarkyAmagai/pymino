@@ -18,7 +18,7 @@ class Community:
         self.session = session
         self.community_id = community_id
         self.userId: Optional[str] = None
-        if self.userId == None: return 
+        if self.userId is None: return 
 
     def community(func):
         def community_func(*args, **kwargs):
@@ -1935,11 +1935,12 @@ class Community:
         bot.community.upload_image(image="https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
         bot.run(sid=sid)
         """
-        if isinstance(image, str) and image.startswith("http"):
-            image = BytesIO(get(image).content)
-        elif isinstance(image, str) and not image.startswith("http"):
-            image = open(image, "rb")
-        return ApiResponse(self.session.handler(method="POST", url=f"/g/s/media/upload",
+        if isinstance(image, str):
+            if image.startswith("http"):
+                image = BytesIO(get(image).content)
+            elif not image.startswith("http"):
+                image = open(image, "rb")
+        return ApiResponse(self.session.handler(method="POST", url="/g/s/media/upload",
             data=image.read(), content_type="image/jpg")).mediaValue
 
     @community
@@ -2246,10 +2247,10 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method="POST", url= f'/x{self.community_id}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId if blogId else chatId if chatId else wikiId}/tipping',
+            method="POST", url= f'/x{self.community_id}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
             data = {
                 "coins": coins,
-                "tippingContext": {"transactionId": transactionId if transactionId else (str(uuid4()))},
+                "tippingContext": {"transactionId": transactionId or (str(uuid4()))},
                 "timestamp": int(time() * 1000)
                 }
             ))

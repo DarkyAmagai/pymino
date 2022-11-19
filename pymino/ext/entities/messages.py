@@ -3,10 +3,11 @@ from time import time
 class PrepareMessage:
     def __init__(self, **kwargs):
         self.base_message = {
-            "clientRefId": int(time() / 10 % 1000000000),
-            "timestamp": int(time() * 1000),
+            "content": kwargs.get("content", None),
+            "mediaType": kwargs.get("mediaType", 0),
             "type": kwargs.get("type", 0),
-            "content": kwargs.get("content", None)
+            "clientRefId": int(time() / 10 % 1000000000),
+            "timestamp": int(time() * 1000)
             }
         [self.base_message.update({key: kwargs[key]}) for key in kwargs]
 
@@ -32,7 +33,7 @@ class MessageAuthor:
 
 class CMessage:
     def __init__(self, data: dict):
-        self.data                 = data.get('message', data)
+        self.data:                dict = data.get('result') or data.get('message')
         self.includedInSummary:   str = self.data.get('includedInSummary', None)
         self.uid:                 str = self.data.get('uid', None)
         self.author:              MessageAuthor = MessageAuthor(self.data.get('author', None))

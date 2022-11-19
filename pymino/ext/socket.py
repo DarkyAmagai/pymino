@@ -4,41 +4,30 @@ from .context import EventHandler
 class WSClient(EventHandler):
     """
     `WSClient` is a class that handles the websocket.
-    ```
 
     `**Parameters**`
     - `client` - The bot client to use.
 
     """
     def __init__(self, client):
+        self.client         = client
+        self.channel:       Optional[Channel] = None
         EventHandler.__init__(self)
-        self.client = client
-        self.channel: Optional[Channel] = None
 
-    def fetch_headers(self, query: str):
-        return {
-            "USER-AGENT": "Dalvik/2.1.0 (Linux; U; Android 5.1.1; SM-N976N Build/LYZ28N; com.narvii.amino.master/3.5.34654)",
-            "NDCDEVICEID": device_id(),
-            "AUID": self.userId,
-            "NDC-MSG-SIG": signature(query),
-            "NDCAUTH": f"sid={self.sid}",
-            "NDCLANG": "en",
-            "ACCEPT-LANGUAGE": "en-US",
-            "UPGRADE": "websocket",
-            "CONNECTION": "Upgrade"
-        }
+    def fetch_ws_url(self):
+        """Fetches the websocket url."""
+        return get("https://aminoapps.com/api/chat/web-socket-url", headers={"cookie": f"sid={self.sid}"}).json()['result']['url']
 
     def connect(self):
         """Connects to the websocket."""
         self.run_forever()
+
         return self.emit("ready")
 
     def run_forever(self):
         """Runs the websocket forever."""
-        query = f"{device_id()}|{int(time() * 1000)}"
         self.ws = WebSocketApp(
-            url=f"wss://ws{randint(1, 4)}.aminoapps.com/?{urlencode({'signbody': query})}",
-            header=self.fetch_headers(query),
+            url=self.fetch_ws_url(),
             on_open=self.on_websocket_open,
             on_message=self.on_websocket_message,
             on_error=self.on_websocket_error,
@@ -78,7 +67,7 @@ class WSClient(EventHandler):
             1000: self._handle_message
             }
         raw_message: dict = loads(message)
-        
+
         return raw_message_types.get(raw_message["t"], lambda x: None)(raw_message)
 
     def _handle_message(self, message: dict):
