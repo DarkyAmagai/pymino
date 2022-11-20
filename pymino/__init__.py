@@ -2,11 +2,11 @@ __title__ = 'pymino'
 __author__ = 'cynical'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2022 Cynical'
-__version__ = '0.5.5'
+__version__ = '0.5.6'
 __description__ = 'A Python wrapper for the aminoapps.com API'
 
 from .bot import Bot
-
+from .client import Client
 print("Join the pymino discord server: https://discord.gg/gwGjWwsEVA")
 
 from requests import get

@@ -5,6 +5,7 @@ class RequestHandler:
     def __init__(self, bot, session: HTTPClient, proxy: Optional[str] = None):
         self.bot            = bot
         self.sid:           Optional[str] = None
+        self.userId:        Optional[str] = None
         self.session:       HTTPClient = session
         self.proxy:         Optional[str] = {"http": proxy, "https": proxy} if proxy is not None else None
 
@@ -18,6 +19,7 @@ class RequestHandler:
             "CONNECTION": "Keep-Alive",
             "ACCEPT-ENCODING": "gzip",
             "NDCAUTH": f"sid={self.sid}",
+            "AUID": self.userId,
             "CONTENT-TYPE": "application/json; charset=utf-8"
             }
 
@@ -98,5 +100,5 @@ class RequestHandler:
                 if response_json.get("api:statuscode") == 105: return self.bot.run(self.email, self.password)
 
             raise Exception(response.text)
-        
+
         return loads(response.text)

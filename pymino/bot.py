@@ -145,6 +145,7 @@ class Bot(WSClient):
         self.userId:            str = self.profile.userId
         self.community.userId:  str = self.userId
         self.request.sid:       str = self.sid
+        self.request.userId:   str = self.userId
 
         if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
             self.is_ready = True

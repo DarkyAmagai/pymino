@@ -30,7 +30,7 @@ class Account:
         bot.request_security_validation(email=email)
         code = input("Enter the code you received: ")
         response = bot.register(email=email, password=password, username=username, verificationCode=code)
-        print(response.json)
+        print(response.json())
         ```
         """
         return Authenticate(self.session.handler(
@@ -131,16 +131,17 @@ class Account:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/device",
-        data={
-            "deviceID": deviceId,
-            "clientType": 100,
-            "timezone": -310,
-            "systemPushEnabled": True,
-            "timestamp": int(time() * 1000)
-        }))
+            method = "POST",
+            url="/g/s/device",
+            data={
+                "deviceID": deviceId,
+                "clientType": 100,
+                "timezone": -310,
+                "systemPushEnabled": True,
+                "timestamp": int(time() * 1000)
+                }))
 
-    def fetch_account(self):
+    def fetch_account(self) -> ApiResponse:
         """
         `**fetch_account**` - Fetches the account information.
         
@@ -179,7 +180,7 @@ class Account:
         return ApiResponse(self.session.handler(method="POST", url="/g/s/media/upload",
             data=open(image, "rb").read(), content_type="image/jpg")).mediaValue
 
-    def fetch_profile(self)  -> UserProfile:
+    def fetch_profile(self) -> UserProfile:
         """
         `**fetch_profile**` - Fetches the profile information.
         
@@ -197,7 +198,7 @@ class Account:
         return UserProfile(self.session.handler(
             method = "GET", url = f"/g/s/user-profile/{self.userId}"))
 
-    def set_amino_id(self, aminoId: str):
+    def set_amino_id(self, aminoId: str) -> ApiResponse:
         """
         `**set_amino_id**` - Sets the amino id.
 
@@ -223,7 +224,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def fetch_wallet(self):
+    def fetch_wallet(self) -> Wallet:
         """
         `**fetch_wallet**` - Fetches the wallet information.
         

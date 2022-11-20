@@ -10,11 +10,11 @@ class Context():
     - `session` - The session we will use to send requests.
 
     """
-    def __init__(self, message: Message, session, session_login: bool=False, userId: str=None):
+    def __init__(self, message: Message, session, session_login: bool=False):
         self.message:       Message = message
-        self._session       = session
+        self.userId:        str = session.userId
+        self.request        = session
         self.session_login: bool = session_login
-        self.userId:        str = userId
 
     @property
     def author(self) -> MessageAuthor:
@@ -84,7 +84,7 @@ class Context():
             } if self.session_login else PrepareMessage(**kwargs).json()
 
     def __send_message__(self, **kwargs) -> CMessage:
-        return CMessage(self._session.handler(
+        return CMessage(self.request.handler(
             method = "POST",
             url = self.__message_endpoint__,
             data = self.__message__(**kwargs)
@@ -104,7 +104,7 @@ class Context():
         
         """
         wait(delete_after)
-        return ApiResponse(self._session.handler(
+        return ApiResponse(self.request.handler(
             method = "DELETE",
             url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}"
             ))
@@ -133,7 +133,7 @@ class Context():
         `**Returns**`
         - `str` - The image URL.
         """
-        return ApiResponse(self._session.handler(
+        return ApiResponse(self.request.handler(
             method = "POST",
             url = f"{self.default}/upload-image" if self.session_login else "/g/s/media/upload",
             data = self.__read_image__(image),
@@ -316,6 +316,60 @@ class Context():
         """
         return CMessage(self.__send_message__(type=2, mediaType=110, mediaUploadValue=b64encode((self.__prep_file__(audio, False)).read()).decode()))
 
+    @_run
+    def join_chat(self, chatId: str=None) -> ApiResponse:
+        """
+        `join_chat` - This joins a chat.
+
+        `**Example**``
+        ```py
+        @bot.on_text_message()
+        def on_text_message(ctx: Context):
+            ctx.join_chat(chatId="0000-0000-0000-0000")
+        ```
+        """
+        chatId = chatId or self.chatId
+        if self.session_login:
+            url = f"{self.api}/join-thread"
+            data={"ndcId": self.communityId, "threadId": chatId}
+        else:
+            url = f"/{self.communityId}/s/chat/thread/{chatId}/member/{self.userId}"
+            data=None
+
+        return ApiResponse(self.request.handler(
+            method="POST",
+            url=url,
+            data=data
+            ))
+
+    @_run
+    def leave_chat(self, chatId: str=None) -> ApiResponse:
+        """
+        `leave_chat` - This leaves a chat.
+
+        `**Example**``
+        ```py
+        @bot.on_text_message()
+        def on_text_message(ctx: Context):
+            ctx.leave_chat(chatId="0000-0000-0000-0000")
+        ```
+        """
+        chatId = chatId or self.chatId
+        if self.session_login:
+            method = "POST"
+            url = f"{self.api}/leave-thread"
+            data={"ndcId": self.communityId, "threadId": chatId}
+        else:
+            method="DELETE"
+            url = f"/{self.communityId}/s/chat/thread/{chatId}/member/{self.userId}"
+            data=None
+
+        return ApiResponse(self.request.handler(
+            method=method,
+            url=url,
+            data=data
+            ))
+
 class EventHandler(Context):
     """
     `EventHandler` - AKA where all the events are handled.
@@ -325,10 +379,10 @@ class EventHandler(Context):
 
     """
     def __init__(self):
-        super().__init__(self, self.request, self.session_login, self.userId)
         self.command_prefix:    str = self.command_prefix
         self._events:           dict = {}
         self._commands:         Commands = Commands()
+        super().__init__(self, self.request, self.session_login)
 
     def start_task(self, func):
         """`start_task` - This starts a task."""
