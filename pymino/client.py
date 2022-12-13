@@ -183,7 +183,7 @@ class Client():
         """
         return CCommunity(self.request.handler(
             method="GET",
-            url=f"/s-x{community_id}/community/info"
+            url=f"/g/s-x{community_id}/community/info"
             ))
 
     @authenticated

@@ -52,53 +52,39 @@ class CheckIn:
         self.hasAnyCheckIn:             bool = self.checkInHistory.get('hasAnyCheckIn', None)
         self.history:                   dict = self.checkInHistory.get('history', None)
         self.userProfile:               UserProfile = UserProfile(self.data.get('userProfile', None))
-        self.status:                    int = self.userProfile.get('status', None)
-        self.isNicknameVerified:        bool = self.userProfile.get('isNicknameVerified', None)
-        self.uid:                       str = self.userProfile.get('uid', None)
-        self.level:                     int = self.userProfile.get('level', None)
-        self.followingStatus:           int = self.userProfile.get('followingStatus', None)
-        self.accountMembershipStatus:   int = self.userProfile.get('accountMembershipStatus', None)
-        self.isGlobal:                  bool = self.userProfile.get('isGlobal', None)
-        self.membershipStatus:          int = self.userProfile.get('membershipStatus', None)
-        self.avatarFrameId:             str = self.userProfile.get('avatarFrameId', None)
-        self.reputation:                int = self.userProfile.get('reputation', None)
-        self.role:                      int = self.userProfile.get('role', None)
-        self.ndcId:                     int = self.userProfile.get('ndcId', None)
-        self.membersCount:              int = self.userProfile.get('membersCount', None)
-        self.nickname:                  str = self.userProfile.get('nickname', None)
-        self.icon:                      str = self.userProfile.get('icon', None)
 
     def json(self): return self.data
 
 class CCommunity:
     def __init__(self, data: dict):
         self.data:                                  dict = data.get("community", data)
-        self.isStandaloneAppMonetizationEnabled:    bool = self.data.get("isStandaloneAppMonetizationEnabled")
-        self.keywords:                              list = self.data.get("keywords")
-        self.isStandaloneAppDeprecated:             bool = self.data.get("isStandaloneAppDeprecated")
-        self.activeInfo:                            dict = self.data.get("activeInfo")
-        self.promotionalMediaList:                  list = self.data.get("promotionalMediaList")
-        self.themePack:                             dict = self.data.get("themePack")
-        self.status:                                int = self.data.get("status")
-        self.probationStatus:                       int = self.data.get("probationStatus")
-        self.updatedTime:                           str = self.data.get("updatedTime")
-        self.primaryLanguage:                       str = self.data.get("primaryLanguage")
-        self.modifiedTime:                          str = self.data.get("modifiedTime")
-        self.membersCount:                          int = self.data.get("membersCount")
-        self.tagline:                               str = self.data.get("tagline")
-        self.name:                                  str = self.data.get("name")
-        self.endpoint:                              str = self.data.get("endpoint")
-        self.communityHeadList:                     list = self.data.get("communityHeadList")
-        self.listedStatus:                          int = self.data.get("listedStatus")
-        self.extensions:                            list = self.data.get("extensions")
-        self.mediaList:                             list = self.data.get("mediaList")
-        self.userAddedTopicList:                    list = self.data.get("userAddedTopicList")
-        self.communityHeat:                         int = self.data.get("communityHeat")
-        self.templateId:                            int = self.data.get("templateId")
-        self.searchable:                            bool = self.data.get("searchable")
+        self.isStandaloneAppMonetizationEnabled:    bool = self.data.get("isStandaloneAppMonetizationEnabled", None)
+        self.keywords:                              list = self.data.get("keywords", None)
+        self.isStandaloneAppDeprecated:             bool = self.data.get("isStandaloneAppDeprecated", None)
+        self.activeInfo:                            dict = self.data.get("activeInfo", None)
+        self.promotionalMediaList:                  list = self.data.get("promotionalMediaList", None)
+        self.themePack:                             dict = self.data.get("themePack", None)
+        self.status:                                int = self.data.get("status", None)
+        self.probationStatus:                       int = self.data.get("probationStatus", None)
+        self.updatedTime:                           str = self.data.get("updatedTime", None)
+        self.primaryLanguage:                       str = self.data.get("primaryLanguage", None)
+        self.modifiedTime:                          str = self.data.get("modifiedTime", None)
+        self.membersCount:                          int = self.data.get("membersCount", None)
+        self.tagline:                               str = self.data.get("tagline", None)
+        self.name:                                  str = self.data.get("name", None)
+        self.endpoint:                              str = self.data.get("endpoint", None)
+        self.communityHeadList:                     list = self.data.get("communityHeadList", None)
+        self.listedStatus:                          int = self.data.get("listedStatus", None)
+        self.extensions:                            list = self.data.get("extensions", None)
+        self.mediaList:                             list = self.data.get("mediaList", None)
+        self.userAddedTopicList:                    list = self.data.get("userAddedTopicList", None)
+        self.communityHeat:                         int = self.data.get("communityHeat", None)
+        self.templateId:                            int = self.data.get("templateId", None)
+        self.searchable:                            bool = self.data.get("searchable", None)
         self.createdTime:                           str = self.data.get("createdTime")
         self.ndcId:                                 int = self.data.get("ndcId") or int(findall(r'\d+', self.data.get("linkInfoV2").get("path"))[0])
         self.comId:                                 int = self.ndcId
+        self.icon:                                  str = self.data.get("icon", None)
         
     def json(self) -> dict: return self.data
 
@@ -132,6 +118,7 @@ class CCommunityList:
         self.createdTime:                           list = [x.createdTime for x in parser]
         self.ndcId:                                 list = [x.ndcId for x in parser]
         self.comId:                                 list = [x.comId for x in parser]
+        self.icon:                                  list = [x.icon for x in parser]
     
     def json(self) -> dict: return self.data
 
@@ -224,7 +211,7 @@ class Coupon:
 
 class Wallet:
     def __init__(self, data: dict):
-        self.data:                  dict = data.get(data, None)
+        self.data:                  dict = data
         self.totalCoinsFloat:       float = self.data.get("totalCoinsFloat", None)
         self.adsEnabled:            bool = self.data.get("adsEnabled", None)
         self.adsVideoStats:         dict = self.data.get("adsVideoStats", None)
@@ -238,7 +225,7 @@ class Wallet:
 
 class Themepack:
     def __init__(self, data: dict):
-        self.data:                  dict = data.get(data, None)
+        self.data:                  dict = data
         self.themeColor:            str = self.data.get("themeColor", None)
         self.themePackHash:         str = self.data.get("themePackHash", None)
         self.themePackRevision:     int = self.data.get("themePackRevision", None)
@@ -248,7 +235,7 @@ class Themepack:
 
 class Notification:
     def __init__(self, data: dict):
-        self.data:              dict = data.get(data, None)
+        self.data:              dict = data
         self.parentText:        str = self.data.get("parentText", None)
         self.objectId:          str = self.data.get("objectId", None)
         self.contextText:       str = self.data.get("contextText", None)
@@ -268,7 +255,7 @@ class Notification:
 
 class ResetPassword:
     def __init__(self, data: dict):
-        self.data:              dict = data.get(data, None)
+        self.data:      dict = data
         self.response:  ApiResponse = ApiResponse(self.data)
         self.secret:    str = self.data.get("secret", None)
 
@@ -276,7 +263,7 @@ class ResetPassword:
 
 class Authenticate:
     def __init__(self, data: dict):
-        self.data:      dict = data.get(data, None)
+        self.data:      dict = data
         self.sid:       str = self.data.get("sid", None)
         self.userId:    str = self.data.get("auid", None)
         self.profile:   UserProfile = UserProfile(self.data.get("userProfile", None))
