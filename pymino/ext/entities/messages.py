@@ -1,5 +1,5 @@
 from time import time
-
+from re import findall
 class PrepareMessage:
     def __init__(self, **kwargs):
         self.base_message = {
@@ -91,30 +91,32 @@ class CMessages:
 
 class Message:
     def __init__(self, data: dict):
-        self.data:              dict = data.get("o", data)
-        self.ndcId:             int = self.data.get('ndcId', None)
-        self.comId:             int = self.ndcId
-        self.chatMessage:       dict = self.data.get('chatMessage', None)
-        if self.chatMessage.get('author', None) is not None:
-            self.author:        MessageAuthor = MessageAuthor(self.chatMessage.get('author', None))
-        self.mediaValue:        str = self.chatMessage.get('mediaValue', None)
-        self.threadId:          str = self.chatMessage.get('threadId', None)
-        self.chatId:            str = self.threadId
-        self.mediaType:         int = self.chatMessage.get('mediaType', None)
-        self.content:           str = self.chatMessage.get('content', None)
-        self.clientRefId:       int = self.chatMessage.get('clientRefId', None)
-        self.messageId:         str = self.chatMessage.get('messageId', None)
-        self.uid:               str = self.chatMessage.get('uid', None)
-        self.userId:            str = self.uid
-        self.createdTime:       str = self.chatMessage.get('createdTime', None)
-        self.type:              int = self.chatMessage.get('type', None)
-        self.isHidden:          bool = self.chatMessage.get('isHidden', None)
-        self.includedInSummary: bool = self.chatMessage.get('includedInSummary', None)
-        self.chatBubbleId:      str = self.chatMessage.get('chatBubbleId', None)
-        self.chatBubbleVersion: int = self.chatMessage.get('chatBubbleVersion', None)
-        self.extensions:        dict = self.chatMessage.get('extensions', None)
-        self.alertOption:       int = self.data.get('alertOption', None)
-        self.membershipStatus:  int = self.data.get('membershipStatus', None)
+        self.data:                 dict = data.get("o", data)
+        self.ndcId:                int = self.data.get('ndcId', None)
+        self.comId:                int = self.ndcId
+        self.chatMessage:          dict = self.data.get('chatMessage', None)
+        self.author:               MessageAuthor = MessageAuthor(self.chatMessage.get('author', None)) if self.chatMessage else None
+        self.mediaValue:           str = self.chatMessage.get('mediaValue', None)
+        self.threadId:             str = self.chatMessage.get('threadId', None)
+        self.chatId:               str = self.threadId
+        self.mediaType:            int = self.chatMessage.get('mediaType', None)
+        self.content:              str = self.chatMessage.get('content', None)
+        self.clientRefId:          int = self.chatMessage.get('clientRefId', None)
+        self.messageId:            str = self.chatMessage.get('messageId', None)
+        self.uid:                  str = self.chatMessage.get('uid', None)
+        self.userId:               str = self.uid
+        self.createdTime:          str = self.chatMessage.get('createdTime', None)
+        self.type:                 int = self.chatMessage.get('type', None)
+        self.isHidden:             bool = self.chatMessage.get('isHidden', None)
+        self.includedInSummary:    bool = self.chatMessage.get('includedInSummary', None)
+        self.chatBubbleId:         str = self.chatMessage.get('chatBubbleId', None)
+        self.chatBubbleVersion:    int = self.chatMessage.get('chatBubbleVersion', None)
+        self.extensions:           dict = self.chatMessage.get('extensions', None)
+        self.mentioned_userids:    list = [i.get('uid', None) for i in self.extensions.get('mentionedArray', None)] if self.extensions.get('mentionedArray', None) is not None else None
+        self.mentioned_usernames:  list = findall(r'@([^\u202c\u202d]+)', self.content) if self.content is not None else None
+        self.mentioned_dictionary: dict = dict(zip(self.mentioned_userids, self.mentioned_usernames)) if self.mentioned_userids is not None and self.mentioned_usernames is not None else None
+        self.alertOption:          int = self.data.get('alertOption', None)
+        self.membershipStatus:     int = self.data.get('membershipStatus', None)
         
     def json(self): return self.data
 
