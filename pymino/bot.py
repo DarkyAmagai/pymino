@@ -32,7 +32,6 @@ class Bot(WSClient):
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
         self.is_ready:          bool = False
-        self.session_login:     bool = False
         self.userId:            str = None
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
@@ -114,7 +113,6 @@ class Bot(WSClient):
         ```
         """
         if email and password:
-            self.session_login = False
 
             for key, value in {"email": email, "password": password}.items():
                 setattr(self.request, key, value)
@@ -122,11 +120,11 @@ class Bot(WSClient):
             response: dict = self.authenticate(email, password)
 
         elif sid:
-            self.session_login = True
             self.sid:               str = sid
             self.request.sid:       str = self.sid
             self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
             response:               dict = self.fetch_account()
+
         else:
             raise Exception("You're missing either an email and password or a sid.")
 
@@ -145,7 +143,7 @@ class Bot(WSClient):
         self.userId:            str = self.profile.userId
         self.community.userId:  str = self.userId
         self.request.sid:       str = self.sid
-        self.request.userId:   str = self.userId
+        self.request.userId:    str = self.userId
 
         if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
             self.is_ready = True
