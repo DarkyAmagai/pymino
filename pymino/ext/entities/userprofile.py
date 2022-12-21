@@ -7,6 +7,7 @@ class UserProfile:
         self.consecutiveCheckInDays:    int = self.data.get('consecutiveCheckInDays', None)
         self.uid:                       str = self.data.get('uid', None)
         self.userId:                    str = self.uid
+        self.aminoId:                   str = self.data.get('aminoId', None)
         self.modifiedTime:              str = self.data.get('modifiedTime', None)
         self.followingStatus:           int = self.data.get('followingStatus', None)
         self.onlineStatus:              int = self.data.get('onlineStatus', None)
