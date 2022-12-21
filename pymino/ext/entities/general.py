@@ -211,7 +211,7 @@ class Coupon:
 
 class Wallet:
     def __init__(self, data: dict):
-        self.data:                  dict = data
+        self.data:                  dict = data.get("wallet", data)
         self.totalCoinsFloat:       float = self.data.get("totalCoinsFloat", None)
         self.adsEnabled:            bool = self.data.get("adsEnabled", None)
         self.adsVideoStats:         dict = self.data.get("adsVideoStats", None)
