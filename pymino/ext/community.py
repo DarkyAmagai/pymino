@@ -2504,3 +2504,71 @@ class Community:
                 },
                 "t": 112 if i == 0 else 200
                 })
+
+    @community
+    def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        """
+        `start_vc` is the method that starts a voice call in a chat.
+        
+        `**Parameters**`
+        
+        - `chatId` - The chat ID to start the voice call in.
+        
+        `**Example**`
+        
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        
+        @bot.command("start")
+        def start(ctx: Context):
+            bot.community.start_vc(chatId=ctx.chatId)
+            
+        bot.run(sid=sid)
+        ```
+        """
+        for i in range(2):
+            self.bot.send_websocket_message({
+                "o": {
+                    "ndcId": self.community_id if comId is None else comId,
+                    "threadId": chatId,
+                    "joinRole": 1 if i == 0 else None,
+                    "channelType": 1 if i == 1 else None,
+                    "id": randint(0, 100)
+                },
+                "t": 112 if i == 0 else 108
+            })
+
+    @community
+    def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        """
+        `stop_vc` is the method that stops a voice call in a chat.
+        
+        `**Parameters**`
+        
+        - `chatId` - The chat ID to stop the voice call in.
+        
+        `**Example**`
+        
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        
+        @bot.command("stop")
+        def stop(ctx: Context):
+            bot.community.stop_vc(chatId=ctx.chatId)
+            
+        bot.run(sid=sid)
+        ```
+        """
+        self.bot.send_websocket_message({
+            "o": {
+                "ndcId": self.community_id if comId is None else comId,
+                "threadId": chatId,
+                "joinRole": 2,
+                "id": randint(0, 100)
+            },
+            "t": 112
+        })
