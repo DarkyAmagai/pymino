@@ -10,11 +10,10 @@ class Context():
     - `session` - The session we will use to send requests.
 
     """
-    def __init__(self, message: Message, session, session_login: bool=False):
+    def __init__(self, message: Message, session):
         self.message:       Message = message
         self.userId:        str = session.userId
         self.request        = session
-        self.session_login: bool = session_login
 
     @property
     def author(self) -> MessageAuthor:
@@ -24,7 +23,6 @@ class Context():
     @property
     def communityId(self) -> str:
         """Sets the url to community/global."""
-        if all([self.message.comId == 0, not self.session_login]): return "g"
         return f"x{self.message.comId}"
 
     @property
@@ -37,16 +35,12 @@ class Context():
         return "https://aminoapps.com/api"
 
     @property
-    def service(self) -> str:
+    def api(self) -> str:
         return "https://service.aminoapps.com/api/v1"
 
     @property
-    def api(self) -> str:
-        return self.default if self.session_login else self.service
-
-    @property
     def __message_endpoint__(self) -> str:
-        return f"{self.api}/add-chat-message" if self.session_login else f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message"
+        return f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message"
 
     def _run(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
@@ -72,16 +66,11 @@ class Context():
             "mediaUploadValue": kwargs.get("mediaUploadValue"),
             "stickerId": kwargs.get("stickerId"),
             "attachedObject": kwargs.get("attachedObject"),
-            "uid": self.userId,
-            "sendFailed": False if self.session_login else None
+            "uid": self.userId
             } 
 
     def __message__(self, **kwargs) -> dict:
-        return {
-            "ndcId": self.communityId,
-            "threadId": self.message.chatId,
-            "message": PrepareMessage(**kwargs).json()
-            } if self.session_login else PrepareMessage(**kwargs).json()
+        return PrepareMessage(**kwargs).json()
 
     def __send_message__(self, **kwargs) -> CMessage:
         return CMessage(self.request.handler(
@@ -115,9 +104,15 @@ class Context():
         mediaValue: bool=True,
         content_type: str="image/jpg"
         ) -> BinaryIO:
+
         if all([mediaValue, file.startswith("http://pm1.narvii.com")]): return file
-        file = BytesIO(get(file).content) if file.startswith("http") else open(file, "rb")
-        return self.upload_image(file, content_type) if mediaValue else file
+
+        if file.startswith("http"):
+            file: BinaryIO = BytesIO(get(file).content)
+            file = file.read() if mediaValue else b64encode(file.read()).decode()
+        else:
+            file = b64encode(open(file, "rb").read()).decode()
+        return self.upload_image(file, content_type=content_type) if mediaValue else file
 
     def upload_image(
         self,
@@ -135,16 +130,17 @@ class Context():
         """
         return ApiResponse(self.request.handler(
             method = "POST",
-            url = f"{self.default}/upload-image" if self.session_login else "/g/s/media/upload",
-            data = self.__read_image__(image),
-            content_type = "multipart/form-data" if self.session_login else content_type
+            url = "/g/s/media/upload",
+            data = image,
+            content_type = content_type
             )).mediaValue
 
     @_run
     def send(
         self,
         content: str,
-        delete_after: int= None
+        delete_after: int= None,
+        mentioned: Union[str, List[str]]= None
         ) -> CMessage:
         """
         `send` - This sends a message.
@@ -152,6 +148,7 @@ class Context():
         `**Parameters**``
         - `content` - The message you want to send.
         - `delete_after` - The time in seconds before the message is deleted. [Optional]
+        - `mentioned` - The user(s) you want to mention. [Optional]
 
         `**Returns**`` - CMessage object.
 
@@ -162,7 +159,7 @@ class Context():
             ctx.send(content="Hello World!", delete_after=None)
         ```
         """
-        message: CMessage = self.__send_message__(content=content)
+        message: CMessage = self.__send_message__(content=content, extensions = {"mentionedArray": [{"uid": self.message.author.userId}] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned] if isinstance(mentioned, list) else None})
         if delete_after: self._delete(message, delete_after)
         return message
 
@@ -170,7 +167,8 @@ class Context():
     def reply(
         self,
         content: str,
-        delete_after: int= None
+        delete_after: int= None,
+        mentioned: Union[str, List[str]]= None
         ) -> CMessage:
         """
         `reply` - This replies to the message.
@@ -178,6 +176,7 @@ class Context():
         `**Parameters**``
         - `content` - The message you want to send.
         - `delete_after` - The time in seconds before the message is deleted. [Optional]
+        - `mentioned` - The user(s) you want to mention. [Optional]
 
         `**Returns**`` - CMessage object.
 
@@ -188,26 +187,51 @@ class Context():
             ctx.reply(content = "Hello World!", delete_after = None)
         ```
         """
-        message: CMessage = self.__send_message__(content=content, replyMessageId=self.message.messageId)
+        message: CMessage = self.__send_message__(content=content, replyMessageId=self.message.messageId, extensions = {"mentionedArray": [{"uid": self.message.author.userId}] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned] if isinstance(mentioned, list) else None})
         if delete_after: self._delete(message, delete_after)
         return message
+
+    def prepare_mentions(self, mentioned: dict):
+        """
+        `prepare_mentions` - This prepares the mentions for the message.
+        
+        `**Parameters**``
+        - `mentioned` - `ctx.message.mentioned_dictionary`.
+        
+        `**Returns**``
+        - `list` - The list of mentions to use as your `message`
+
+        `**Example**``
+        ```py
+        @bot.command("mention")
+        def mention(ctx: Context):
+            mentioned_users = ctx.message.mentioned_dictionary
+            if not mentioned_users:
+                return ctx.reply("You didn't mention anyone!")
+
+            mentioned = ctx.prepare_mentions(mentioned_users)
+            return ctx.reply(
+                "Mentioned: " + ", ".join(mentioned), mentioned=list(mentioned_users)
+            )
+        """
+        return [
+            f"\u200e\u200f@{mentioned[user_id]}\u202c\u202d"
+            for user_id in mentioned
+        ]
 
     @_run
     def send_embed(
         self,
         message: str,
-        embed_title: str,
-        embed_content: str,
         embed_image: str,
-        embed_link: Optional[str]=None
+        embed_link: Optional[str]=None,
+        mentioned: Union[str, List[str]]= None
         ) -> CMessage:
         """
         `send_embed` - This sends an embed.
 
         `**Parameters**``
         - `message` - The message you want to send.
-        - `embed_title` - The title of the embed.
-        - `embed_content` - The content of the embed.
         - `embed_image` - The image link or image file.
         - `embed_link` - The link of the embed. [Optional]
 
@@ -229,13 +253,15 @@ class Context():
         return CMessage(
             self.__send_message__(
                 content=message,
-                attachedObject={
-                    "title": embed_title,
-                    "content": embed_content,
-                    "mediaList": [[100, self.__prep_file__(embed_image), None]],
+                extensions = {
+                    "linkSnippetList": [{
+                    "mediaType": 100,
+                    "mediaUploadValue": self.__prep_file__(embed_image, False),
+                    "mediaUploadValueContentType": "image/png",
                     "link": embed_link
-                    }
-                ))
+                    }],
+                    "mentionedArray": [{"uid": self.message.author.userId}] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned] if isinstance(mentioned, list) else None
+                    }))
 
     @_run
     def send_image(self, image: str) -> CMessage:
@@ -254,8 +280,7 @@ class Context():
             ctx.send_image(image="https://i.imgur.com/image.jpg")
         ```
         """
-        return CMessage(
-            self.__send_message__(mediaType=100, mediaUploadValue=b64encode((self.__prep_file__(image, False)).read()).decode()))
+        return CMessage(self.__send_message__(mediaType=100, mediaUploadValue=self.__prep_file__(image, False)))
 
     @_run
     def send_sticker(self, sticker_id: str) -> CMessage:
@@ -295,7 +320,7 @@ class Context():
             ctx.send_gif(gif="https://i.imgur.com/image.gif")
         ```
         """
-        return CMessage(self.__send_message__(mediaType=100, mediaValue=self.__prep_file__(gif, content_type="image/gif")))
+        return CMessage(self.__send_message__(mediaType=100, mediaUploadValue=self.__prep_file__(gif, False), mediaUploadValueContentType="image/gif"))
 
     @_run
     def send_audio(self, audio: str) -> CMessage:
@@ -314,7 +339,7 @@ class Context():
             ctx.send_audio(audio="output.mp3")
         ```
         """
-        return CMessage(self.__send_message__(type=2, mediaType=110, mediaUploadValue=b64encode((self.__prep_file__(audio, False)).read()).decode()))
+        return CMessage(self.__send_message__(type=2, mediaType=110, mediaUploadValue=self.__prep_file__(audio, False)))
 
     @_run
     def join_chat(self, chatId: str=None) -> ApiResponse:
@@ -329,18 +354,8 @@ class Context():
         ```
         """
         chatId = chatId or self.chatId
-        if self.session_login:
-            url = f"{self.api}/join-thread"
-            data={"ndcId": self.communityId, "threadId": chatId}
-        else:
-            url = f"/{self.communityId}/s/chat/thread/{chatId}/member/{self.userId}"
-            data=None
-
-        return ApiResponse(self.request.handler(
-            method="POST",
-            url=url,
-            data=data
-            ))
+        url = f"/{self.communityId}/s/chat/thread/{chatId}/member/{self.userId}"
+        return ApiResponse(self.request.handler(method="POST", url=url))
 
     @_run
     def leave_chat(self, chatId: str=None) -> ApiResponse:
@@ -355,20 +370,8 @@ class Context():
         ```
         """
         chatId = chatId or self.chatId
-        if self.session_login:
-            method = "POST"
-            url = f"{self.api}/leave-thread"
-            data={"ndcId": self.communityId, "threadId": chatId}
-        else:
-            method="DELETE"
-            url = f"/{self.communityId}/s/chat/thread/{chatId}/member/{self.userId}"
-            data=None
-
-        return ApiResponse(self.request.handler(
-            method=method,
-            url=url,
-            data=data
-            ))
+        url = f"/{self.communityId}/s/chat/thread/{chatId}/member/{self.userId}"
+        return ApiResponse(self.request.handler(method="DELETE", url=url))
 
 class EventHandler(Context):
     """
@@ -382,7 +385,7 @@ class EventHandler(Context):
         self.command_prefix:    str = self.command_prefix
         self._events:           dict = {}
         self._commands:         Commands = Commands()
-        super().__init__(self, self.request, self.session_login)
+        super().__init__(self, self.request)
 
     def start_task(self, func):
         """`start_task` - This starts a task."""
@@ -499,14 +502,14 @@ class EventHandler(Context):
 
         if self.command_exists(command_name) != True:
             if command_name == "help":
-                return Context(data, self.request, self.session_login).reply(self._commands.__help__())
+                return Context(data, self.request).reply(self._commands.__help__())
             elif "text_message" in self._events:
                 return self._handle_text_message(data)
             else:
                 return None
 
         parameters = [{
-            "ctx": Context(data, self.request, self.session_login),
+            "ctx": Context(data, self.request),
             "message": data.content[len(self.command_prefix) + len(command_name) + 1:],
             "username": data.author.username,
             "userId": data.author.userId
@@ -516,7 +519,7 @@ class EventHandler(Context):
 
         if self._commands.fetch_command(command_name).cooldown > 0:
             if self._commands.fetch_cooldown(command_name, data.author.userId) > time():
-                return Context(data, self.request, self.session_login).reply(f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
+                return Context(data, self.request).reply(f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
             self._commands.set_cooldown(command_name, self._commands.fetch_command(command_name).cooldown, data.author.userId)
 
         return self._commands.fetch_command(command_name).func(*parameters)
@@ -579,7 +582,7 @@ class EventHandler(Context):
     def _handle_text_message(self, data: Message):
         """`_handle_text_message` is a function that handles text messages."""
 
-        ctx: Context = Context(data, self.request, self.session_login)
+        ctx: Context = Context(data, self.request)
         
         if data.content.startswith(self.command_prefix):
             command_name = data.content.split(" ")[0][len(self.command_prefix):]
@@ -972,5 +975,5 @@ class EventHandler(Context):
 
         elif any([event != "text_message", event != "user_online"]):
             with suppress(KeyError):
-                return self._events[event](Context(data, self.request, self.session_login))
+                return self._events[event](Context(data, self.request))
         
