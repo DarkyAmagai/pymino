@@ -2494,20 +2494,13 @@ class Community:
                     )
         
         """
-        self.bot.send_websocket_message({
-            "o": {
-                "ndcId": self.community_id if comId is None else comId,
-                "threadId": chatId,
-                "joinRole": 1,
-                "id": randint(0, 100)
-            },
-            "t": 112
-            })
-        self.bot.send_websocket_message({
-            "o": {
-                "ndcId": self.community_id if comId is None else comId,
-                "threadId": chatId,
-                "id": randint(0, 100)
-            },
-            "t": 200
-            })
+        for i in range(2):
+            self.bot.send_websocket_message({
+                "o": {
+                    "ndcId": self.community_id if comId is None else comId,
+                    "threadId": chatId,
+                    "joinRole": 1 if i == 0 else None,
+                    "id": randint(0, 100)
+                },
+                "t": 112 if i == 0 else 200
+                })
