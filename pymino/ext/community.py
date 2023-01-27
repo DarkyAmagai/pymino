@@ -109,7 +109,7 @@ class Community:
             method = "GET",
             url = f"/g/s/link-resolution?q={link}"
             ))
- 
+    
     @community
     def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
         """
@@ -816,7 +816,7 @@ class Community:
             ))
 
     @community
-    def follow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def follow(self, userId: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
         """
         `follow` is the method that follows user.
 
@@ -834,10 +834,16 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member"
-            ))
+        return ApiResponse(
+            self.session.handler(
+                method="POST",
+                url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/{'member' if isinstance(userId, str) else 'joined'}",
+                data={
+                    "timestamp": int(time()),
+                    "targetUidList": userId
+                } if isinstance(userId, list) else None
+            )
+        )
 
     @community
     def unfollow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -860,7 +866,7 @@ class Community:
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/joined/{userId}"
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member/{self.userId}"
             ))
 
     @community
@@ -1364,7 +1370,9 @@ class Community:
         ```
         """
         return UserProfile(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}"))
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}?action=visit"
+            ))
 
     @community
     def reply_wall(self, userId: str, commentId: str, message: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -1694,6 +1702,9 @@ class Community:
         nickname: str = None,
         content: str = None,
         icon: Union[str, BytesIO] = None,
+        background_color: str = None,
+        background_image: Union[str, BytesIO] = None,
+        cover_image: Union[str, BytesIO] = None,
         comId: Union[str, int] = None
         ) -> UserProfile:
         """
@@ -1705,6 +1716,14 @@ class Community:
 
         - `content` - The content to edit.
 
+        - `icon` - The icon to edit.
+
+        - `background_color` - The background color to change to. [Example: `#ffffff`]
+
+        - `background_image` - The background image to change to.
+
+        - `cover_image` - The cover image to change to.
+
         `**Example**`
 
         ```python
@@ -1715,14 +1734,21 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        data = {"timestamp": int(time() * 1000)}
-        [
-            data.update({key: value}) for key, value in {
-                "nickname": nickname,
-                "content": content,
-                "icon": self.upload_image(icon) if icon is not None else None
-                }.items() if value is not None
-        ]
+        data: dict = {"timestamp": int(time() * 1000), "extensions": {}}
+
+        [data.update({key: value}) for key, value in {
+            "nickname": nickname,
+            "content": content,
+            "icon": self.upload_image(icon) if icon is not None else None,
+            "mediaList": [[100, self.upload_image(cover_image), None, None, None, None]] if cover_image is not None else None
+            }.items() if value is not None]
+
+        if background_color:
+            data["extensions"]["style"] = {"backgroundColor": background_color}
+
+        if background_image:
+            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.upload_image(background_image), None, None, None, None]]}
+
         return UserProfile(
             self.session.handler(
                 method = "POST",
