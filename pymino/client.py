@@ -1,4 +1,9 @@
-from .ext.utilities.generate import *
+from time import time
+from typing import Optional
+from requests import Session as HTTPClient
+
+from .ext.entities import *
+from .ext.utilities import *
 from .ext import RequestHandler, Account
 
 class Client():
@@ -23,7 +28,6 @@ class Client():
     """
     def __init__(self, **kwargs):
         self.authenticated:     bool = False
-        self.session_login:     bool = False
         self.userId:            str = None
         self.sid:               str = None
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
@@ -39,10 +43,10 @@ class Client():
 
     def authenticated(func: Callable):
         def wrapper(*args, **kwargs):
-            if not args[0].authenticated: raise Exception("NOTICE: You must login to use this method.")
+            if not args[0].authenticated: raise LoginRequired
             return func(*args, **kwargs)
         return wrapper
-
+    
     def login(self, email: str, password: str, device_id: Optional[str] = None) -> dict:
         """
         `login` - Login to the client.

@@ -1,4 +1,5 @@
-from .generate import *
+from time import time
+from typing import Callable
 
 class Command:
     def __init__(self, func: Callable, command_name: str, command_description: str=None, aliases: list = None, cooldown: int=0):

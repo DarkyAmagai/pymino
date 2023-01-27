@@ -1,5 +1,7 @@
+from contextlib import suppress
 from time import time
 from re import findall
+
 class PrepareMessage:
     def __init__(self, **kwargs):
         self.base_message = {
@@ -51,20 +53,19 @@ class CMessage:
     def json(self): return self.data
 
 class CMessageAuthorList:
-    def __init__(self, data: dict):
-        self.data:                    dict = data
-        self.uid:                     list = [i.get('uid', None) for i in self.data]
-        self.userId:                  list = self.uid
-        self.status:                  list = [i.get('status', None) for i in self.data]
-        self.icon:                    list = [i.get('icon', None) for i in self.data]
-        self.avatar:                  list = self.icon
-        self.reputation:              list = [i.get('reputation', None) for i in self.data]
-        self.role:                    list = [i.get('role', None) for i in self.data]
-        self.nickname:                list = [i.get('nickname', None) for i in self.data]
-        self.username:                list = self.nickname
-        self.level:                   list = [i.get('level', None) for i in self.data]
-        self.accountMembershipStatus: list = [i.get('accountMembershipStatus', None) for i in self.data]
-        self.avatarFrame:             list = [i.get('avatarFrame', None) for i in self.data]
+    def __init__(self, data: list):
+        with suppress(Exception):
+            self.data:                    list = data
+            self.status:                  list = [i.get('status', None) for i in self.data]
+            self.icon:                    list = [i.get('icon', None) for i in self.data]
+            self.avatar:                  list = self.icon
+            self.reputation:              list = [i.get('reputation', None) for i in self.data]
+            self.role:                    list = [i.get('role', None) for i in self.data]
+            self.nickname:                list = [i.get('nickname', None) for i in self.data]
+            self.username:                list = self.nickname
+            self.level:                   list = [i.get('level', None) for i in self.data]
+            self.accountMembershipStatus: list = [i.get('accountMembershipStatus', None) for i in self.data]
+            self.avatarFrame:             list = [i.get('avatarFrame', None) for i in self.data]
 
     def json(self): return self.data
 

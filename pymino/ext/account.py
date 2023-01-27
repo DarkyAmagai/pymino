@@ -1,4 +1,6 @@
-from .utilities.generate import *
+from requests import Session as HTTPClient
+from .entities import *
+from .utilities import *
 
 class Account:
     """
@@ -6,6 +8,7 @@ class Account:
     """
     def __init__(self, session: HTTPClient):
         self.session = session
+        #self.generate = Generate()
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
@@ -304,7 +307,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def reset_password(self, email: str, new_password: str, code: str) -> ResetPassword:
+    def reset_password(self, email: str, new_password: str, code: str, deviceId: str = None) -> ResetPassword:
         """
         `**reset_password**` - Resets the password.
 
@@ -327,6 +330,7 @@ class Account:
         print(response)
         ```
         """
+        deviceId = deviceId or device_id()
         return ResetPassword(self.session.handler(
             method = "POST", url="/g/s/auth/reset-password",
             data={
@@ -338,8 +342,8 @@ class Account:
                     "type": 1,
                     "identity": email,
                     "level": 2,
-                    "deviceID": device_id()
+                    "deviceID": deviceId
                 },
                 "phoneNumberValidationContext": None,
-                "deviceID": device_id()
+                "deviceID": device_id
             }))

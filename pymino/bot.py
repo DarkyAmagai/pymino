@@ -1,6 +1,15 @@
-from .ext.utilities.generate import *
-from .ext import Community, RequestHandler, Account, Global
+from time import time
+from json import loads
+from base64 import b64decode
+from functools import reduce
+from colorama import Fore, Style
+from typing import Optional, Union
+from requests import Session as HTTPClient
+
+from .ext.entities import *
+from .ext.utilities import *
 from .ext.socket import WSClient
+from .ext import Community, RequestHandler, Account
 
 class Bot(WSClient):
     """
@@ -31,6 +40,7 @@ class Bot(WSClient):
     """
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
+        self.debug:             bool = check_debugger()
         self.is_ready:          bool = False
         self.userId:            str = None
         self.command_prefix:    Optional[str] = command_prefix
@@ -53,10 +63,9 @@ class Bot(WSClient):
 
         if self.community_id:   self.set_community_id(community_id)
 
-        WSClient.__init__(self, client=self)
+        WSClient.__init__(self, bot=self)
 
-
-    def authenticate(self, email: str, password: str):
+    def authenticate(self, email: str, password: str) -> dict:
         """
         `authenticate` - authenticates the bot.
 
@@ -78,7 +87,7 @@ class Bot(WSClient):
                 "timestamp": int(time() * 1000)
             })).json()
 
-    def fetch_account(self):
+    def fetch_account(self) -> dict:
         """
         `fetch_account` - fetches the account of the bot to verify the sid is valid.
 
@@ -94,7 +103,7 @@ class Bot(WSClient):
         self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
-    def run(self, email: str=None, password: str=None, sid: str=None):
+    def run(self, email: str=None, password: str=None, sid: str=None) -> None:
         """
         `run` - runs the bot.
 
@@ -126,14 +135,14 @@ class Bot(WSClient):
             response:               dict = self.fetch_account()
 
         else:
-            raise Exception("You're missing either an email and password or a sid.")
+            raise MissingEmailPasswordOrSid
 
         if response:
             return self.__run__(response, sid)
         else:
-            raise Exception("Failed to authenticate.")
+            raise LoginFailed
 
-    def __run__(self, response: dict, sid: str):
+    def __run__(self, response: dict, sid: str) -> Union[None, Exception]:
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
@@ -149,9 +158,11 @@ class Bot(WSClient):
             self.is_ready = True
             self.connect()
 
+        if self.debug:
+            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
         return response
 
-    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True):
+    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
         `fetch_community_id` - fetches the community id from a community link.
 
@@ -180,7 +191,7 @@ class Bot(WSClient):
 
         return community_id
 
-    def set_community_id(self, community_id: Union[str, int]) -> None:
+    def set_community_id(self, community_id: Union[str, int]) -> int:
         """
         `set_community_id` - sets the community id.
 
@@ -199,12 +210,10 @@ class Bot(WSClient):
         try:
             if community_id is not None and not isinstance(community_id, int):
                 community_id = int(community_id)
-        except ValueError as error:
-            raise ValueError(
-                "Check your community id! It should be an integer.\nIf you're using a community link, use `fetch_community_id` instead."
-                ) from error
+        except VerifyCommunityIdIsCorrect as e:
+            raise VerifyCommunityIdIsCorrect from e
 
         self.community_id = community_id
         self.community.community_id = community_id
 
-        return None
+        return community_id
