@@ -620,7 +620,7 @@ class Community:
             ))
 
     @community
-    def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add CMemberList
+    def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CChatMembers:
         """
         `fetch_chat_members` is the method that fetches chat members.
 
@@ -642,7 +642,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return ApiResponse(self.session.handler(
+        return CChatMembers(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
             ))
@@ -728,7 +728,7 @@ class Community:
             ))
 
     @community
-    def fetch_comments(self, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse:    #TODO: Add CCommentList
+    def fetch_comments(self, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CCommentList:
         """
         `fetch_comments` is the method that fetches comments.
 
@@ -764,13 +764,12 @@ class Community:
             }
             for key, value in endpoint_mapping.items():
                 if locals()[key]:
-                    return ApiResponse(self.session.handler(
+                    return CCommentList(self.session.handler(
                         method = "GET",
                         url = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), start, size)
                         ))
                 
-        #raise NoDataProvided
-        print("No data provided.")
+        raise NoDataProvided
 
     @community
     def set_cohost(self, chatId: str, userIds: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
@@ -1161,7 +1160,7 @@ class Community:
         return self.delete_comment(commentId, blogId=blogId, comId=comId)
     
     @community
-    def comment(self, content: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:    #TODO: Add comment class
+    def comment(self, content: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
         `comment` is the method that comments.
 
@@ -1206,7 +1205,7 @@ class Community:
         if image:
             data["mediaList"] = [[100,self.upload_image(image), None, None, None, None]]
 
-        return ApiResponse(self.session.handler(
+        return CComment(self.session.handler(
             method = "POST",
             url = endpoint,
             data = data
@@ -2034,37 +2033,6 @@ class Community:
                 url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}",
                 data=data
                 ))
-    
-    @community
-    def fetch_user_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add CCommentList class
-        """
-        `fetch_user_comments` is the method that fetches a user's comments.
-
-        `**Parameters**`
-
-        - `userId` - The user ID to fetch comments.
-
-        - `sorting` - The sorting of the comments.
-
-            `newest` - Newest comments
-            #NOTE: Need to add sorting options.
-
-        - `start` - The start of the comments.
-
-        - `size` - The size of the comments.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_user_comments(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
-        """
-        return ApiResponse(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/comment?sort={sorting}&start={start}&size={size}"), True)
 
     @community
     def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5, comId: Union[str, int] = None) -> CBlogList:
@@ -2335,8 +2303,16 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        pass #TODO: Finish this method.
-
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+            data = PrepareMessage(
+                type=3,
+                mediaType=113,
+                mediaValue=f"ndcsticker://{stickerId}",
+                stickerId=stickerId).json()
+                ))
+    
     def upload_image(self, image: Union[str, BinaryIO]) -> str:
         """
         `upload_image` is the method that uploads an image to the community.

@@ -367,3 +367,10 @@ class MissingTimers(Exception):
         super().__init__(
             "You are missing the start and end timers. Please provide them."
             )
+        
+class NoDataProvided(Exception):
+    def __init__(self):
+        super().__init__(
+            "No data provided. Please provide data to the function."
+            )
+        
