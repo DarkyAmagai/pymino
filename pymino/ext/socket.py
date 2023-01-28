@@ -2,7 +2,6 @@ from requests import get
 from random import randint
 from typing import Optional
 from threading import Thread
-from orjson import loads, dumps
 from time import sleep as delay
 from websocket import (
     WebSocket,
@@ -12,6 +11,11 @@ from websocket import (
 from .entities import *
 from .context import EventHandler
 from .dispatcher import MessageDispatcher
+
+if orjson_exists():
+    from orjson import loads, dumps
+else:
+    from json import loads, dumps
 
 class WSClient(EventHandler):
     """
@@ -27,6 +31,7 @@ class WSClient(EventHandler):
         self.event_types:   dict =  EventTypes().events
         self.dispatcher:    MessageDispatcher = MessageDispatcher()
         self.channel:       Optional[Channel] = None
+        self.orjson:        bool = orjson_exists()
         
         self.dispatcher.register(201, self._handle_agora_channel)
         self.dispatcher.register(400, self._handle_user_online)
@@ -110,7 +115,7 @@ class WSClient(EventHandler):
         
     def send_websocket_message(self, message: dict) -> None:
         """Sends a websocket message."""
-        return self.ws.send(dumps(message))
+        return self.ws.send(dumps(message).decode() if self.orjson else dumps(message))
 
     def stop_websocket(self) -> None:
         """Stops the websocket."""

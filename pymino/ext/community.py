@@ -1,6 +1,6 @@
 from io import BytesIO
 from random import randint
-from time import time
+from time import time, timezone
 from base64 import b64encode
 from requests import get
 from uuid import uuid4
@@ -23,7 +23,7 @@ class Community:
     """
     def __init__(self, bot, session, community_id: Union[str, int] = None) -> None:
         self.bot                = bot
-        self.session            = session
+        self.session            = session       
         self.community_id:      Union[str, int] = community_id
         self.userId:            Optional[str] = None
         if self.userId is None: return 
@@ -63,7 +63,6 @@ class Community:
             data = {"duration": 0, "force": True, "timestamp": int(time() * 1000)}
             ))
 
-    @community
     def fetch_object_id(self, link: str) -> str:
         """
         `fetch_object_id` is the method that fetches the object id from a link.
@@ -134,7 +133,6 @@ class Community:
             url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
             ))
     
-    @community
     def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
         `joined_communities` is the method that fetches the communities the user has joined.
@@ -281,7 +279,7 @@ class Community:
         """
         return CheckIn(self.session.handler(
             method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/check-in",
+            url = f"/x{self.community_id if comId is None else comId}/s/check-in",
             data={"timezone": timezone, "timestamp": int(time() * 1000)}
             ))
 
@@ -730,7 +728,7 @@ class Community:
             ))
 
     @community
-    def fetch_comments(self, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add CCommentList
+    def fetch_comments(self, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse:    #TODO: Add CCommentList
         """
         `fetch_comments` is the method that fetches comments.
 
@@ -756,11 +754,23 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        for i in ["userId", "blogId", "wikiId"]:
-            if eval(i) is not None:
-                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return ApiResponse(self.session.handler(
-                    method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/{object}/{eval(i)}/comment?sort=newest&start={start}&size={size}"))
+        
+        if any([userId, blogId, wikiId]):
+            base_endpoint = "/x{}/s/{}/comment?sort=newest&start={}&size={}"
+            endpoint_mapping = {
+                "userId": "user-profile/{}",
+                "blogId": "blog/{}",
+                "wikiId": "item/{}"
+            }
+            for key, value in endpoint_mapping.items():
+                if locals()[key]:
+                    return ApiResponse(self.session.handler(
+                        method = "GET",
+                        url = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), start, size)
+                        ))
+                
+        #raise NoDataProvided
+        print("No data provided.")
 
     @community
     def set_cohost(self, chatId: str, userIds: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
@@ -1061,14 +1071,97 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        for i in ["userId", "blogId", "wikiId"]:
-            if eval(i) is not None:
-                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return ApiResponse(self.session.handler(
-                    method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/{object}/{eval(i)}/comment/{commentId}"))
+        if any([userId, blogId, wikiId]):
+            base_endpoint = "/x{}/s/{}/comment/{}"
+            endpoint_mapping = {
+                "userId": "/user-profile/{}",
+                "blogId": "/blog/{}",
+                "wikiId": "/item/{}"
+            }
+
+            for key, value in endpoint_mapping.items():
+                if locals()[key]:
+                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), commentId)
+                    break
+        else:
+            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}"
+
+        return ApiResponse(self.session.handler(
+            method = "DELETE",
+            url = endpoint
+            ))
+    
+    @community
+    def delete_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `delete_wiki_comment` is the method that deletes wiki comment.
+
+        `**Parameters**`
+
+        - `commentId` - The comment ID to delete.
+
+        - `wikiId` - The wiki ID to delete comment.
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.delete_wiki_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.delete_comment(commentId = commentId, wikiId = wikiId, comId = comId)
 
     @community
-    def comment(self, content: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add comment class
+    def delete_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `delete_profile_comment` is the method that deletes profile comment.
+
+        `**Parameters**`
+
+        - `commentId` - The comment ID to delete.
+
+        - `userId` - The user ID to delete comment.
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.delete_profile_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.delete_comment(commentId, userId=userId, comId=comId)
+    
+    @community
+    def delete_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `delete_blog_comment` is the method that deletes blog comment.
+
+        `**Parameters**`
+
+        - `commentId` - The comment ID to delete.
+
+        - `blogId` - The blog ID to delete comment.
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.delete_blog_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.delete_comment(commentId, blogId=blogId, comId=comId)
+    
+    @community
+    def comment(self, content: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:    #TODO: Add comment class
         """
         `comment` is the method that comments.
 
@@ -1094,20 +1187,106 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        for i in ["userId", "blogId", "wikiId"]:
-            if eval(i) is not None:
-                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return ApiResponse(self.session.handler(
-                    method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/{object}/{eval(i)}/comment",
-                    data = {
-                        "content": content,
-                        "mediaList": [self.upload_image(image, 1)] if image is not None else [],
-                        "stickerId": None,
-                        "type": 0,
-                        "eventSource": "FeedList" if userId is None else "UserProfileView",
-                        "timestamp": int(time() * 1000)
-                        }))
+        data = {"timestamp": int(time() * 1000), "content": content}
 
+        if any([userId, blogId, wikiId]):
+            endpoint_mapping = {
+                "userId": "/user-profile/{}",
+                "blogId": "/blog/{}",
+                "wikiId": "/item/{}"
+            }
+            base_endpoint = "/x{}/s/{}/comment"
+            for key, value in endpoint_mapping.items():
+                if locals()[key]:
+                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]))
+                    break
+        else:
+            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment"
+
+        if image:
+            data["mediaList"] = [[100,self.upload_image(image), None, None, None, None]]
+
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = endpoint,
+            data = data
+            ))
+    
+    @community
+    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `comment_on_blog` is the method that comments on blog.
+
+        `**Parameters**`
+
+        - `content` - The content of the comment.
+
+        - `blogId` - The blog ID to comment.
+
+        - `image` - The image of the comment. [Optional]
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.comment_on_blog(content = "content", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.comment(content = content, blogId = blogId, image = image, comId = comId)
+    
+    @community
+    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `comment_on_wiki` is the method that comments on wiki.
+
+        `**Parameters**`
+
+        - `content` - The content of the comment.
+
+        - `wikiId` - The wiki ID to comment.
+
+        - `image` - The image of the comment. [Optional]
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.comment_on_wiki(content = "content", wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.comment(content=content, wikiId=wikiId, image=image, comId=comId)
+    
+    @community
+    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `comment_on_profile` is the method that comments on profile.
+
+        `**Parameters**`
+
+        - `content` - The content of the comment.
+
+        - `userId` - The user ID to comment.
+
+        - `image` - The image of the comment. [Optional]
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.comment_on_profile(content = "content", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.comment(content = content, userId = userId, image = image, comId = comId)
+            
     @community
     def like_comment(self, commentId: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -1133,16 +1312,99 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        for i in ["userId", "blogId", "wikiId"]:
-            if eval(i) is not None:
-                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return ApiResponse(self.session.handler(
-                    method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/{object}/{eval(i)}/comment/{commentId}/vote",
-                    data = {
-                        "value": 1,
-                        "timestamp": int(time() * 1000),
-                        "eventSource": "UserProfileView" if userId is None else "PostDetailView"
-                        }))
+        if any([userId, blogId, wikiId]):
+            base_endpoint = "/x{}/s/{}/comment/{}/vote"
+            endpoint_mapping = {
+                "userId": "/user-profile/{}",
+                "blogId": "/blog/{}",
+                "wikiId": "/item/{}"
+            }
+
+            for key, value in endpoint_mapping.items():
+                if locals()[key]:
+                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), commentId)
+                    break
+        else:
+            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}/vote"
+
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = endpoint,
+            data = {
+            "value": 1,
+            "timestamp": int(time() * 1000),
+            "eventSource": "CommentDetailView" if userId is None else "UserProfileView"
+            }
+            ))
+    
+    @community
+    def like_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `like_wiki_comment` is the method that likes a wiki comment.
+
+        `**Parameters**`
+
+        - `commentId` - The comment ID to like.
+
+        - `wikiId` - The wiki ID to like comment.
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+            
+        bot = Bot()
+        bot.community.like_wiki_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.like_comment(commentId = commentId, wikiId = wikiId, comId = comId)
+    
+    @community
+    def like_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `like_blog_comment` is the method that likes a blog comment.
+
+        `**Parameters**`
+
+        - `commentId` - The comment ID to like.
+
+        - `blogId` - The blog ID to like comment.
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+            
+        bot = Bot()
+        bot.community.like_blog_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.like_comment(commentId = commentId, blogId = blogId, comId = comId)
+
+    @community
+    def like_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `like_profile_comment` is the method that likes a profile comment.
+
+        `**Parameters**`
+
+        - `commentId` - The comment ID to like.
+
+        - `userId` - The user ID to like comment.
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+            
+        bot = Bot()
+        bot.community.like_profile_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.like_comment(commentId = commentId, userId = userId, comId = comId)
 
     @community
     def unlike_comment(self, commentId: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -1169,11 +1431,25 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        for i in ["userId", "blogId", "wikiId"]:
-            if eval(i) is not None:
-                object = ["user-profile", "blog", "item"][["userId", "blogId", "wikiId"].index(i)]
-                return ApiResponse(self.session.handler(
-                    method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/{object}/{eval(i)}/comment/{commentId}/vote"))
+        if any([userId, blogId, wikiId]):
+            base_endpoint = "/x{}/s/{}/comment/{}/vote"
+            endpoint_mapping = {
+                "userId": "/user-profile/{}",
+                "blogId": "/blog/{}",
+                "wikiId": "/item/{}"
+            }
+
+            for key, value in endpoint_mapping.items():
+                if locals()[key]:
+                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), commentId)
+                    break
+        else:
+            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}/vote"
+
+        return ApiResponse(self.session.handler(
+            method = "DELETE",
+            url = endpoint
+            ))
 
     @community
     def like_blog(self, blogId: str, userId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -1197,7 +1473,8 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote",
             data = {
                 "value": 4,
                 "timestamp": int(time() * 1000),
@@ -1224,7 +1501,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote"))
+            method = "DELETE",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote"
+            ))
 
     @community
     def upvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -2079,9 +2358,9 @@ class Community:
             method = "POST",
             url = "/g/s/media/upload",
             data={
-                str: lambda image: BytesIO(get(image).content) if image.startswith("http") else open(image, "rb"),
-                bytes: lambda image: image
-                }[type(image)](image).read(),
+            str: lambda image: BytesIO(get(image).content) if image.startswith("http") else open(image, "rb"),
+            bytes: lambda image: image
+            }[type(image)](image).read(),
             content_type = "image/jpg"
             )).mediaValue
 
@@ -2105,7 +2384,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
+            ))
 
     @community
     def leave_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -2126,7 +2407,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"))
+            method = "DELETE",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
+            ))
 
     @community
     def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: Union[str, int] = None) -> ApiResponse:
@@ -2155,7 +2438,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"))
+            method = "DELETE",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"
+            ))
 
     @community
     def delete_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -2177,7 +2462,8 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"))
+            method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
+            ))
 
     @community
     def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -2206,13 +2492,17 @@ class Community:
         """
         return ApiResponse(
             self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin",
-                data = {"adminOpName": 102, "adminOpNote": {"content": reason}, "timestamp": int(time() * 1000)}
-                )) if asStaff else ApiResponse(self.session.handler(
-                    method = "DELETE",
-                    url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
-                    ))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin",
+            data = {
+            "adminOpName": 102,
+            "adminOpNote": {"content": reason},
+            "timestamp": int(time() * 1000)
+            }
+            )) if asStaff else ApiResponse(self.session.handler(
+            method = "DELETE",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
+            ))
 
     @community
     def transfer_host(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -2325,13 +2615,20 @@ class Community:
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"))
 
     @community
-    def send_active(self, timezone: int = -300, start: int = time() * 1000, end: int = time() * 1000, timers: list = None, comId: Union[str, int] = None) -> ApiResponse:
+    def send_active(
+        self,
+        tz: int = -timezone // 1000,
+        start: int = None,
+        end: int = None,
+        timers: list = None,
+        comId: Union[str, int] = None
+        ) -> ApiResponse:
         """
         `send_active` is the method that sends the active time of the user.
 
         `**Parameters**`
 
-        - `timezone` - The timezone of the user. [Optional]
+        - `tz` - The timezone of the active time. 
 
         - `start` - The start time of the active time. [Optional]
 
@@ -2348,9 +2645,11 @@ class Community:
         bot.run(sid=sid)
         ```
         """
+        if not any([start and end, timers]): raise MissingTimers
+        
         data={
-            "optInAdsFlags": 27,
-            "timezone": timezone,
+            "optInAdsFlags": 2147483647,
+            "timezone": tz,
             "timestamp": int(time() * 1000)
         }
         if timers is not None:
@@ -2359,7 +2658,10 @@ class Community:
             data["userActiveTimeChunkList"] = [{"start": start, "end": end}]
 
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/stats/user-active-time", data=data))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/community/stats/user-active-time",
+            data=data
+            ))
 
     @community
     def send_coins(self, coins: int, blogId: str = None, chatId: str = None, wikiId: str = None, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -2396,6 +2698,56 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }
             ))
+    
+    @community
+    def send_chat_props(self, coins: int, chatId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `send_coins_to_chat` is the method that sends coins to a chat.
+
+        `**Parameters**`
+
+        - `coins` - The amount of coins to send.
+
+        - `chatId` - The chat ID to send the coins to.
+
+        - `transactionId` - The transaction ID to use. [Optional]
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.send_coins_to_chat(coins=100, chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.send_coins(coins=coins, chatId=chatId, transactionId=transactionId, comId=comId)
+    
+    @community
+    def send_blog_props(self, coins: int, blogId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `send_coins_to_blog` is the method that sends coins to a blog.
+
+        `**Parameters**`
+
+        - `coins` - The amount of coins to send.
+
+        - `blogId` - The blog ID to send the coins to.
+
+        - `transactionId` - The transaction ID to use. [Optional]
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.send_coins_to_blog(coins=100, blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        return self.send_coins(coins=coins, blogId=blogId, transactionId=transactionId, comId=comId)
 
     @community
     def start_chat(self, userIds: list, title: str = None, message: str = None, content: str = None, comId: Union[str, int] = None) -> ApiResponse:

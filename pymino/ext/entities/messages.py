@@ -1,9 +1,9 @@
-from contextlib import suppress
 from time import time
 from re import findall
+from typing import Union
 
 class PrepareMessage:
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.base_message = {
             "content": kwargs.get("content", None),
             "mediaType": kwargs.get("mediaType", 0),
@@ -16,121 +16,217 @@ class PrepareMessage:
     def json(self): return self.base_message
 
 class MessageAuthor:
-    def __init__(self, data: dict):
-        self.data = data
-        self.uid:                         str = self.data.get("uid", None)
-        self.userId:                      str = self.uid
-        self.status:                      int = self.data.get("status", None)
-        self.icon:                        str = self.data.get("icon", None)
-        self.avatar:                      str = self.icon
-        self.reputation:                  int = self.data.get("reputation", None)
-        self.role:                        int = self.data.get("role", None)
-        self.nickname:                    str = self.data.get("nickname", None)
-        self.username:                    str = self.nickname
-        self.level:                       int = self.data.get("level", None)
-        self.accountMembershipStatus:     int = self.data.get("accountMembershipStatus", None)
-        self.avatarFrame:                 str = self.data.get("avatarFrame", None)
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data                    = data
+        self.uid                     = None
+        self.userId                  = None
+        self.status                  = None
+        self.icon                    = None
+        self.avatar                  = None
+        self.reputation              = None
+        self.role                    = None
+        self.nickname                = None
+        self.username                = None
+        self.level                   = None
+        self.accountMembershipStatus = None
+        self.avatarFrame             = None
+
+        if isinstance(data, dict):
+            self.uid:                       Union[str, None] = self.data.get("uid", self.uid)
+            self.userId:                    Union[str, None] = self.uid
+            self.status:                    Union[int, None] = self.data.get("status", self.status)
+            self.icon:                      Union[str, None] = self.data.get("icon", self.icon)
+            self.avatar:                    Union[str, None] = self.icon
+            self.reputation:                Union[int, None] = self.data.get("reputation", self.reputation)
+            self.role:                      Union[int, None] = self.data.get("role", self.role)
+            self.nickname:                  Union[str, None] = self.data.get("nickname", self.nickname)
+            self.username:                  Union[str, None] = self.nickname
+            self.level:                     Union[int, None] = self.data.get("level", self.level)
+            self.accountMembershipStatus:   Union[int, None] = self.data.get("accountMembershipStatus", self.accountMembershipStatus)
+            self.avatarFrame:               Union[str, None] = self.data.get("avatarFrame", self.avatarFrame)
         
-    def json(self): return self.data
+    def json(self) -> Union[dict, str]:
+        return self.data
 
 class CMessage:
-    def __init__(self, data: dict):
-        self.data:                dict = data.get('result') or data.get('message')
-        self.includedInSummary:   str = self.data.get('includedInSummary', None)
-        self.uid:                 str = self.data.get('uid', None)
-        self.author:              MessageAuthor = MessageAuthor(self.data.get('author', None))
-        self.isHidden:            bool = self.data.get('isHidden', None)
-        self.messageId:           str = self.data.get('messageId', None)
-        self.mediaType:           int = self.data.get('mediaType', None)
-        self.content:             str = self.data.get('content', None)
-        self.clientRefId:         int = self.data.get('clientRefId', None)
-        self.threadId:            str = self.data.get('threadId', None)
-        self.createdTime:         str = self.data.get('createdTime', None)
-        self.extensions:          dict = self.data.get('extensions', None)
-        self.type:                int = self.data.get('type', None)
-        self.mediaValue:          str = self.data.get('mediaValue', None)
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data = data
+        self.includedInSummary = None
+        self.uid               = None
+        self.userId            = None
+        self.author            = {}
+        self.isHidden          = None
+        self.messageId         = None
+        self.mediaType         = None
+        self.content           = None
+        self.clientRefId       = None
+        self.threadId          = None
+        self.chatId            = None
+        self.createdTime       = None
+        self.extensions        = {}
+        self.type              = None
+        self.mediaValue        = None
 
-    def json(self): return self.data
+        if isinstance(data, dict):
+            self.data:                dict = data.get('result') or data.get('message', self.data)
+            self.includedInSummary:   Union[bool, None] = self.data.get('includedInSummary', self.includedInSummary)
+            self.uid:                 Union[str, None] = self.data.get('uid', self.uid)
+            self.userId:              Union[str, None] = self.uid
+            self.author:              Union[dict, None] = self.data.get('author', self.author)
+            self.isHidden:            Union[bool, None] = self.data.get('isHidden', self.isHidden)
+            self.messageId:           Union[str, None] = self.data.get('messageId', self.messageId)
+            self.mediaType:           Union[int, None] = self.data.get('mediaType', self.mediaType)
+            self.content:             Union[str, None] = self.data.get('content', self.content)
+            self.clientRefId:         Union[int, None] = self.data.get('clientRefId', self.clientRefId)
+            self.threadId:            Union[str, None] = self.data.get('threadId', self.threadId)
+            self.chatId:              Union[str, None] = self.threadId
+            self.createdTime:         Union[str, None] = self.data.get('createdTime', self.createdTime)
+            self.extensions:          Union[dict, None] = self.data.get('extensions', self.extensions)
+            self.type:                Union[int, None] = self.data.get('type', self.type)
+            self.mediaValue:          Union[str, None] = self.data.get('mediaValue', self.mediaValue)
+
+    def json(self) -> Union[dict, str]:
+        return self.data
 
 class CMessageAuthorList:
-    def __init__(self, data: list):
-        with suppress(Exception):
-            self.data:                    list = data
-            self.status:                  list = [i.get('status', None) for i in self.data]
-            self.icon:                    list = [i.get('icon', None) for i in self.data]
-            self.avatar:                  list = self.icon
-            self.reputation:              list = [i.get('reputation', None) for i in self.data]
-            self.role:                    list = [i.get('role', None) for i in self.data]
-            self.nickname:                list = [i.get('nickname', None) for i in self.data]
-            self.username:                list = self.nickname
-            self.level:                   list = [i.get('level', None) for i in self.data]
-            self.accountMembershipStatus: list = [i.get('accountMembershipStatus', None) for i in self.data]
-            self.avatarFrame:             list = [i.get('avatarFrame', None) for i in self.data]
+    def __init__(self, data: list) -> None:
+        self.data:                    list = data
+        self.status:                  list = [i.get('status', None) for i in self.data]
+        self.icon:                    list = [i.get('icon', None) for i in self.data]
+        self.avatar:                  list = self.icon
+        self.reputation:              list = [i.get('reputation', None) for i in self.data]
+        self.role:                    list = [i.get('role', None) for i in self.data]
+        self.nickname:                list = [i.get('nickname', None) for i in self.data]
+        self.username:                list = self.nickname
+        self.level:                   list = [i.get('level', None) for i in self.data]
+        self.accountMembershipStatus: list = [i.get('accountMembershipStatus', None) for i in self.data]
+        self.avatarFrame:             list = [i.get('avatarFrame', None) for i in self.data]
 
-    def json(self): return self.data
+    def json(self) -> Union[dict, str]:
+        return self.data
 
 class CMessages:
-    def __init__(self, data: dict):
-        self.data:                   dict = data.get('messageList', data)
-        self.includedInSummary:      list = [i.get('includedInSummary', None) for i in self.data]
-        self.uid:                    list = [i.get('uid', None) for i in self.data]
-        self.userId:                 list = self.uid
-        self.author:                 list = CMessageAuthorList([i.get('author', None) for i in self.data])
-        self.isHidden:               list = [i.get('isHidden', None) for i in self.data]
-        self.messageId:              list = [i.get('messageId', None) for i in self.data]
-        self.mediaType:              list = [i.get('mediaType', None) for i in self.data]
-        self.content:                list = [i.get('content', None) for i in self.data]
-        self.clientRefId:            list = [i.get('clientRefId', None) for i in self.data]
-        self.threadId:               list = [i.get('threadId', None) for i in self.data]
-        self.chatId:                 list = self.threadId
-        self.createdTime:            list = [i.get('createdTime', None) for i in self.data]
-        self.extensions:             list = [i.get('extensions', None) for i in self.data]
-        self.type:                   list = [i.get('type', None) for i in self.data]
-        self.mediaValue:             list = [i.get('mediaValue', None) for i in self.data]
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data              = data
+        self.includedInSummary = None
+        self.uid               = None
+        self.userId            = None
+        self.author            = {}
+        self.isHidden          = None
+        self.messageId         = None
+        self.mediaType         = None
+        self.content           = None
+        self.clientRefId       = None
+        self.threadId          = None
+        self.chatId            = None
+        self.createdTime       = None
+        self.extensions        = {}
+        self.type              = None
+        self.mediaValue        = None
+
+        if isinstance(data, dict):
+            self.data:              dict = data.get('result') or data.get('messageList', self.data)
+            self.includedInSummary: list = [i.get('includedInSummary', self.includedInSummary) for i in self.data]
+            self.uid:               list = [i.get('uid', self.uid) for i in self.data]
+            self.userId:            list = self.uid
+            self.author:            list = CMessageAuthorList([i.get('author', self.author) for i in self.data])
+            self.isHidden:          list = [i.get('isHidden', self.isHidden) for i in self.data]
+            self.messageId:         list = [i.get('messageId', self.messageId) for i in self.data]
+            self.mediaType:         list = [i.get('mediaType', self.mediaType) for i in self.data]
+            self.content:           list = [i.get('content', self.content) for i in self.data]
+            self.clientRefId:       list = [i.get('clientRefId', self.clientRefId) for i in self.data]
+            self.threadId:          list = [i.get('threadId', self.threadId) for i in self.data]
+            self.chatId:            list = self.threadId
+            self.createdTime:       list = [i.get('createdTime', self.createdTime) for i in self.data]
+            self.extensions:        list = [i.get('extensions', self.extensions) for i in self.data]
+            self.type:              list = [i.get('type', self.type) for i in self.data]
+            self.mediaValue:        list = [i.get('mediaValue', self.mediaValue) for i in self.data]
         
-    def json(self): return self.data
+    def json(self) -> Union[dict, str]:
+        return self.data
 
 class Message:
-    def __init__(self, data: dict):
-        self.data:                 dict = data.get("o", data)
-        self.ndcId:                int = self.data.get('ndcId', None)
-        self.comId:                int = self.ndcId
-        self.chatMessage:          dict = self.data.get('chatMessage', None)
-        self.author:               MessageAuthor = MessageAuthor(self.chatMessage.get('author', None)) if self.chatMessage else None
-        self.mediaValue:           str = self.chatMessage.get('mediaValue', None)
-        self.threadId:             str = self.chatMessage.get('threadId', None)
-        self.chatId:               str = self.threadId
-        self.mediaType:            int = self.chatMessage.get('mediaType', None)
-        self.content:              str = self.chatMessage.get('content', None)
-        self.clientRefId:          int = self.chatMessage.get('clientRefId', None)
-        self.messageId:            str = self.chatMessage.get('messageId', None)
-        self.uid:                  str = self.chatMessage.get('uid', None)
-        self.userId:               str = self.uid
-        self.createdTime:          str = self.chatMessage.get('createdTime', None)
-        self.type:                 int = self.chatMessage.get('type', None)
-        self.isHidden:             bool = self.chatMessage.get('isHidden', None)
-        self.includedInSummary:    bool = self.chatMessage.get('includedInSummary', None)
-        self.chatBubbleId:         str = self.chatMessage.get('chatBubbleId', None)
-        self.chatBubbleVersion:    int = self.chatMessage.get('chatBubbleVersion', None)
-        self.extensions:           dict = self.chatMessage.get('extensions', None)
-        self.mentioned_userids:    list = [i.get('uid', None) for i in self.extensions.get('mentionedArray', None)] if self.extensions.get('mentionedArray', None) is not None else None
-        self.mentioned_usernames:  list = findall(r'@([^\u202c\u202d]+)', self.content) if self.content is not None else None
-        self.mentioned_dictionary: dict = dict(zip(self.mentioned_userids, self.mentioned_usernames)) if self.mentioned_userids is not None and self.mentioned_usernames is not None else None
-        self.alertOption:          int = self.data.get('alertOption', None)
-        self.membershipStatus:     int = self.data.get('membershipStatus', None)
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data                   = data
+        self.ndcId                  = None
+        self.comId                  = None
+        self.chatMessage            = {}
+        self.author                 = {}
+        self.mediaValue             = None
+        self.threadId               = None
+        self.chatId                 = None
+        self.mediaType              = None
+        self.content                = None
+        self.clientRefId            = None
+        self.messageId              = None
+        self.uid                    = None
+        self.userId                 = None
+        self.createdTime            = None
+        self.type                   = None
+        self.isHidden               = None
+        self.includedInSummary      = None
+        self.chatBubbleId           = None
+        self.chatBubbleVersion      = None
+        self.extensions             = {}
+        self.mentioned_userids      = []
+        self.mentioned_usernames    = []
+        self.mentioned_dictionary   = {}
+        self.alertOption           = None
+        self.membershipStatus      = None
+
+        if isinstance(data, dict):
+            self.data:                  dict = data.get("o", self.data)
+            self.ndcId:                 Union[int, None] = self.data.get('ndcId', self.ndcId)
+            self.comId:                 Union[int, None] = self.ndcId
+            self.chatMessage:           Union[dict, None] = self.data.get('chatMessage', self.chatMessage)
+            self.author:                MessageAuthor = MessageAuthor(self.chatMessage.get('author', self.author)) if self.chatMessage else self.author
+            self.mediaValue:            Union[str, None] = self.chatMessage.get('mediaValue', self.mediaValue)
+            self.threadId:              Union[str, None] = self.chatMessage.get('threadId', self.threadId)
+            self.chatId:                Union[str, None] = self.threadId
+            self.mediaType:             Union[int, None] = self.chatMessage.get('mediaType', self.mediaType)
+            self.content:               Union[str, None] = self.chatMessage.get('content', self.content)
+            self.clientRefId:           Union[int, None] = self.chatMessage.get('clientRefId', self.clientRefId)
+            self.messageId:             Union[str, None] = self.chatMessage.get('messageId', self.messageId)
+            self.uid:                   Union[str, None] = self.chatMessage.get('uid', self.uid)
+            self.userId:                Union[str, None] = self.uid
+            self.createdTime:           Union[str, None] = self.chatMessage.get('createdTime', self.createdTime)
+            self.type:                  Union[int, None] = self.chatMessage.get('type', self.type)
+            self.isHidden:              Union[bool, None] = self.chatMessage.get('isHidden', self.isHidden)
+            self.includedInSummary:     Union[bool, None] = self.chatMessage.get('includedInSummary', self.includedInSummary)
+            self.chatBubbleId:          Union[str, None] = self.chatMessage.get('chatBubbleId', self.chatBubbleId)
+            self.chatBubbleVersion:     Union[int, None] = self.chatMessage.get('chatBubbleVersion', self.chatBubbleVersion)
+            self.extensions:            Union[dict, None] = self.chatMessage.get('extensions', self.extensions)
+            self.mentioned_userids:     Union[list, None] = [i.get('uid', None) for i in self.extensions.get('mentionedArray', None)] if self.extensions.get('mentionedArray', None) is not None else None
+            self.mentioned_usernames:   Union[list, None] = findall(r'@([^\u202c\u202d]+)', self.content) if self.content is not None else None
+            self.mentioned_dictionary:  Union[dict, None] = dict(zip(self.mentioned_userids, self.mentioned_usernames)) if self.mentioned_userids is not None and self.mentioned_usernames is not None else None
+            self.alertOption:           Union[int, None] = self.data.get('alertOption', self.alertOption)
+            self.membershipStatus:      Union[int, None] = self.data.get('membershipStatus', self.membershipStatus)
         
-    def json(self): return self.data
+    def json(self) -> Union[dict, str]:
+        return self.data
 
 class Channel:
-    def __init__(self, data: dict):
-        self.data:              dict = data.get("o", data)
-        self.id:                str = self.data.get('id', None)
-        self.channelName:       str = self.data.get('channelName', None)
-        self.channelKey:        str = self.data.get('channelKey', None)
-        self.channelUid:        int = self.data.get('channelUid', None)
-        self.expiredTime:       int = self.data.get('expiredTime', None)
-        self.ndcId:             int = self.data.get('ndcId', None)
-        self.threadId:          str = self.data.get('threadId', None)
-        self.chatId:            str = self.threadId
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data            = data
+        self.id              = None
+        self.channelName     = None
+        self.channelKey      = None
+        self.channelUid      = None
+        self.expiredTime     = None
+        self.ndcId           = None
+        self.threadId        = None
+        self.chatId          = None
+
+        if isinstance(data, dict):
+            self.data:              dict = data.get("o", self.data)
+            self.id:                Union[str, None] = self.data.get('id', self.id)
+            self.channelName:       Union[str, None] = self.data.get('channelName', self.channelName)
+            self.channelKey:        Union[str, None] = self.data.get('channelKey', self.channelKey)
+            self.channelUid:        Union[int, None] = self.data.get('channelUid', self.channelUid)
+            self.expiredTime:       Union[int, None] = self.data.get('expiredTime', self.expiredTime)
+            self.ndcId:             Union[int, None] = self.data.get('ndcId', self.ndcId)
+            self.threadId:          Union[str, None] = self.data.get('threadId', self.threadId)
+            self.chatId:            Union[str, None] = self.threadId
         
-    def json(self): return self.data
+    def json(self) -> Union[dict, str]:
+        return self.data

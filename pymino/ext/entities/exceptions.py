@@ -1,4 +1,8 @@
-from orjson import loads
+try:
+    from orjson import loads
+except ImportError:
+    from json import loads
+
 from contextlib import suppress
 
 class UnsupportedService(Exception):
@@ -233,6 +237,14 @@ class InvalidName(Exception):
     def __init__(self, response: str):
         super().__init__(response)
 
+class YouHaveBlockedThisUser(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class NoLongerExists(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
 class APIException(Exception):
     def __init__(self, response: str):
         self.exception_map = {
@@ -267,6 +279,8 @@ class APIException(Exception):
             300: BadImage,
             500: RequestedNoLongerExists,
             551: InsufficientLevel,
+            604: YouHaveBlockedThisUser,
+            700: NoLongerExists,
             702: WallCommentingDisabled,
             801: CommunityNoLongerExists,
             802: InvalidCodeOrLink,
@@ -304,7 +318,7 @@ class APIException(Exception):
         if self.exception_map.get(self.status_code):
             raise exception(self.message)
         else:
-            raise APIException(self.message)
+            raise Exception(self.message)
             
 class MissingCommunityId(Exception):
     def __init__(self):
@@ -346,4 +360,10 @@ class InvalidImage(Exception):
     def __init__(self):
         super().__init__(
             "Invalid image. Please check the image you are trying to upload."
+            )
+        
+class MissingTimers(Exception):
+    def __init__(self):
+        super().__init__(
+            "You are missing the start and end timers. Please provide them."
             )

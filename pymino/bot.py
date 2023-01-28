@@ -1,5 +1,4 @@
 from time import time
-from json import loads
 from base64 import b64decode
 from functools import reduce
 from colorama import Fore, Style
@@ -10,6 +9,11 @@ from .ext.entities import *
 from .ext.utilities import *
 from .ext.socket import WSClient
 from .ext import Community, RequestHandler, Account
+
+if orjson_exists():
+    from orjson import loads
+else:
+    from json import loads
 
 class Bot(WSClient):
     """
@@ -64,6 +68,7 @@ class Bot(WSClient):
         if self.community_id:   self.set_community_id(community_id)
 
         WSClient.__init__(self, bot=self)
+
 
     def authenticate(self, email: str, password: str) -> dict:
         """
@@ -160,6 +165,7 @@ class Bot(WSClient):
 
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
+
         return response
 
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
@@ -217,3 +223,4 @@ class Bot(WSClient):
         self.community.community_id = community_id
 
         return community_id
+    

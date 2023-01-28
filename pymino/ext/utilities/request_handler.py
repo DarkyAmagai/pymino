@@ -1,4 +1,3 @@
-from orjson import dumps, loads
 from contextlib import suppress
 from colorama import Fore, Style
 from typing import Optional, Union, Tuple, Callable
@@ -6,6 +5,11 @@ from requests import Session as HTTPClient, Response as HTTPResponse
 
 from .generate import *
 from ..entities import *
+
+if orjson_exists():
+    from orjson import loads, dumps
+else:
+    from json import loads, dumps
 
 from requests.exceptions import (
             ConnectionError,
@@ -30,7 +34,7 @@ class RequestHandler:
         self.sid:           Optional[str] = None
         self.userId:        Optional[str] = None
         self.session:       HTTPClient = session
-        #self.generate:      Generate = Generate()
+        self.orjson:        bool = orjson_exists()
         self.proxy:         dict = {"http": proxy,"https": proxy} if proxy is not None else None
 
     def service_url(self, url: str) -> str:
@@ -194,7 +198,7 @@ class RequestHandler:
         """
 
         if not isinstance(data, bytes):
-            data = dumps(data).decode("utf-8")
+            data = dumps(data).decode("utf-8") if self.orjson else dumps(data)
 
         headers.update({
             "CONTENT-LENGTH": f"{len(data)}",
@@ -217,12 +221,13 @@ class RequestHandler:
 
         """
         if response.status_code != 200:
+
             with suppress(Exception):
                 if loads(response.text).get("api:statuscode") == 105:
                     return self.bot.run(self.email, self.password)
-
-            raise APIException(response.text)
             
+            raise APIException(response.text)
+                
         return loads(response.text)
 
     def print_response(self, response: HTTPResponse) -> None:

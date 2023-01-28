@@ -4,7 +4,7 @@ from requests import Session as HTTPClient
 
 from .ext.entities import *
 from .ext.utilities import *
-from .ext import RequestHandler, Account
+from .ext import RequestHandler, Account, Community
 
 class Client():
     """
@@ -27,9 +27,12 @@ class Client():
     ```
     """
     def __init__(self, **kwargs):
+        for key, value in kwargs.items(): setattr(self, key, value)
+        self.debug:             bool = check_debugger()
         self.authenticated:     bool = False
         self.userId:            str = None
         self.sid:               str = None
+        self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
         self.session:           HTTPClient = HTTPClient()
         self.request:           RequestHandler = RequestHandler(
@@ -40,6 +43,67 @@ class Client():
         self.account:           Account = Account(
                                 session=self.request
                                 )
+        self.community:         Community = Community(
+                                bot = self,
+                                session=self.request,
+                                community_id=self.community_id
+                                )
+
+    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
+        """
+        `fetch_community_id` - fetches the community id from a community link.
+
+        `**Parameters**`
+        - `community_link` - The community link to fetch the community id from.
+        - `set_community_id` - Whether or not to set the community id. Defaults to `True`.
+
+        `**Returns**`
+        - `int` - The community id.
+
+        `**Example**`
+        ```python
+        from pymino import Client
+
+        bot = Client()
+
+        bot.fetch_community_id("https://aminoapps.com/c/CommunityName")
+        ```
+        """
+        community_id = CCommunity(self.request.handler(
+            method="GET", url=f"/g/s/link-resolution?q={community_link}")
+            ).comId
+
+        if set_community_id:
+            self.set_community_id(community_id)
+
+        return community_id
+
+    def set_community_id(self, community_id: Union[str, int]) -> int:
+        """
+        `set_community_id` - sets the community id.
+
+        `**Parameters**`
+        - `community_id` - The community id to set.
+
+        `**Example**`
+        ```python
+        from pymino import Client
+
+        bot = Client()
+
+        bot.set_community_id(123456789)
+        ```
+        """
+        try:
+            if community_id is not None and not isinstance(community_id, int):
+                community_id = int(community_id)
+        except VerifyCommunityIdIsCorrect as e:
+            raise VerifyCommunityIdIsCorrect from e
+
+        self.community_id = community_id
+        self.community.community_id = community_id
+
+        return community_id
 
     def authenticated(func: Callable):
         def wrapper(*args, **kwargs):
@@ -47,7 +111,7 @@ class Client():
             return func(*args, **kwargs)
         return wrapper
     
-    def login(self, email: str, password: str, device_id: Optional[str] = None) -> dict:
+    def login(self, email: str, password: str, device_id: Optional[str] = None) -> ApiResponse:
         """
         `login` - Login to the client.
 
@@ -81,11 +145,14 @@ class Client():
     def __login__(self, response: dict) -> ApiResponse:
         if response["api:statuscode"] != 0: input(response), exit()
 
-        self.profile:           UserProfile = UserProfile(response)
+        if not hasattr(self, "profile"): 
+            self.profile:       UserProfile = UserProfile(response)
 
         self.sid:               str = response['sid']
         self.userId:            str = self.profile.userId
+        self.community.userId:  str = self.userId
         self.request.sid:       str = self.sid
+        self.request.userId:    str = self.userId
         self.authenticated:     bool = True
 
         return ApiResponse(response)
