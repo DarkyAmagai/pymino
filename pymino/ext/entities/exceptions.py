@@ -374,3 +374,8 @@ class NoDataProvided(Exception):
             "No data provided. Please provide data to the function."
             )
         
+class NotLoggedIn(Exception):
+    def __init__(self):
+        super().__init__(
+            "You are not logged in. Please login before using this function."
+            )

@@ -46,7 +46,7 @@ class Context():
     @property
     def api(self) -> str:
         """The API url."""
-        return "https://service.aminoapps.com/api/v1"
+        return "http://service.aminoapps.com/api/v1"
 
     @property
     def __message_endpoint__(self) -> str:

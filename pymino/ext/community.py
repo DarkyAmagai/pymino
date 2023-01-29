@@ -30,6 +30,7 @@ class Community:
 
     def community(func):
         def community_func(*args, **kwargs):
+            if not args[0].userId: raise NotLoggedIn
             if not any([args[0].community_id, kwargs.get("comId")]):
                 raise MissingCommunityId
             return func(*args, **kwargs)
@@ -85,7 +86,6 @@ class Community:
             url = f"/g/s/link-resolution?q={link}"
             )).objectId
 
-    @community
     def fetch_object_info(self, link: str) -> LinkInfo:
         """
         `fetch_object_info` is the method that fetches the object info from a link.
@@ -109,7 +109,6 @@ class Community:
             url = f"/g/s/link-resolution?q={link}"
             ))
     
-    @community
     def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
         """
         `fetch_community` is the method that fetches the community info.
@@ -133,6 +132,7 @@ class Community:
             url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
             ))
     
+    @community
     def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
         `joined_communities` is the method that fetches the communities the user has joined.

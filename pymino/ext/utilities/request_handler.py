@@ -48,7 +48,7 @@ class RequestHandler:
         - `str` - The service url.
         
         """
-        return f"https://service.aminoapps.com/api/v1{url}"
+        return f"http://service.aminoapps.com/api/v1{url}"
     
     def service_headers(self) -> dict:
         """Returns the service headers"""
