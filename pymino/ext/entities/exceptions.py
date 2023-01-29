@@ -245,6 +245,10 @@ class NoLongerExists(Exception):
     def __init__(self, response: str):
         super().__init__(response)
 
+class API_ERROR(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
 class APIException(Exception):
     def __init__(self, response: str):
         self.exception_map = {
@@ -310,15 +314,19 @@ class APIException(Exception):
             99001: InvalidName
         }
         with suppress(Exception):
-            response: dict = loads(response)
-            self.status_code: int = response.get("api:statuscode", response)
-            self.message: str = response.get("api:message", response)
-
+            json_response: dict = loads(response)
+            self.status_code: int = json_response.get("api:statuscode", response)
+            self.message: str = json_response.get("api:message", response)
+        
+        if any([
+            not isinstance(self.status_code, int),
+            self.status_code not in self.exception_map
+        ]):
+            raise API_ERROR(response)
+        
         exception = self.exception_map.get(self.status_code)
         if self.exception_map.get(self.status_code):
             raise exception(self.message)
-        else:
-            raise Exception(self.message)
             
 class MissingCommunityId(Exception):
     def __init__(self):
@@ -378,4 +386,16 @@ class NotLoggedIn(Exception):
     def __init__(self):
         super().__init__(
             "You are not logged in. Please login before using this function."
+            )
+        
+class ForbiddenException(Exception):
+    def __init__(self):
+        super().__init__(
+            "403 Forbidden. Possible IP ban. Please try again later."
+            )
+        
+class InvalidLink(Exception):
+    def __init__(self):
+        super().__init__(
+            "Invalid link. Please check the link you are trying to use."
             )

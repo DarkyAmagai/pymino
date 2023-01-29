@@ -1,6 +1,7 @@
 from re import findall
 from typing import Union
 from .userprofile import UserProfile, UserProfileList
+from .exceptions import InvalidLink
 
 class ApiResponse:
     def __init__(self, data: Union[dict, str]) -> None:
@@ -149,7 +150,12 @@ class CCommunity:
             self.templateId:            Union[int, None] = self.data.get("templateId", self.templateId)
             self.searchable:            Union[bool, None] = self.data.get("searchable", self.searchable)
             self.createdTime:           Union[str, None] = self.data.get("createdTime", self.createdTime)
-            self.ndcId:                 Union[int, None] = self.data.get("ndcId", self.ndcId) or int(findall(r"\d+", self.data.get("linkInfoV2").get("path"))[0])
+            
+            try:
+                self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId) or int(findall(r"\d+", self.data.get("linkInfoV2").get("path"))[0]) 
+            except IndexError as error:
+                raise InvalidLink from error
+            
             self.comId:                 Union[int, None] = self.ndcId
             self.icon:                  Union[str, None] = self.data.get("icon", self.icon)
         

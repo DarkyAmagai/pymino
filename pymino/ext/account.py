@@ -8,7 +8,6 @@ class Account:
     """
     def __init__(self, session: HTTPClient):
         self.session = session
-        #self.generate = Generate()
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """

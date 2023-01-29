@@ -2058,7 +2058,9 @@ class Community:
         ```
         """
         return CBlogList(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/blog?type=user&q={userId}&start={start}&size={size}"))
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog?type=user&q={userId}&start={start}&size={size}"
+            ))
 
     @community
     def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add WikiList
@@ -2085,7 +2087,9 @@ class Community:
 
         """
         return ApiResponse(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"), True)
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"
+            ))
 
     @community
     def fetch_user_check_ins(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -2107,7 +2111,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/check-in/stats/{userId}?timezone=-300"))
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/check-in/stats/{userId}?timezone=-300"
+            ))
             
     @community
     def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str] = None, comId: Union[str, int] = None) -> CMessage:
@@ -2438,7 +2444,8 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "DELETE", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
+            method = "DELETE",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
 
     @community
@@ -2530,7 +2537,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"
+            ))
 
     @community
     def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -2588,7 +2597,9 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"
+            ))
 
     @community
     def send_active(
@@ -2813,7 +2824,8 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/disable"
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/disable"
             ))
 
     @community

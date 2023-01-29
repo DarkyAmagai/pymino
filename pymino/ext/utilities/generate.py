@@ -1,7 +1,7 @@
 from hmac import new
 from hashlib import sha1
 from base64 import b64encode
-from random import getrandbits
+from secrets import token_hex
 
 def device_id() -> str:
     """
@@ -10,14 +10,14 @@ def device_id() -> str:
     `**Returns**`
     - `str` - Returns a device ID as a string.
     """
-    encoded_data = sha1(str(getrandbits).encode('utf-8')).hexdigest()
+    encoded_data = sha1(str(token_hex(20)).encode('utf-8')).hexdigest()
 
     digest = new(
         b"\xe70\x9e\xcc\tS\xc6\xfa`\x00['e\xf9\x9d\xbb\xc9e\xc8\xe9",
         b"\x19" + bytes.fromhex(encoded_data),
         sha1).hexdigest()
 
-    return f"19{encoded_data}{digest}"
+    return f"19{encoded_data}{digest}".upper()
 
 def generate_signature(data: str) -> str:
     """

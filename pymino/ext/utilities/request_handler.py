@@ -221,25 +221,30 @@ class RequestHandler:
 
         """
         if response.status_code != 200:
-
+            
+            if response.status_code == 403:
+                raise ForbiddenException
+            
             with suppress(Exception):
                 if loads(response.text).get("api:statuscode") == 105:
                     return self.bot.run(self.email, self.password)
-            
+
             raise APIException(response.text)
-                
+
         return loads(response.text)
 
     def print_response(self, response: HTTPResponse) -> None:
-        """Prints the response to the console"""
-        if self.bot.debug:
-            print(f"{Fore.BLUE}{Style.BRIGHT}{response.request.method}:{Style.RESET_ALL} {response.url}")
+        """
+        `print_response` - Prints the response if debug is enabled
 
-    def print_status(self, message: str, status: str = "warning") -> None:
-        """Prints a status message to the console"""
-        if status == "warning":
-            print(f"{Fore.YELLOW}{Style.BRIGHT}WARNING:{Style.RESET_ALL} {message}")
-        elif status == "success":
-            print(f"{Fore.GREEN}{Style.BRIGHT}SUCCESS:{Style.RESET_ALL} {message}")
-        elif status == "error":
-            print(f"{Fore.RED}{Style.BRIGHT}ERROR:{Style.RESET_ALL} {message}")
+        `**Parameters**``
+        - `response` - The response to print.
+
+        """
+        if self.bot.debug:
+            if response.status_code != 200:
+                color = Fore.RED
+            else:
+                color = {"GET": Fore.GREEN, "POST": Fore.YELLOW, "DELETE": Fore.MAGENTA}.get(response.request.method, Fore.RED)
+
+            print(f"{color}{Style.BRIGHT}{response.request.method}{Style.RESET_ALL} - {response.url}")
