@@ -42,7 +42,9 @@ class WSClient(EventHandler):
         """Fetches the websocket url."""
         try:
             return loads(get(
-                url="https://aminoapps.com/api/chat/web-socket-url", headers={"cookie": f"sid={self.bot.sid}"}
+                url="https://aminoapps.com/api/chat/web-socket-url",
+                proxies={"http": self.bot.proxy, "https": self.bot.proxy},
+                headers={"cookie": f"sid={self.bot.sid}"}
                 ).text)["result"]["url"]
         except FailedToFetchWebsocketUrl as e:
             raise FailedToFetchWebsocketUrl from e

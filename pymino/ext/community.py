@@ -132,7 +132,6 @@ class Community:
             url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
             ))
     
-    @community
     def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
         `joined_communities` is the method that fetches the communities the user has joined.
@@ -303,7 +302,8 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/check-in/lottery",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/check-in/lottery",
             data={"timezone": timezone, "timestamp": int(time() * 1000)}
             ))
     
@@ -329,7 +329,8 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/online-status",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/online-status",
             data={"status": status, "timestamp": int(time() * 1000)}
             ))
 
@@ -981,22 +982,16 @@ class Community:
             ))
 
     @community
-    def post_wiki(self, title: str, content: str, image: Optional[str] = None, keyword: Optional[str] = None, value: int = 5, type: str = "levelStar", comId: Union[str, int] = None) -> ApiResponse: #TODO: Add wiki class
+    def post_wiki(self, title: str, content: str, image: str, comId: Union[str, int] = None) -> ApiResponse: #NOTE: DOESN'T WORK
         """
         `post_wiki` is the method that posts wiki.
 
         `**Parameters**`
 
         - `title` - The title of the wiki.
-
         - `content` - The content of the wiki.
-
         - `image` - The image of the wiki. [Optional]
-
-        - `keyword` - Keywords for the wiki. [Optional]
-
         - `value` - Value rating for the wiki. [Optional]
-
         - `type` - Type rating for the wiki. [Optional]
 
         `**Example**`
@@ -1010,16 +1005,23 @@ class Community:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/item",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/item",
             data = {
-                "label": title,
+                "eventSource": "GlobalComposeMenu",
                 "content": content,
-                "icon": self.upload_image(image, "image") if image is not None else None,
-                "keywords": keyword,
+                "keywords": None,
+                "mediaList": [100, self.__handle_media__(media=image, media_value=True), None, None, None, None],
+                "itemCategoryIdList": [],
+                "label": title,
                 "timestamp": int(time() * 1000),
-                "mediaList": [self.upload_image(image, "image")] if image is not None else [],
-                "props": [{"title": "My Rating", "value": value, "type": type}]
-                }))
+                "extensions": {
+                    "props": [
+                        {"title": "My Rating", "type": "levelStar", "value": None},
+                        {"title": "What I Like", "type": "text", "value": None},
+                        {"title": "What I Dislike", "type": "text", "value": None}
+                        ]}
+                    }))
 
     @community
     def delete_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -1203,7 +1205,7 @@ class Community:
             endpoint = f"/x{self.community_id if comId is None else comId}/s/comment"
 
         if image:
-            data["mediaList"] = [[100,self.upload_image(image), None, None, None, None]]
+            data["mediaList"] = [[100,self.__handle_media__(media=image, media_value=True), None, None, None, None]]
 
         return CComment(self.session.handler(
             method = "POST",
@@ -2017,15 +2019,15 @@ class Community:
         [data.update({key: value}) for key, value in {
             "nickname": nickname,
             "content": content,
-            "icon": self.upload_image(icon) if icon is not None else None,
-            "mediaList": [[100, self.upload_image(cover_image), None, None, None, None]] if cover_image is not None else None
+            "icon": self.__handle_media__(media=icon, media_value=True) if icon is not None else None,
+            "mediaList": [[100, self.__handle_media__(media=cover_image, media_value=True), None, None, None, None]] if cover_image is not None else None
             }.items() if value is not None]
 
         if background_color:
             data["extensions"]["style"] = {"backgroundColor": background_color}
 
         if background_image:
-            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.upload_image(background_image), None, None, None, None]]}
+            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.__handle_media__(media=background_image, media_value=True), None, None, None, None]]}
 
         return UserProfile(
             self.session.handler(
@@ -2148,26 +2150,12 @@ class Community:
             attachedObject={
                 "title": title,
                 "content": content,
-                "mediaList": [[100, self._prep_file(image), None]],
+                "mediaList": [[100, self.__handle_media__(media=image, media_value=True), None]],
                 "link": link
                 }).json()))
 
-    def _prep_file(self, file: str, mediaValue: bool=True) -> BinaryIO:
-        """
-        `prep_file` - Prepares a file to be uploaded.
-        
-        `**Parameters**`
-        - `file` - The file to prepare.
-        - `mediaValue` - Whether to upload file and fetch mediaValue.
-
-        `**Returns**`
-        - `BinaryIO` - The binary file.
-        """
-        file = BytesIO(get(file).content) if file.startswith("http") else open(file, "rb")
-        return self.upload_image(file) if mediaValue else file
-
     @community
-    def send_link_snippet(self, chatId: str, content: str, image: BinaryIO = None, comId: Union[str, int] = None) -> ApiResponse:
+    def send_link_snippet(self, chatId: str, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None, comId: Union[str, int] = None) -> CMessage:
         """
         `send_link_snippet` is the method that sends a link snippet to a chat.
 
@@ -2189,16 +2177,30 @@ class Community:
         bot.run(sid=sid)
         ```
         """
+        if mentioned is None:
+            mentioned = []
+
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content=content,
-            linkSnippetList={
-                "link": None,
+            data = PrepareMessage(content=message,
+            extensions = {
+            "linkSnippetList": [{
+                "link": link,
                 "mediaType": 100,
-                "mediaUploadValue": b64encode(self._prep_file(image, False).read()).decode(),
-                "mediaUploadValueContentType": "image/png"
-                }).json()
-                ))
+                "mediaUploadValue": self.encode_media(
+                    self.__handle_media__(
+                        media=image,
+                        content_type="image/jpg",
+                        media_value=False
+                    )
+                ),
+                "mediaUploadValueContentType": "image/png",
+                "mentionedArray": [
+                {"uid": self.userId}
+                ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
+                ] if isinstance(mentioned, list) else None
+            }]
+            }).json()))
 
     @community
     def send_message(self, chatId: str, content: str, comId: Union[str, int] = None) -> CMessage:
@@ -2227,33 +2229,35 @@ class Community:
             ))
 
     @community
-    def send_image(self, chatId: str, image: Union[str, BinaryIO] = None, comId: Union[str, int] = None) -> CMessage:
+    def send_image(self, chatId: str, image: BinaryIO = None, comId: Union[str, int] = None) -> CMessage:
         """
         `send_image` is the method that sends an image to a chat.
 
         `**Parameters**`
 
         - `chatId` - The chat ID to send the image to.
+        - `image` - The image to send.
+        - `comId` - The community ID to send the image to. [Optional]
 
-        - `image` - The image to send. [Optional]
-
-        - `gif` - The gif to send. [Optional]
-        
         `**Example**`
-
         ```python
         from pymino import Bot
         
         bot = Bot()
-        bot.community.send_image(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", image = "https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
         bot.run(sid=sid)
+        bot.community.send_image(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", image = "https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
         ```
         """
         return CMessage(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(
                 mediaType = 100,
-                mediaUploadValue=b64encode((self._prep_file(image, False)).read()).decode(),
+                mediaUploadValue=self.encode_media(
+                    self.__handle_media__(
+                    media=image,
+                    content_type="image/jpg",
+                    media_value=False
+                )),
                 mediaUploadValueContentType = "image/jpg",
                 mediaUhqEnabled = True).json()
                 ))
@@ -2285,8 +2289,13 @@ class Community:
             data = PrepareMessage(
                 type=2,
                 mediaType=110,
-                mediaUploadValue=b64encode((self._prep_file(audio, False)).read()).decode()).json()
-                ))
+                mediaUploadValue=self.encode_media(
+                    self.__handle_media__(
+                    media=audio,
+                    content_type="audio/aac",
+                    media_value=False
+                    ))
+            ).json()))
 
     @community
     def send_sticker(self, chatId: str, stickerId: str, comId: Union[str, int] = None) -> ApiResponse:
@@ -2319,31 +2328,34 @@ class Community:
                 stickerId=stickerId).json()
                 ))
     
-    def upload_image(self, image: Union[str, BinaryIO]) -> str:
-        """
-        `upload_image` is the method that uploads an image to the community.
+    def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
 
-        `**Parameters**`
+        if media.startswith("http"):
+            try:
+                response = get(media)
+                response.raise_for_status()
+                media = response.content
+            except Exception as e:
+                raise InvalidImage from e
 
-        - `image` - The image to upload.
+        if media_value:
+            return self.upload_media(media=media, content_type=content_type)
         
-        `**Example**`
-
-        ```python
-        from pymino import Bot
+        elif response.headers.get("content-type").startswith("image"):
+            return media
         
-        bot = Bot()
-        bot.community.upload_image(image = "https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
-        bot.run(sid=sid)
-        """
+        else:
+            raise InvalidImage
+
+    def encode_media(self, file: bytes) -> str:
+        return b64encode(file).decode()
+
+    def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
         return ApiResponse(self.session.handler(
             method = "POST",
             url = "/g/s/media/upload",
-            data={
-            str: lambda image: BytesIO(get(image).content) if image.startswith("http") else open(image, "rb"),
-            bytes: lambda image: image
-            }[type(image)](image).read(),
-            content_type = "image/jpg"
+            data = media,
+            content_type = content_type
             )).mediaValue
 
     @community
@@ -2879,7 +2891,7 @@ class Community:
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
             data = {
-            "media": [100, self.upload_image(self._prep_file(backgroundImage)), None],
+            "media": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None]],
             "timestamp": int(time() * 1000)
             }))
         

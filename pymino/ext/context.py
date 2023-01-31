@@ -4,7 +4,7 @@ from requests import get
 from threading import Thread
 from time import sleep as delay
 from typing import BinaryIO, Optional
-from inspect import signature as inspect
+from inspect import signature as inspect_signature
 
 from .entities import *
 from .utilities.commands import *
@@ -46,7 +46,7 @@ class Context():
     @property
     def api(self) -> str:
         """The API url."""
-        return "http://service.aminoapps.com/api/v1"
+        return "https://service.aminoapps.com/api/v1"
 
     @property
     def __message_endpoint__(self) -> str:
@@ -56,8 +56,9 @@ class Context():
     def _run(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
                 if isinstance(args[0], Context):
-                    with suppress(Exception):
-                        return func(*args, **kwargs)
+                    return func(*args, **kwargs)
+                else:
+                    raise MustRunInContext
         return wrapper
 
     def __purge__(self, data: dict) -> dict:
@@ -111,44 +112,6 @@ class Context():
             method = "DELETE",
             url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}"
             ))
-
-    def __prep_file__(
-        self,
-        file: str,
-        mediaValue: bool=True,
-        content_type: str="image/jpg"
-        ) -> BinaryIO:
-
-        if all([mediaValue, file.startswith("http://pm1.narvii.com")]): return file
-
-        if file.startswith("http"):
-            file: BinaryIO = BytesIO(get(file).content)
-            file = file.read() if mediaValue else b64encode(file.read()).decode()
-        else:
-            file = b64encode(open(file, "rb").read()).decode()
-        return self.upload_image(file, content_type=content_type) if mediaValue else file
-
-    def upload_image(
-        self,
-        image: Union[str, BinaryIO],
-        content_type: str="image/jpg"
-        ) -> str:
-        """
-        `upload_image` - Uploads an image to the server.
-        
-        `**Parameters**`
-        - `image` - The image to upload.
-        
-        `**Returns**`
-        - `str` - The image URL.
-        """
-        image = self.__read_image__(image)
-        return ApiResponse(self.request.handler(
-            method = "POST",
-            url = "/g/s/media/upload",
-            data = image,
-            content_type = content_type
-            )).mediaValue
 
     @_run
     def send(
@@ -251,11 +214,59 @@ class Context():
         return [f"\u200e\u200f@{mentioned[user_id]}\u202c\u202d" for user_id in mentioned]
 
     @_run
+    def send_link_snippet(self, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None) -> CMessage:
+        """
+        `send_link_snippet` - This sends a link snippet.
+
+        `**Parameters**``
+        - `image` - The image you want to send. Recommended size: 807x216
+        - `message` - The message you want to send.
+        - `link` - The link you want to send. [Optional]
+
+        `**Returns**`` - CMessage object.
+
+        `**Example**``
+        ```py
+        @bot.command("linksnippet")
+        def linksnippet(ctx: Context):
+            return ctx.send_link_snippet(
+                image = "https://i.imgur.com/8ZQZ9Zm.png",
+                message = "Hello World!",
+                link = "https://www.google.com"
+            )
+        ```
+        """
+        if mentioned is None:
+            mentioned = []
+        return CMessage(self.__send_message__(
+            content=message,
+            extensions = {
+                "linkSnippetList": [{
+                "mediaType": 100,
+                "mediaUploadValue": self.encode_media(
+                    self.__handle_media__(
+                        media=image,
+                        content_type="image/jpg",
+                        media_value=False
+                    )
+                ),
+                "mediaUploadValueContentType": "image/png",
+                "link": link
+                }],
+            "mentionedArray": [
+            {"uid": self.message.author.userId}
+            ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
+            ] if isinstance(mentioned, list) else None
+            }))
+    
+    @_run
     def send_embed(
         self,
         message: str,
-        embed_image: str,
-        embed_link: Optional[str]=None,
+        title: str,
+        content: str,
+        image: str,
+        link: str = "ndc://user-me",
         mentioned: Union[str, List[str]]= None
         ) -> CMessage:
         """
@@ -263,62 +274,71 @@ class Context():
 
         `**Parameters**``
         - `message` - The message you want to send.
-        - `embed_image` - The image link or image file.
-        - `embed_link` - The link of the embed. [Optional]
+        - `title` - The title of the embed.
+        - `content` - The content of the embed.
+        - `image` - The image you want to send. Recommended size: 807x216
+        - `link` - The link you want to send. [Optional]
 
         `**Returns**`` - CMessage object.
 
         `**Example**``
         ```py
-        @bot.on_text_message()
-        def on_text_message(ctx: Context):
-            ctx.send_embed(
-                message="This is an embed!",
-                embed_title="Embed Title",
-                embed_content="Embed Content",
-                embed_image="https://i.imgur.com/image.png",
-                embed_link="ndc://user-me"
-                )
+        @bot.command("embed")
+        def embed(ctx: Context):
+            return ctx.send_embed(
+                message = "[c]",
+                title = "Hello World!",
+                content = "This is an embed.",
+                image = "https://i.imgur.com/8ZQZ9Zm.png",
+                link = "https://www.google.com"
+            )
         ```
         """
         return CMessage(self.__send_message__(
             content=message,
+            attachedObject = {
+                "title": title,
+                "content": content,
+                "mediaList": [[100, self.__handle_media__(media=image, media_value=True), None]],
+                "link": link
+                },
             extensions = {
-                "linkSnippetList": [{
-                "mediaType": 100,
-                "mediaUploadValue": self.__prep_file__(embed_image, False),
-                "mediaUploadValueContentType": "image/png",
-                "link": embed_link
-                }],
-                "mentionedArray": [
-                {"uid": self.message.author.userId}
-                ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-                ] if isinstance(mentioned, list) else None
-                }
-            ))
+                "mentionedArray": [{
+                    "uid": self.message.author.userId}
+                    ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
+                    ] if isinstance(mentioned, list) else None
+            }))
+    
+    def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
 
-    @_run
-    def send_image(self, image: str) -> CMessage:
-        """
-        `send_image` - This sends an image.
+        if media.startswith("http"):
+            try:
+                response = get(media)
+                response.raise_for_status()
+                media = response.content
+            except Exception as e:
+                raise InvalidImage from e
 
-        `**Parameters**``
-        - `image` - The image link or file you want to send.
+        if media_value:
+            return self.upload_media(media=media, content_type=content_type)
+        
+        elif response.headers.get("content-type").startswith("image"):
+            return media
+        
+        else:
+            raise InvalidImage
 
-        `**Returns**`` - CMessage object.
+    def encode_media(self, file: bytes) -> str:
+        return b64encode(file).decode()
 
-        `**Example**``
-        ```py
-        @bot.on_text_message()
-        def on_text_message(ctx: Context):
-            ctx.send_image(image="https://i.imgur.com/image.jpg")
-        ```
-        """
-        return CMessage(self.__send_message__(
-            mediaType=100,
-            mediaUploadValue=self.__prep_file__(image, False)
-            ))
-
+    def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = "/g/s/media/upload",
+            data = media,
+            content_type = content_type
+            )).mediaValue
+    
     @_run
     def send_sticker(self, sticker_id: str) -> CMessage:
         """
@@ -344,6 +364,33 @@ class Context():
             ))
 
     @_run
+    def send_image(self, image: str) -> CMessage:
+        """
+        `send_image` - This sends an image.
+
+        `**Parameters**``
+        - `image` - The image link or file you want to send.
+
+        `**Returns**`` - CMessage object.
+
+        `**Example**``
+        ```py
+        @bot.on_text_message()
+        def on_text_message(ctx: Context):
+            ctx.send_image(image="https://i.imgur.com/image.jpg")
+        ```
+        """
+        return CMessage(self.__send_message__(
+            mediaType=100,
+            mediaUploadValue=self.encode_media(
+                self.__handle_media__(
+                media=image,
+                content_type="image/jpg",
+                media_value=False
+            ))
+            ))
+            
+    @_run
     def send_gif(self, gif: str) -> CMessage:
         """
         `send_gif` - This sends a gif.
@@ -362,7 +409,12 @@ class Context():
         """
         return CMessage(self.__send_message__(
             mediaType=100,
-            mediaUploadValue=self.__prep_file__(gif, False),
+            mediaUploadValue=self.encode_media(
+            self.__handle_media__(
+            media=gif,
+            content_type="image/gif",
+            media_value=False
+            )),
             mediaUploadValueContentType="image/gif"
             ))
 
@@ -386,8 +438,12 @@ class Context():
         return CMessage(self.__send_message__(
             type=2,
             mediaType=110,
-            mediaUploadValue=self.__prep_file__(audio, False)
-            ))
+            mediaUploadValue=self.encode_media(
+            self.__handle_media__(
+            media=audio,
+            content_type="audio/aac",
+            media_value=False
+            ))))
 
     @_run
     def join_chat(self, chatId: str=None) -> ApiResponse:
@@ -452,7 +508,7 @@ class EventHandler(Context):
         `**Returns**`` - None
         """
         while True:
-            if len(inspect(func).parameters) == 0:
+            if len(inspect_signature(func).parameters) == 0:
                 func()
             else: func(self.community)
             delay(interval)
@@ -563,7 +619,7 @@ class EventHandler(Context):
             "message": data.content[len(self.command_prefix) + len(command_name) + 1:],
             "username": data.author.username,
             "userId": data.author.userId
-        }.get(i) for i in inspect(self.fetch_command(command_name).func).parameters]
+        }.get(i) for i in inspect_signature(self.fetch_command(command_name).func).parameters]
 
         command_name = dict(self._commands.__command_aliases__().copy()).get(command_name, command_name)  
 
@@ -645,7 +701,7 @@ class EventHandler(Context):
             "message": ctx.message.content[len(command_name) + len(self.command_prefix) + 1:] if command_name else ctx.message.content,
             "username": ctx.author.username,
             "userId": ctx.author.userId
-        }.get(i) for i in inspect(self._events["text_message"]).parameters]
+        }.get(i) for i in inspect_signature(self._events["text_message"]).parameters]
 
         return self._events["text_message"](*parameters)
 
@@ -665,7 +721,7 @@ class EventHandler(Context):
             def wrapper(ctx: Context):
                 parameters = []
                 pparameters = {"ctx": ctx, "image": ctx.message.mediaValue}
-                for parameter in inspect(func).parameters:
+                for parameter in inspect_signature(func).parameters:
                     parameters.append(pparameters.get(parameter, None))
                 func(*parameters)
             self._events["image_message"] = wrapper
@@ -688,7 +744,7 @@ class EventHandler(Context):
             def wrapper(ctx: Context):
                 parameters = []
                 pparameters = {"ctx": ctx, "title": ctx.message.content}
-                for parameter in inspect(func).parameters:
+                for parameter in inspect_signature(func).parameters:
                     parameters.append(pparameters.get(parameter, None))
                 func(*parameters)
             self._events["youtube_message"] = wrapper
@@ -715,7 +771,7 @@ class EventHandler(Context):
         """
         def decorator(func):
             def wrapper(ctx: Context):
-                inspect = len(inspect(func).parameters)
+                inspect = len(inspect_signature(func).parameters)
                 if inspect > 2:
                     return None
                 elif inspect > 1:
@@ -729,7 +785,7 @@ class EventHandler(Context):
     def on_sticker_message(self):
         def decorator(func):
             def wrapper(ctx: Context):
-                inspect = len(inspect(func).parameters)
+                inspect = len(inspect_signature(func).parameters)
                 if inspect > 2:
                     return None
                 elif inspect > 1:
@@ -797,7 +853,7 @@ class EventHandler(Context):
     def on_delete_message(self):
         def decorator(func):
             def wrapper(ctx: Context):
-                inspect = len(inspect(func).parameters)
+                inspect = len(inspect_signature(func).parameters)
                 if inspect > 2:
                     return None
                 elif inspect > 1:
@@ -817,7 +873,7 @@ class EventHandler(Context):
                     "userId": ctx.author.userId
                 }
                 parameters = []
-                for parameter in inspect(func).parameters:
+                for parameter in inspect_signature(func).parameters:
                     parameters.append(potential_parameters.get(parameter, None))
                 func(*parameters)
             self._events["member_join"] = wrapper

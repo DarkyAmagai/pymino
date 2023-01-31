@@ -249,6 +249,18 @@ class API_ERROR(Exception):
     def __init__(self, response: str):
         super().__init__(response)
 
+class BlockedByOrganizer(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class YouAreBlockedByThisUser(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class UserHasBeenDeleted(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
 class APIException(Exception):
     def __init__(self, response: str):
         self.exception_map = {
@@ -276,6 +288,7 @@ class APIException(Exception):
             239: CantLeaveCommunity,
             240: ReachedTitleLength,
             241: EmailFlaggedAsSpam,
+            245: UserHasBeenDeleted,
             246: AccountDeleted,
             262: ReachedMaxTitles,
             270: VerificationRequired,
@@ -283,7 +296,9 @@ class APIException(Exception):
             300: BadImage,
             500: RequestedNoLongerExists,
             551: InsufficientLevel,
+            603: YouAreBlockedByThisUser,
             604: YouHaveBlockedThisUser,
+            606: BlockedByOrganizer,
             700: NoLongerExists,
             702: WallCommentingDisabled,
             801: CommunityNoLongerExists,
@@ -317,6 +332,7 @@ class APIException(Exception):
             json_response: dict = loads(response)
             self.status_code: int = json_response.get("api:statuscode", response)
             self.message: str = json_response.get("api:message", response)
+            self.url: str = json_response.get("url", response)
         
         if any([
             not isinstance(self.status_code, int),
@@ -326,6 +342,9 @@ class APIException(Exception):
         
         exception = self.exception_map.get(self.status_code)
         if self.exception_map.get(self.status_code):
+            if self.url is not None:
+                self.message = f"{self.message} ({self.url})"
+
             raise exception(self.message)
             
 class MissingCommunityId(Exception):
@@ -398,4 +417,10 @@ class InvalidLink(Exception):
     def __init__(self):
         super().__init__(
             "Invalid link. Please check the link you are trying to use."
+            )
+        
+class MustRunInContext(Exception):
+    def __init__(self):
+        super().__init__(
+            "This function must be run in a context."
             )
