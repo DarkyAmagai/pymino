@@ -2329,23 +2329,25 @@ class Community:
                 ))
     
     def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
-
-        if media.startswith("http"):
-            try:
+        response = None
+        
+        try:
+            if media.startswith("http"):
                 response = get(media)
                 response.raise_for_status()
                 media = response.content
-            except Exception as e:
-                raise InvalidImage from e
+            else:
+                media = open(media, "rb").read()
+        except Exception as e:
+            raise InvalidImage from e
 
         if media_value:
             return self.upload_media(media=media, content_type=content_type)
-        
-        elif response.headers.get("content-type").startswith("image"):
-            return media
-        
-        else:
+
+        if response and not response.headers.get("content-type").startswith("image"):
             raise InvalidImage
+
+        return media
 
     def encode_media(self, file: bytes) -> str:
         return b64encode(file).decode()

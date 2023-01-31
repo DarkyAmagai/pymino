@@ -51,11 +51,10 @@ class Bot(WSClient):
         self.community_id:      Union[str, int] = community_id
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
         self.session:           HTTPClient = HTTPClient()
-        self.proxy:             Optional[str] = kwargs.get("proxy")
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
                                 session=self.session,
-                                proxy=self.proxy
+                                proxy=kwargs.get("proxy")
                                 )
         self.community:         Community = Community(
                                 bot = self,

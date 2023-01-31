@@ -328,6 +328,11 @@ class APIException(Exception):
             6002: InvalidAminoID,
             99001: InvalidName
         }
+    
+        self.url = None
+        self.message = None
+        self.status_code = None
+
         with suppress(Exception):
             json_response: dict = loads(response)
             self.status_code: int = json_response.get("api:statuscode", response)
@@ -386,7 +391,7 @@ class LoginRequired(Exception):
 class InvalidImage(Exception):
     def __init__(self):
         super().__init__(
-            "Invalid image. Please check the image you are trying to upload."
+            "Invalid image. Please check the image you are trying to upload. It should be a file path or a url."
             )
         
 class MissingTimers(Exception):

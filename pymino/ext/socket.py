@@ -1,4 +1,3 @@
-from requests import get
 from random import randint
 from typing import Optional
 from threading import Thread
@@ -10,6 +9,7 @@ from websocket import (
     )
 from .entities import *
 from .context import EventHandler
+from .utilities.generate import *
 from .dispatcher import MessageDispatcher
 
 if orjson_exists():
@@ -39,15 +39,7 @@ class WSClient(EventHandler):
         EventHandler.__init__(self)
         
     def fetch_ws_url(self) -> str:
-        """Fetches the websocket url."""
-        try:
-            return loads(get(
-                url="https://aminoapps.com/api/chat/web-socket-url",
-                proxies={"http": self.bot.proxy, "https": self.bot.proxy},
-                headers={"cookie": f"sid={self.bot.sid}"}
-                ).text)["result"]["url"]
-        except FailedToFetchWebsocketUrl as e:
-            raise FailedToFetchWebsocketUrl from e
+        return f"wss://ws{randint(1, 4)}.aminoapps.com"
 
     def connect(self) -> None:
         """Connects to the websocket."""
@@ -56,13 +48,18 @@ class WSClient(EventHandler):
 
     def run_forever(self) -> None:
         """Runs the websocket forever."""
+        ws_data = f"{device_id()}|{int(time() * 1000)}"
         self.ws = WebSocketApp(
-            url=self.fetch_ws_url(),
+            url=f"{self.fetch_ws_url()}/?signbody={ws_data.replace('|', '%7C')}",
             on_open=self.on_websocket_open,
             on_message=self.on_websocket_message,
             on_error=self.on_websocket_error,
-            on_close=self.on_websocket_close
-            )
+            on_close=self.on_websocket_close,
+            header={
+            "NDCDEVICEID": device_id(),
+            "NDCAUTH": f"sid={self.bot.sid}",
+            "NDC-MSG-SIG": generate_signature(ws_data)
+            })
         return self.start_processes()
 
     def start_processes(self) -> None:

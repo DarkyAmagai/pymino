@@ -1,9 +1,8 @@
 from base64 import b64encode
-from io import BytesIO
 from requests import get
 from threading import Thread
 from time import sleep as delay
-from typing import BinaryIO, Optional
+from typing import BinaryIO
 from inspect import signature as inspect_signature
 
 from .entities import *
@@ -308,25 +307,27 @@ class Context():
                     ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
                     ] if isinstance(mentioned, list) else None
             }))
-    
-    def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
 
-        if media.startswith("http"):
-            try:
+    def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
+        response = None
+        
+        try:
+            if media.startswith("http"):
                 response = get(media)
                 response.raise_for_status()
                 media = response.content
-            except Exception as e:
-                raise InvalidImage from e
+            else:
+                media = open(media, "rb").read()
+        except Exception as e:
+            raise InvalidImage from e
 
         if media_value:
             return self.upload_media(media=media, content_type=content_type)
-        
-        elif response.headers.get("content-type").startswith("image"):
-            return media
-        
-        else:
+
+        if response and not response.headers.get("content-type").startswith("image"):
             raise InvalidImage
+
+        return media
 
     def encode_media(self, file: bytes) -> str:
         return b64encode(file).decode()
