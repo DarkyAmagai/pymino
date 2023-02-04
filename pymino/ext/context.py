@@ -615,9 +615,10 @@ class EventHandler(Context):
             else:
                 return None
 
+        message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         parameters = [{
             "ctx": Context(data, self.request),
-            "message": data.content[len(self.command_prefix) + len(command_name) + 1:],
+            "message": None if len(message) == 0 else message,
             "username": data.author.username,
             "userId": data.author.userId
         }.get(i) for i in inspect_signature(self.fetch_command(command_name).func).parameters]

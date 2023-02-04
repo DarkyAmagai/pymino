@@ -220,13 +220,15 @@ class RequestHandler:
         - `dict` - The response data.
 
         """
+        response_map = {403: Forbidden, 502: BadGateway, 503: ServiceUnavailable}
+
         if response.status_code != 200:
             
-            if response.status_code == 403:
-                raise ForbiddenException
+            if response.status_code in response_map:
+                raise response_map[response.status_code]
             
             with suppress(Exception):
-                if loads(response.text).get("api:statuscode") == 105:
+                if dict(response.json()).get("api:statuscode") == 105:
                     return self.bot.run(self.email, self.password)
 
             raise APIException(response.text)

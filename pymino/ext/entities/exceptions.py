@@ -412,10 +412,25 @@ class NotLoggedIn(Exception):
             "You are not logged in. Please login before using this function."
             )
         
-class ForbiddenException(Exception):
+class Forbidden(Exception):
     def __init__(self):
         super().__init__(
             "403 Forbidden. Possible IP ban. Please try again later."
+            "\nIf this error persists, change your IP address.\n"
+            )
+        
+class ServiceUnavailable(Exception):
+    def __init__(self):
+        super().__init__(
+            "Amino is currently down or having issues. Please try again later."
+            "\nThis has nothing to do with the bot or your internet connection.\n"
+            )
+        
+class BadGateway(Exception):
+    def __init__(self):
+        super().__init__(
+            "Amino is currently down or having issues. Please try again later."
+            "\nThis has nothing to do with the bot or your internet connection.\n"
             )
         
 class InvalidLink(Exception):

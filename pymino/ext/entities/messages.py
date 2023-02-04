@@ -54,7 +54,7 @@ class CMessage:
         self.includedInSummary = None
         self.uid               = None
         self.userId            = None
-        self.author            = {}
+        self.author            = None
         self.isHidden          = None
         self.messageId         = None
         self.mediaType         = None
@@ -63,7 +63,7 @@ class CMessage:
         self.threadId          = None
         self.chatId            = None
         self.createdTime       = None
-        self.extensions        = {}
+        self.extensions        = None
         self.type              = None
         self.mediaValue        = None
 
@@ -111,7 +111,7 @@ class CMessages:
         self.includedInSummary = None
         self.uid               = None
         self.userId            = None
-        self.author            = {}
+        self.author            = None
         self.isHidden          = None
         self.messageId         = None
         self.mediaType         = None
@@ -120,7 +120,7 @@ class CMessages:
         self.threadId          = None
         self.chatId            = None
         self.createdTime       = None
-        self.extensions        = {}
+        self.extensions        = None
         self.type              = None
         self.mediaValue        = None
 
@@ -150,8 +150,8 @@ class Message:
         self.data                   = data
         self.ndcId                  = None
         self.comId                  = None
-        self.chatMessage            = {}
-        self.author                 = {}
+        self.chatMessage            = None
+        self.author                 = None
         self.mediaValue             = None
         self.threadId               = None
         self.chatId                 = None
@@ -167,12 +167,12 @@ class Message:
         self.includedInSummary      = None
         self.chatBubbleId           = None
         self.chatBubbleVersion      = None
-        self.extensions             = {}
-        self.mentioned_userids      = []
-        self.mentioned_usernames    = []
-        self.mentioned_dictionary   = {}
-        self.alertOption           = None
-        self.membershipStatus      = None
+        self.extensions             = None
+        self.mentioned_userids      = None
+        self.mentioned_usernames    = None
+        self.mentioned_dictionary   = None
+        self.alertOption            = None
+        self.membershipStatus       = None
 
         if isinstance(data, dict):
             self.data:                  dict = data.get("o", self.data)

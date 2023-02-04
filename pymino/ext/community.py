@@ -539,6 +539,42 @@ class Community:
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
+    
+    @community
+    def fetch_chat_mods(self, chatId: str, comId: Union[str, int] = None, moderators: Optional[str] = "all") -> List[str]:
+        """
+        `fetch_chat_mods` is the method that fetches chat moderators.
+        
+        `**Parameters**`
+
+        - `chatId` - The chat ID to fetch moderators from.
+
+        - `moderators` - The type of moderators to fetch.
+            - `all` - Merges `co-hosts` and `host`.
+            - `co-hosts` - Co-hosts.
+            - `host` - Host.
+
+        `**Example**`
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.community.fetch_chat_mods(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
+        bot.run(sid=sid)
+        ```
+        """
+        response = self.fetch_chat(chatId=chatId, comId=comId)
+
+        mods_map = {
+            "all": list(response.extensions.coHost) + [response.hostUserId],
+            "co-hosts": list(response.extensions.coHost),
+            "host": [response.hostUserId]
+            }
+
+        try:
+            return mods_map[moderators]
+        except KeyError as e:
+            raise ValueError("Invalid value for `moderators`.") from e
 
     @community
     def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
@@ -1004,24 +1040,28 @@ class Community:
         bot.run(sid=sid)
         ```
         """
+        image = self.__handle_media__(image, media_value=True)
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/item",
             data = {
-                "eventSource": "GlobalComposeMenu",
-                "content": content,
-                "keywords": None,
-                "mediaList": [100, self.__handle_media__(media=image, media_value=True), None, None, None, None],
-                "itemCategoryIdList": [],
-                "label": title,
-                "timestamp": int(time() * 1000),
-                "extensions": {
-                    "props": [
-                        {"title": "My Rating", "type": "levelStar", "value": None},
-                        {"title": "What I Like", "type": "text", "value": None},
-                        {"title": "What I Dislike", "type": "text", "value": None}
-                        ]}
-                    }))
+            "extensions": {
+                "fansOnly": False,
+		        "props": []
+	        },
+	        "address": None,
+            "content": content,
+            "icon": image,
+            "keywords": "",
+            "label": title,
+            "latitude": 0,
+            "longitude": 0,
+            "mediaList": [
+                [100, image, None]
+            ],
+            "eventSource": "GlobalComposeMenu",
+            "timestamp": int(time() * 1000)
+            }))
 
     @community
     def delete_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:

@@ -2,6 +2,7 @@ from random import randint
 from typing import Optional
 from threading import Thread
 from time import sleep as delay
+from urllib.parse import urlencode
 from websocket import (
     WebSocket,
     WebSocketApp,
@@ -50,7 +51,7 @@ class WSClient(EventHandler):
         """Runs the websocket forever."""
         ws_data = f"{device_id()}|{int(time() * 1000)}"
         self.ws = WebSocketApp(
-            url=f"{self.fetch_ws_url()}/?signbody={ws_data.replace('|', '%7C')}",
+            url = f"{self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
             on_open=self.on_websocket_open,
             on_message=self.on_websocket_message,
             on_error=self.on_websocket_error,
@@ -77,7 +78,7 @@ class WSClient(EventHandler):
                         "threadChannelUserInfoList": [],
                         "id": randint(1, 100)},
                         "t": 116
-                        })
+                        })  
 
     def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
         """Handles websocket errors."""

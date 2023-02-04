@@ -1,7 +1,7 @@
 class CThreadExtensions:
     def __init__(self, data: dict):
         self.data = data
-        parser = self.__parser__ if isinstance(self.data, list) else self.data.get
+        parser = self.__parser__ if isinstance(self.data, list) else lambda key, default=None: self.data.get(key, default)
         self.coHost:                        list = parser('coHost', None)
         self.language:                      str = parser('language', None)
         self.membersCanInvite:              int = parser('membersCanInvite', None)
