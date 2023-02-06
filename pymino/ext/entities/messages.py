@@ -166,7 +166,7 @@ class MessageAuthor:
 
 class CMessage:
     def __init__(self, data: Union[dict, str]) -> None:
-        self.data: dict = data.get('result') or data.get('message', self.data)
+        self.data: dict = data.get('result') or data.get('message', data)
 
     def return_none(func):
         def wrapper(*args, **kwargs):
