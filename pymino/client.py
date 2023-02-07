@@ -1,4 +1,6 @@
 from time import time
+from base64 import b64decode
+from functools import reduce
 from typing import Optional
 from requests import Session as HTTPClient
 
@@ -11,19 +13,19 @@ class Client():
     `Client` - This is the self client.
 
     `**Parameters**``
-    - `**kwargs` - Any other parameters to use for the bot.
+    - `**kwargs` - Any other parameters to use for the client.
 
-        - `device_id` - The device id to use for the bot.
+        - `device_id` - The device id to use for the client.
 
-        - `proxy` - The proxy to use for the bot. `proxy` must be `str`.
+        - `proxy` - The proxy to use for the client. `proxy` must be `str`.
 
     `**Example**``
     ```python
     from pymino import Client
 
-    bot = Bot()
+    client = Client()
 
-    bot.run(sid="sid")
+    client.login(sid="sid")
     ```
     """
     def __init__(self, **kwargs):
@@ -64,9 +66,9 @@ class Client():
         ```python
         from pymino import Client
 
-        bot = Client()
+        client = Client()
 
-        bot.fetch_community_id("https://aminoapps.com/c/CommunityName")
+        client.fetch_community_id("https://aminoapps.com/c/CommunityName")
         ```
         """
         community_id = CCommunity(self.request.handler(
@@ -89,9 +91,9 @@ class Client():
         ```python
         from pymino import Client
 
-        bot = Client()
+        client = Client()
 
-        bot.set_community_id(123456789)
+        client.set_community_id(123456789)
         ```
         """
         try:
@@ -111,28 +113,34 @@ class Client():
             return func(*args, **kwargs)
         return wrapper
     
-    def login(self, email: str, password: str, device_id: Optional[str] = None) -> ApiResponse:
+    def __login__(self, response: dict, sid: str) -> Union[None, Exception]:
+        if response["api:statuscode"] != 0: input(response), exit()
+
+        if not hasattr(self, "profile"): 
+            self.profile:       UserProfile = UserProfile(response)
+
+        self.sid:               str = sid or response['sid']
+        self.userId:            str = self.profile.userId
+        self.community.userId:  str = self.userId
+        self.request.sid:       str = self.sid
+        self.request.userId:    str = self.userId
+        self.authenticated:     bool = True
+
+        return response
+    
+    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
-        `login` - Login to the client.
+        `authenticate` - authenticates the client.
 
-        `**Parameters**``
-        - `email` - The email to login with.
-        - `password` - The password to login with.
-        - `device_id` - The device id to use for login.
+        [This is used internally.]
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        bot = Client()
-
-        bot.login(email="email", password="password")
-        ```
+        `**Parameters**`
+        - `email` - The email to use to login.
+        - `password` - The password to use to login.
         """
-        return self.__login__(self.request.handler(
-            method="POST",
-            url="/g/s/auth/login",
-            data={
+        return ApiResponse(self.request.handler(
+            method="POST", url = "/g/s/auth/login",
+            data = {
                 "email": email,
                 "v": 2,
                 "secret": f"0 {password}",
@@ -140,22 +148,63 @@ class Client():
                 "clientType": 100,
                 "action": "normal",
                 "timestamp": int(time() * 1000)
-                }))
+            })).json()
+    
+    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> Union[None, Exception]:
+        """
+        `login` - Log in to the client using email and password or sid.
 
-    def __login__(self, response: dict) -> ApiResponse:
-        if response["api:statuscode"] != 0: input(response), exit()
+        `**Parameters**`
+        - `email` - The email to use to login. Defaults to `None`.
+        - `password` - The password to use to login. Defaults to `None`.
+        - `sid` - The sid to use to login. Defaults to `None`.
 
-        if not hasattr(self, "profile"): 
-            self.profile:       UserProfile = UserProfile(response)
+        `**Example**`
+        ```python
+        from pymino import Client
 
-        self.sid:               str = response['sid']
-        self.userId:            str = self.profile.userId
-        self.community.userId:  str = self.userId
-        self.request.sid:       str = self.sid
-        self.request.userId:    str = self.userId
-        self.authenticated:     bool = True
+        client = Client()
 
-        return ApiResponse(response)
+        client.login(email="email", password="password")
+        ```
+        """
+        if email and password:
+            for key, value in {"email": email, "password": password}.items():
+                setattr(self.request, key, value)
+
+            response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+
+        elif sid:
+            self.sid:               str = sid
+            self.request.sid:       str = self.sid
+            self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
+            response:               dict = self.fetch_account().json()
+
+        else:
+            raise MissingEmailPasswordOrSid
+
+        if response:
+            return self.__login__(response=response, sid=sid)
+        else:
+            raise LoginFailed
+
+    @authenticated
+    def logout(self) -> None:
+        """
+        `logout` - Log out of the client.
+
+        `**Example**`
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.logout()
+        ```
+        """
+        for key in ["sid", "request.sid", "userId", "authenticated"]:
+            setattr(self, key, None)
+        return None
 
     @authenticated
     def join_community(self, community_id: int) -> ApiResponse:
