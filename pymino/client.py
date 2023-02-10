@@ -31,7 +31,7 @@ class Client():
     def __init__(self, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
         self.debug:             bool = check_debugger()
-        self.authenticated:     bool = False
+        self.is_authenticated:  bool = False
         self.userId:            str = None
         self.sid:               str = None
         self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
@@ -109,11 +109,80 @@ class Client():
 
     def authenticated(func: Callable):
         def wrapper(*args, **kwargs):
-            if not args[0].authenticated: raise LoginRequired
+            if not args[0].is_authenticated: raise LoginRequired
             return func(*args, **kwargs)
         return wrapper
     
-    def __login__(self, response: dict, sid: str) -> Union[None, Exception]:
+    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
+        """
+        `authenticate` - authenticates the bot.
+
+        [This is used internally.]
+
+        `**Parameters**`
+        - `email` - The email to use to login.
+        - `password` - The password to use to login.
+        - `device_id` - The device id to use to login.
+        
+        """
+        return ApiResponse(self.request.handler(
+            method="POST", url = "/g/s/auth/login",
+            data = {
+                "secret": f"0 {password}",
+                "clientType": 100,
+                "systemPushEnabled": 0,
+                "timestamp": int(time() * 1000),
+                "locale": "en_US",
+                "action": "normal",
+                "bundleID": "com.narvii.master",
+                "timezone": -480,
+                "deviceID": device_id or self.device_id,
+                "email": email,
+                "v": 2,
+                "clientCallbackURL": "narviiapp://default"
+                })).json()
+
+    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> dict:
+        """
+        `login` - logs in to the client.
+
+        `**Parameters**`
+        - `email` - The email to use to login. Defaults to `None`.
+        - `password` - The password to use to login. Defaults to `None`.
+        - `sid` - The sid to use to login. Defaults to `None`.
+        - `device_id` - The device id to use to login. Defaults to `None`.
+
+        `**Example**`
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.run(email="email", password="password")
+        ```
+        """
+        if email and password:
+
+            for key, value in {"email": email, "password": password}.items():
+                setattr(self.request, key, value)
+
+            response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+
+        elif sid:
+            self.sid:               str = sid
+            self.request.sid:       str = self.sid
+            self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
+            response:               dict = self.fetch_account()
+
+        else:
+            raise MissingEmailPasswordOrSid
+
+        if response:
+            return self.__run__(response, sid)
+        else:
+            raise LoginFailed
+
+    def __run__(self, response: dict, sid: str) -> Union[None, Exception]:
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
@@ -124,69 +193,12 @@ class Client():
         self.community.userId:  str = self.userId
         self.request.sid:       str = self.sid
         self.request.userId:    str = self.userId
-        self.authenticated:     bool = True
+        self.is_authenticated:  bool = True
+
+        if self.debug:
+            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
         return response
-    
-    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
-        """
-        `authenticate` - authenticates the client.
-
-        [This is used internally.]
-
-        `**Parameters**`
-        - `email` - The email to use to login.
-        - `password` - The password to use to login.
-        """
-        return ApiResponse(self.request.handler(
-            method="POST", url = "/g/s/auth/login",
-            data = {
-                "email": email,
-                "v": 2,
-                "secret": f"0 {password}",
-                "deviceID": device_id or self.device_id,
-                "clientType": 100,
-                "action": "normal",
-                "timestamp": int(time() * 1000)
-            })).json()
-    
-    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> Union[None, Exception]:
-        """
-        `login` - Log in to the client using email and password or sid.
-
-        `**Parameters**`
-        - `email` - The email to use to login. Defaults to `None`.
-        - `password` - The password to use to login. Defaults to `None`.
-        - `sid` - The sid to use to login. Defaults to `None`.
-
-        `**Example**`
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.login(email="email", password="password")
-        ```
-        """
-        if email and password:
-            for key, value in {"email": email, "password": password}.items():
-                setattr(self.request, key, value)
-
-            response: dict = self.authenticate(email=email, password=password, device_id=device_id)
-
-        elif sid:
-            self.sid:               str = sid
-            self.request.sid:       str = self.sid
-            self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
-            response:               dict = self.fetch_account().json()
-
-        else:
-            raise MissingEmailPasswordOrSid
-
-        if response:
-            return self.__login__(response=response, sid=sid)
-        else:
-            raise LoginFailed
 
     @authenticated
     def logout(self) -> None:
@@ -202,7 +214,7 @@ class Client():
         client.logout()
         ```
         """
-        for key in ["sid", "request.sid", "userId", "authenticated"]:
+        for key in ["sid", "userId", "community.userId", "request.sid", "request.userId", "is_authenticated"]:
             setattr(self, key, None)
         return None
 
@@ -470,27 +482,21 @@ class Client():
         """
         return self.account.check_device(deviceId=device_id)
 
-    def fetch_account(self) -> ApiResponse:
+    def fetch_account(self) -> dict:
         """
-        `fetch_account` - Fetches the account of the client.
+        `fetch_account` - fetches the account of the bot to verify the sid is valid.
 
-        `**Parameters**``
+        [This is used internally.]
+
+        `**Parameters**`
         - `None`
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.fetch_account()
-        ```
-
-        `**Returns**``
-        - `dict` - The account of the client.
+        `**Returns**`
+        - `dict` - The response from the request.
 
         """
-        return self.account.fetch_account()
+        self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
+        return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
     def upload_image(self, image: str) -> ApiResponse:
         """

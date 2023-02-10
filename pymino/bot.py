@@ -70,7 +70,7 @@ class Bot(WSClient):
         WSClient.__init__(self, bot=self)
 
 
-    def authenticate(self, email: str, password: str) -> dict:
+    def authenticate(self, email: str, password: str, device_id: str = None) -> dict:
         """
         `authenticate` - authenticates the bot.
 
@@ -79,18 +79,25 @@ class Bot(WSClient):
         `**Parameters**`
         - `email` - The email to use to login.
         - `password` - The password to use to login.
+        - `device_id` - The device id to use to login. `Defaults` to `None`.
+        
         """
         return ApiResponse(self.request.handler(
             method="POST", url = "/g/s/auth/login",
             data = {
+                "secret": f"0 {password}",
+                "clientType": 100,
+                "systemPushEnabled": 0,
+                "timestamp": int(time() * 1000),
+                "locale": "en_US",
+                "action": "normal",
+                "bundleID": "com.narvii.master",
+                "timezone": -480,
+                "deviceID": device_id or self.device_id,
                 "email": email,
                 "v": 2,
-                "secret": f"0 {password}",
-                "deviceID": self.device_id,
-                "clientType": 100,
-                "action": "normal",
-                "timestamp": int(time() * 1000)
-            })).json()
+                "clientCallbackURL": "narviiapp://default"
+                })).json()
 
     def fetch_account(self) -> dict:
         """
@@ -108,7 +115,7 @@ class Bot(WSClient):
         self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
-    def run(self, email: str=None, password: str=None, sid: str=None) -> None:
+    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> None:
         """
         `run` - runs the bot.
 
@@ -116,6 +123,7 @@ class Bot(WSClient):
         - `email` - The email to use to login. Defaults to `None`.
         - `password` - The password to use to login. Defaults to `None`.
         - `sid` - The sid to use to login. Defaults to `None`.
+        - `device_id` - The device id to use to login. Defaults to `None`.
 
         `**Example**`
         ```python
@@ -131,7 +139,7 @@ class Bot(WSClient):
             for key, value in {"email": email, "password": password}.items():
                 setattr(self.request, key, value)
 
-            response: dict = self.authenticate(email, password)
+            response: dict = self.authenticate(email=email, password=password, device_id=device_id)
 
         elif sid:
             self.sid:               str = sid
