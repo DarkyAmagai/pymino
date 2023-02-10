@@ -80,10 +80,11 @@ class Bot(WSClient):
         - `email` - The email to use to login.
         - `password` - The password to use to login.
         - `device_id` - The device id to use to login. `Defaults` to `None`.
-        
+
         """
         return ApiResponse(self.request.handler(
-            method="POST", url = "/g/s/auth/login",
+            method="POST",
+            url = "/g/s/auth/login",
             data = {
                 "secret": f"0 {password}",
                 "clientType": 100,
@@ -97,7 +98,8 @@ class Bot(WSClient):
                 "email": email,
                 "v": 2,
                 "clientCallbackURL": "narviiapp://default"
-                })).json()
+                }
+            )).json()
 
     def fetch_account(self) -> dict:
         """

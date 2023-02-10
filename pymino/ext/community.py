@@ -179,6 +179,61 @@ class Community:
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/join", 
             data={"timestamp": int(time() * 1000)}
             ))
+    
+    def fetch_invitationId(self, invite_code: str) -> str:
+        """
+        `fetch_invitationId` is the method that fetches the invitation id from the invite code.
+
+        `**Parameters**`
+
+        - `invite_code` - The invite code to fetch the invitation id from.
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+
+        invitationId = bot.community.fetch_invitationId(invite_code="123456789")
+
+        bot.run(sid=sid)
+        ```
+        
+        """
+        return InvitationId(self.session.handler(
+            method = "GET",
+            url = f"/g/s/community/link-identify?q={invite_code}"
+            )).invitationId
+    
+    @community
+    def join_community_by_code(self, invite_code: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `join_community_by_code` is the method that joins the community by invite code.
+
+        `**Parameters**`
+
+        - `invite_code` - The invite code to join the community.
+
+        - `comId` - The community id to join. If not provided, it will use the community id in the client.
+
+        `**Example**`
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+        bot.community.join_community_by_code(invite_code = "123456789", comId = "123456789")
+        bot.run(sid=sid)
+        ```
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/community/join",
+            data = {
+                "invitationId": self.fetch_invitationId(invite_code=invite_code),
+                "timestamp": int(time() * 1000)
+                }
+            ))
 
     @community
     def leave_community(self, comId: Union[str, int] = None) -> ApiResponse:

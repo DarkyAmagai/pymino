@@ -99,6 +99,31 @@ class CheckIn:
     def json(self) -> Union[dict, str]:
         return self.data
 
+class InvitationId:
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data = data
+        self.status = None
+        self.duration = None
+        self.invitationId = None
+        self.link = None
+        self.modifiedTime = None
+        self.ndcId = None
+        self.createdTime = None
+        self.inviteCode = None
+
+        if isinstance(data, dict):
+            self.status:        Union[int, None] = self.data.get("status", self.status)
+            self.duration:      Union[int, None] = self.data.get("duration", self.duration)
+            self.invitationId:  Union[str, None] = self.data.get("invitationId", self.invitationId)
+            self.link:          Union[str, None] = self.data.get("link", self.link)
+            self.modifiedTime:  Union[str, None] = self.data.get("modifiedTime", self.modifiedTime)
+            self.ndcId:         Union[int, None] = self.data.get("ndcId", self.ndcId)
+            self.createdTime:   Union[str, None] = self.data.get("createdTime", self.createdTime)
+            self.inviteCode:    Union[str, None] = self.data.get("inviteCode", self.inviteCode)
+
+    def json(self) -> Union[dict, str]:
+        return self.data
+    
 class CCommunity:
     def __init__(self, data: Union[dict, str]) -> None:
         self.data               = data
@@ -123,6 +148,7 @@ class CCommunity:
         self.templateId         = None
         self.searchable         = None
         self.createdTime        = None
+        self.invitation         = None
         self.ndcId              = None
         self.comId              = None
         self.icon               = None
@@ -150,6 +176,7 @@ class CCommunity:
             self.templateId:            Union[int, None] = self.data.get("templateId", self.templateId)
             self.searchable:            Union[bool, None] = self.data.get("searchable", self.searchable)
             self.createdTime:           Union[str, None] = self.data.get("createdTime", self.createdTime)
+            self.invitation:            InvitationId = InvitationId(self.data.get("invitation", self.invitation))
             
             try:
                 self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId) or int(findall(r"\d+", self.data.get("linkInfoV2").get("path"))[0]) 

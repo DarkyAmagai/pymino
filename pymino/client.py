@@ -123,10 +123,11 @@ class Client():
         - `email` - The email to use to login.
         - `password` - The password to use to login.
         - `device_id` - The device id to use to login.
-        
+
         """
         return ApiResponse(self.request.handler(
-            method="POST", url = "/g/s/auth/login",
+            method="POST",
+            url = "/g/s/auth/login",
             data = {
                 "secret": f"0 {password}",
                 "clientType": 100,
@@ -140,7 +141,8 @@ class Client():
                 "email": email,
                 "v": 2,
                 "clientCallbackURL": "narviiapp://default"
-                })).json()
+                }
+            )).json()
 
     def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> dict:
         """
