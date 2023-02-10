@@ -559,21 +559,215 @@ class CCommentExtensions:
         self.icon = None
 
         if isinstance(data, dict):
-            self.data:               Union[dict, None] = self.data.get("sticker", self.data)
-            self.status:                Union[int, None] = self.data.get("status", self.status)
-            self.iconV2:                Union[str, None] = self.data.get("iconV2", self.iconV2)
-            self.name:                  Union[str, None] = self.data.get("name", self.name)
-            self.stickerId:             Union[str, None] = self.data.get("stickerId", self.stickerId)
-            self.smallIconV2:           Union[str, None] = self.data.get("smallIconV2", self.smallIconV2)
-            self.smallIcon:             Union[str, None] = self.data.get("smallIcon", self.smallIcon)
-            self.stickerCollectionId:   Union[str, None] = self.data.get("stickerCollectionId", self.stickerCollectionId)
-            self.mediumIcon:            Union[str, None] = self.data.get("mediumIcon", self.mediumIcon)
-            self.stickerCollectionSummary: Union[dict, None] = self.data.get("stickerCollectionSummary", self.stickerCollectionSummary)
-            self.extensions:            Union[None, None] = self.data.get("extensions", self.extensions)
-            self.usedCount:             Union[int, None] = self.data.get("usedCount", self.usedCount)
-            self.mediumIconV2:          Union[str, None] = self.data.get("mediumIconV2", self.mediumIconV2)
-            self.createdTime:           Union[None, None] = self.data.get("createdTime", self.createdTime)
-            self.icon:                  Union[str, None] = self.data.get("icon", self.icon)
+            self.data:                      Union[dict, None] = self.data.get("sticker", self.data)
+            self.status:                    Union[int, None] = self.data.get("status", self.status)
+            self.iconV2:                    Union[str, None] = self.data.get("iconV2", self.iconV2)
+            self.name:                      Union[str, None] = self.data.get("name", self.name)
+            self.stickerId:                 Union[str, None] = self.data.get("stickerId", self.stickerId)
+            self.smallIconV2:               Union[str, None] = self.data.get("smallIconV2", self.smallIconV2)
+            self.smallIcon:                 Union[str, None] = self.data.get("smallIcon", self.smallIcon)
+            self.stickerCollectionId:       Union[str, None] = self.data.get("stickerCollectionId", self.stickerCollectionId)
+            self.mediumIcon:                Union[str, None] = self.data.get("mediumIcon", self.mediumIcon)
+            self.stickerCollectionSummary:  Union[dict, None] = self.data.get("stickerCollectionSummary", self.stickerCollectionSummary)
+            self.extensions:                Union[None, None] = self.data.get("extensions", self.extensions)
+            self.usedCount:                 Union[int, None] = self.data.get("usedCount", self.usedCount)
+            self.mediumIconV2:              Union[str, None] = self.data.get("mediumIconV2", self.mediumIconV2)
+            self.createdTime:               Union[None, None] = self.data.get("createdTime", self.createdTime)
+            self.icon:                      Union[str, None] = self.data.get("icon", self.icon)
 
     def json(self) -> Union[dict, str]:
+        return self.data
+
+class FeaturedBlog:
+    def __init__(self, data: Union[dict, str]):
+        self.data           = data
+
+    def return_none(func):
+        def wrapper(*args, **kwargs):
+            return None if args[0].data is None else func(*args, **kwargs)
+        return wrapper
+    
+    @property
+    @return_none
+    def ref_object_type(self) -> Union[int, None]:
+        return self.data.get('refObjectType')    
+    
+    @property
+    @return_none
+    def ref_object_id(self) -> Union[str, None]:
+        return self.data.get('refObjectId')
+    
+    @property
+    @return_none
+    def expired_time(self) -> Union[str, None]:
+        return self.data.get('expiredTime')
+    
+    @property
+    @return_none
+    def featured_type(self) -> Union[int, None]:
+        return self.data.get('featuredType')
+    
+    @property
+    @return_none
+    def created_time(self) -> Union[str, None]:
+        return self.data.get('createdTime')
+    
+    @property
+    @return_none
+    def ref_object(self) -> Union[dict, None]:
+        return self.data.get('refObject')
+    
+    @property
+    @return_none
+    def global_votes_count(self) -> Union[int, None]:
+        return self.ref_object.get('globalVotesCount')
+    
+    @property
+    @return_none
+    def global_voted_count(self) -> Union[int, None]:
+        return self.ref_object.get('globalVotedCount')
+    
+    @property
+    @return_none
+    def voted_value(self) -> Union[int, None]:
+        return self.ref_object.get('votedValue')
+    
+    @property
+    @return_none
+    def keywords(self) -> Union[str, None]:
+        return self.ref_object.get('keywords')
+    
+    @property
+    @return_none
+    def strategy_info(self) -> Union[str, None]:
+        return self.ref_object.get('strategyInfo')
+    
+    @property
+    @return_none
+    def media_list(self) -> Union[list, None]:
+        return self.ref_object.get('mediaList')
+    
+    @property
+    @return_none
+    def style(self) -> Union[dict, None]:
+        return self.ref_object.get('style')
+    
+    @property
+    @return_none
+    def total_quiz_play_count(self) -> Union[int, None]:
+        return self.ref_object.get('totalQuizPlayCount')
+    
+    @property
+    @return_none
+    def title(self) -> Union[str, None]:
+        return self.ref_object.get('title')
+    
+    @property
+    @return_none
+    def tip_info(self) -> Union[dict, None]:
+        return self.ref_object.get('tipInfo')
+    
+    @property
+    @return_none
+    def content(self) -> Union[str, None]:
+        return self.ref_object.get('content')
+    
+    @property
+    @return_none
+    def content_rating(self) -> Union[str, None]:
+        return self.ref_object.get('contentRating')
+    
+    @property
+    @return_none
+    def need_hidden(self) -> Union[bool, None]:
+        return self.ref_object.get('needHidden')
+    
+    @property
+    @return_none
+    def guest_votes_count(self) -> Union[int, None]:
+        return self.ref_object.get('guestVotesCount')
+    
+    @property
+    @return_none
+    def global_comments_count(self) -> Union[int, None]:
+        return self.ref_object.get('globalCommentsCount')
+    
+    @property
+    @return_none
+    def modified_time(self) -> Union[str, None]:
+        return self.ref_object.get('modifiedTime')
+    
+    @property
+    @return_none
+    def widget_display_interval(self) -> Union[int, None]:
+        return self.ref_object.get('widgetDisplayInterval')
+    
+    @property
+    @return_none
+    def total_poll_vote_count(self) -> Union[int, None]:
+        return self.ref_object.get('totalPollVoteCount')
+    
+    @property
+    @return_none
+    def blogId(self) -> Union[str, None]:
+        return self.ref_object.get('blogId')
+    
+    @property
+    @return_none
+    def view_count(self) -> Union[int, None]:
+        return self.ref_object.get('viewCount')
+    
+    @property
+    @return_none
+    def ref_object_type(self) -> Union[int, None]:
+        return self.ref_object.get('refObjectType')
+    
+    @property
+    @return_none
+    def ref_object_id(self) -> Union[str, None]:
+        return self.ref_object.get('refObjectId')
+    
+    @property
+    @return_none
+    def author(self) -> UserProfile:
+        return UserProfile(self.ref_object.get('author'))
+
+    def json(self) -> Union[dict, None]:
+        return self.data
+
+class FeaturedBlogs:
+    def __init__(self, data: dict):
+        self.data:                      dict = data.get("featuredList", data)
+        parser:                         list = [FeaturedBlog(x) for x in self.data]
+        self.ref_object_type:           list = [x.ref_object_type for x in parser]
+        self.ref_object_id:             list = [x.ref_object_id for x in parser]
+        self.expired_time:              list = [x.expired_time for x in parser]
+        self.featured_type:             list = [x.featured_type for x in parser]
+        self.created_time:              list = [x.created_time for x in parser]
+        self.ref_object:                list = [x.ref_object for x in parser]
+        self.global_votes_count:        list = [x.global_votes_count for x in parser]
+        self.global_voted_count:        list = [x.global_voted_count for x in parser]
+        self.voted_value:               list = [x.voted_value for x in parser]
+        self.keywords:                  list = [x.keywords for x in parser]
+        self.strategy_info:             list = [x.strategy_info for x in parser]
+        self.media_list:                list = [x.media_list for x in parser]
+        self.style:                     list = [x.style for x in parser]
+        self.total_quiz_play_count:     list = [x.total_quiz_play_count for x in parser]
+        self.title:                     list = [x.title for x in parser]
+        self.tip_info:                  list = [x.tip_info for x in parser]
+        self.content:                   list = [x.content for x in parser]
+        self.content_rating:            list = [x.content_rating for x in parser]
+        self.need_hidden:               list = [x.need_hidden for x in parser]
+        self.guest_votes_count:         list = [x.guest_votes_count for x in parser]
+        self.global_comments_count:     list = [x.global_comments_count for x in parser]
+        self.modified_time:             list = [x.modified_time for x in parser]
+        self.widget_display_interval:   list = [x.widget_display_interval for x in parser]
+        self.total_poll_vote_count:     list = [x.total_poll_vote_count for x in parser]
+        self.blogId:                    list = [x.blogId for x in parser]
+        self.view_count:                list = [x.view_count for x in parser]
+        self.ref_object_type:           list = [x.ref_object_type for x in parser]
+        self.ref_object_id:             list = [x.ref_object_id for x in parser]
+        self.author:                    UserProfileList = UserProfileList([x.author.json() for x in parser])
+
+    def json(self) -> Union[dict, None]:
         return self.data

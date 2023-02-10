@@ -199,7 +199,7 @@ class Community:
 
         bot.run(sid=sid)
         ```
-        
+
         """
         return InvitationId(self.session.handler(
             method = "GET",
@@ -789,6 +789,32 @@ class Community:
         return CBlogList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/feed/blog-all?pagingType=t&size={size}"
+            ))
+    
+    @community
+    def fetch_featured_blogs(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> FeaturedBlogs:
+        """
+        `fetch_featured_blogs` is the method that fetches featured blogs.
+
+        `**Parameters**`
+
+        - `start` - The starting point to fetch blogs from. Defaults to `0`.
+
+        - `size` - The amount of blogs to fetch. Defaults to `25`.
+        
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+        
+        bot = Bot()
+        bot.run(sid=sid)
+        bot.community.fetch_featured_blogs()
+        ```
+        """
+        return FeaturedBlogs(self.session.handler(
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/feed/featured?start={start}&size={size}"
             ))
 
     @community
