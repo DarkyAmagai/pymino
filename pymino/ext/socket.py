@@ -1,13 +1,10 @@
+from os import system
 from random import randint
 from typing import Optional
 from threading import Thread
 from time import sleep as delay
 from urllib.parse import urlencode
-from websocket import (
-    WebSocket,
-    WebSocketApp,
-    WebSocketConnectionClosedException
-    )
+
 from .entities import *
 from .context import EventHandler
 from .utilities.generate import *
@@ -17,6 +14,17 @@ if orjson_exists():
     from orjson import loads, dumps
 else:
     from json import loads, dumps
+
+try:
+    from websocket import (
+        WebSocket,
+        WebSocketApp,
+        WebSocketConnectionClosedException
+        )
+except ImportError as e:
+    system("pip uninstall websocket -y")
+    system("pip install websocket-client==1.4.1")
+    raise WrongWebSocketPackage from e
 
 class WSClient(EventHandler):
     """

@@ -444,3 +444,10 @@ class MustRunInContext(Exception):
         super().__init__(
             "This function must be run in a context."
             )
+        
+class WrongWebSocketPackage(Exception):
+    def __init__(self):
+        super().__init__(
+            "Wrong websocket package was installed. We corrected it for you."
+            "\nPlease restart your bot.\n"
+            )
