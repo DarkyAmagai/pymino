@@ -24,29 +24,31 @@ class ApiResponse:
 
 class LinkInfo:
     def __init__(self, data: Union[dict, str]) -> None:
-        self.data       = data
-        self.linkInfoV2 = {}
-        self.path       = None
-        self.extensions = {}
-        self.objectId   = None
-        self.targetCode = None
-        self.ndcId      = None
-        self.comId      = None
-        self.fullPath   = None
-        self.shortCode  = None
-        self.objectType = None
+        self.data               = data
+        self.linkInfoV2         = {}
+        self.path               = None
+        self.extensions         = {}
+        self.objectId           = None
+        self.shareURLShortCode  = None
+        self.targetCode         = None
+        self.ndcId              = None
+        self.comId              = None
+        self.fullPath           = None
+        self.shortCode          = None
+        self.objectType         = None
 
         if isinstance(data, dict):
-            self.linkInfoV2:    dict = self.data.get("linkInfoV2", self.linkInfoV2)
-            self.path:          Union[str, None] = self.data.get("path", self.path)             or self.linkInfoV2.get("path", self.path)
-            self.extensions:    dict = self.data.get("extensions", self.extensions)             or self.linkInfoV2.get("extensions", self.extensions)
-            self.objectId:      Union[str, None] = self.data.get("objectId", self.objectId)     or self.extensions.get("linkInfo", {}).get("objectId", self.objectId)
-            self.targetCode:    Union[str, None] = self.data.get("targetCode", self.targetCode) or self.extensions.get("linkInfo", {}).get("targetCode", self.targetCode)
-            self.ndcId:         Union[int, None] = self.data.get("ndcId", self.ndcId)           or self.extensions.get("linkInfo", {}).get("ndcId", self.ndcId)
-            self.comId:         Union[int, None] = self.ndcId
-            self.fullPath:      Union[str, None] = self.data.get("fullPath", self.fullPath)     or self.extensions.get("linkInfo", {}).get("fullPath", self.fullPath)
-            self.shortCode:     Union[str, None] = self.data.get("shortCode", self.shortCode)   or self.extensions.get("linkInfo", {}).get("shortCode", self.shortCode)
-            self.objectType:    Union[str, None] = self.data.get("objectType", self.objectType) or self.extensions.get("linkInfo", {}).get("objectType", self.objectType)
+            self.linkInfoV2:        dict = self.data.get("linkInfoV2", self.linkInfoV2)
+            self.path:              Union[str, None] = self.data.get("path", self.path)             or self.linkInfoV2.get("path", self.path)
+            self.extensions:        dict = self.data.get("extensions", self.extensions)             or self.linkInfoV2.get("extensions", self.extensions)
+            self.objectId:          Union[str, None] = self.data.get("objectId", self.objectId)     or self.extensions.get("linkInfo", {}).get("objectId", self.objectId)
+            self.shareURLShortCode: Union[str, None] = self.data.get("shareURLShortCode", self.shareURLShortCode) or self.extensions.get("linkInfo", {}).get("shareURLShortCode", self.shareURLShortCode)
+            self.targetCode:        Union[str, None] = self.data.get("targetCode", self.targetCode) or self.extensions.get("linkInfo", {}).get("targetCode", self.targetCode)
+            self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId)           or self.extensions.get("linkInfo", {}).get("ndcId", self.ndcId)
+            self.comId:             Union[int, None] = self.ndcId
+            self.fullPath:          Union[str, None] = self.data.get("fullPath", self.fullPath)     or self.extensions.get("linkInfo", {}).get("fullPath", self.fullPath)
+            self.shortCode:         Union[str, None] = self.data.get("shortCode", self.shortCode)   or self.extensions.get("linkInfo", {}).get("shortCode", self.shortCode)
+            self.objectType:        Union[str, None] = self.data.get("objectType", self.objectType) or self.extensions.get("linkInfo", {}).get("objectType", self.objectType)
 
     def json(self) -> Union[dict, str]:
         return self.data

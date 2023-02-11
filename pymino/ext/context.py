@@ -1,8 +1,8 @@
-from base64 import b64encode
 from requests import get
-from threading import Thread
-from time import sleep as delay
 from typing import BinaryIO
+from threading import Thread
+from base64 import b64encode
+from time import sleep as delay
 from inspect import signature as inspect_signature
 
 from .entities import *
@@ -93,11 +93,7 @@ class Context():
             data = self.__message__(**kwargs)
             ))
 
-    def _delete(
-        self,
-        delete_message: CMessage,
-        delete_after: int = 5
-        ) -> ApiResponse:
+    def _delete(self, delete_message: CMessage, delete_after: int = 5) -> ApiResponse:
         """
         `delete` - Deletes a message.
         
@@ -113,12 +109,7 @@ class Context():
             ))
 
     @_run
-    def send(
-        self,
-        content: str,
-        delete_after: int= None,
-        mentioned: Union[str, List[str]]= None
-        ) -> CMessage:
+    def send(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
         `send` - This sends a message.
 
@@ -150,12 +141,7 @@ class Context():
         return message
 
     @_run
-    def reply(
-        self,
-        content: str,
-        delete_after: int= None,
-        mentioned: Union[str, List[str]]= None
-        ) -> CMessage:
+    def reply(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
         `reply` - This replies to the message.
 

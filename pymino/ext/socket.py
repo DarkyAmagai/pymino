@@ -70,8 +70,10 @@ class WSClient(EventHandler):
 
     def heartbeat(self) -> None:
         """Sends a heartbeat to the websocket."""""
+        run_check = any([is_android(), is_repl()])
         while True:
             with suppress(WebSocketConnectionClosedException):
+                notify() if run_check else None
                 delay(randint(25, 50))
                 self.send_websocket_message({
                     "o":{

@@ -1,4 +1,22 @@
 class MessageDispatcher:
+    """
+    `MessageDispatcher` - Simple message dispatcher that allows you to register handlers for specific message types.
+ 
+    `**Example**`
+
+    ```py
+
+    dispatcher = MessageDispatcher()
+
+    message_type = 1000
+    message = {"t": message_type, "d": {"foo": "bar"}}
+    handler = lambda message: print(message)
+
+    dispatcher.register(message_type, handler)
+    dispatcher.handle(message)
+    ```
+
+    """
     def __init__(self):
         self.dispatch_table = {}
 

@@ -64,6 +64,38 @@ class Community:
             data = {"duration": 0, "force": True, "timestamp": int(time() * 1000)}
             ))
 
+    @community
+    def fetch_object(self, objectId: str, object_type: int = 0, target_code: int = 1, comId: Union[str, int] = None) -> LinkInfo:
+        """
+        `fetch_object` is the method that fetches the object info from an object id.
+
+        `**Parameters**`
+
+        - `objectId` - The object id to fetch the object info from.
+
+        - `object_type` - The object type. Defaults to `0`.
+
+        - `target_code` - The target code. Defaults to `1`.
+
+        `**Example**`
+
+        ```python
+
+        from pymino import Bot
+
+        bot = Bot()
+
+        bot.community.fetch_object(objectId = "74b46f21-39b2-4a11-97aa-d68135925703")
+
+        bot.run(sid=sid)
+        ```
+        """
+        return LinkInfo(self.session.handler(
+            method = "POST",
+            url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
+            data = {"objectId": objectId, "targetCode": target_code, "objectType": object_type, "timestamp": int(time() * 1000)}
+            ))
+    
     def fetch_object_id(self, link: str) -> str:
         """
         `fetch_object_id` is the method that fetches the object id from a link.
