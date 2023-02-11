@@ -536,27 +536,56 @@ class EventHandler(Context):
         """
         `command` - This creates a command.
         
-        `**Parameters**``
+        `**Command Parameters**``
         - `command_name` - The name of the command.
         - `command_description` - The description of the command.
         - `aliases` - The other names the command can be called by.
         - `cooldown` - The cooldown of the command in seconds.
+
+        `**Function Parameters**``
+        - `ctx` - The context of the command.
+        - `message` - The message that called the command.
+        - `username` - The username of the person who called the command.
+        - `userId` - The userId of the person who called the command.
+
+        Do I need a `command_description`?
+            - No, you don't need a command description however it is recommended.
+            - If you don't supply a command description the command will not show up in the help command.
+
+        What are `aliases`?
+            - The command can be called by the command name, aliases, or both.
+
+        Is `cooldown` required?
+            - No, you don't need a cooldown however it is recommended to avoid spam.
+
+        What is the difference between `message` and `ctx.message.content`?
+            - `ctx.message.content` contains the entire message.        
+            - `message` contains the message without the command prefix.
+
+        Do I need to supply all the parameters?
+            - No, you only need to supply the parameters you want to use however `ctx` is required.
         
         `**Example**``
         ```py
-        @bot.command(command_name="ping")
-        def ping(ctx: Context):
-            ctx.send(content="Pong!")
+        @bot.command(command_name="ping") # Command parameters.
+        def ping(ctx: Context, message: str, username: str, userId: str): # Function parameters.
+            print(f"{username}({userId}): {message}") # OUTPUT: "JohnDoe(0000-0000-0000-0000): !ping"
+            return ctx.send(content="Pong!")
 
-        @bot.command(command_name="ping", aliases=["alive", "test"])
-        def ping(ctx: Context):
+        @bot.command(command_name="ping", aliases=["alive", "test"]) # Command parameters.
+        def ping(ctx: Context): # Function parameters.
             # This command can be called by "ping", "alive", and "test".
-            ctx.send(content="Pong!")
+            return ctx.send(content="Pong!")
 
-        @bot.command(command_name="ping", cooldown=5)
-        def ping(ctx: Context):
+        @bot.command(command_name="ping", cooldown=5) # Command parameters.
+        def ping(ctx: Context): # Function parameters.
             # This command can only be called every 5 seconds.
-            ctx.send(content="Pong!")
+            return ctx.send(content="Pong!")
+
+        @bot.command(command_name="say", command_description="This is a command that says something.") # Command parameters.
+        def say(ctx: Context, message: str, username: str, userId: str): # Function parameters.
+            bot.community.delete_message(chatId=ctx.chatId, messageId=ctx.message.chatId, comId=ctx.comId)
+            return ctx.send(content=message)
         ```
         """
         def decorator(func: Callable) -> Callable:

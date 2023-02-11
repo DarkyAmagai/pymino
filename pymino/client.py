@@ -10,7 +10,7 @@ from .ext import RequestHandler, Account, Community
 
 class Client():
     """
-    `Client` - This is the self client.
+    `Client` - This is the main client.
 
     `**Parameters**``
     - `**kwargs` - Any other parameters to use for the client.
@@ -18,15 +18,94 @@ class Client():
         - `device_id` - The device id to use for the client.
 
         - `proxy` - The proxy to use for the client. `proxy` must be `str`.
+    ----------------------------
+    Why use `Client` over `Bot`?
+        - Used for scripts rather than bots.
+        - Lightweight, does not utilize websocket.
+    ----------------------------
+    Do I have to be logged in to use `Client`?
+        - No, you do not have to be logged in to use `Client`.
+        - However, you will not be able to use any methods that require authentication.
 
-    `**Example**``
+    `**NON-AUTH EXAMPLE**`
+    ```python
+    # This method does not require authentication, so it will work without logging in.    
+
+    from pymino import Client
+
+    client = Client()
+
+    print(f"Logged in: {client.is_authenticated}")
+
+    chat_id = client.community.fetch_object_id(link="https://aminoapps.com/p/123456789")
+
+    print(f"Chat ID: {chat_id}")
+    ```
+    ----------------------------
+
+    How do I login with `Client`?
+        - You can login with `Client` by using the `login` method.
+        
+    `**Login Example**`
+
     ```python
     from pymino import Client
 
     client = Client()
 
-    client.login(sid="sid")
+    client.login(email="email", password="password")
+
+    print(f"Logged in: {client.is_authenticated}")
+
+    # Output: Logged in: True
     ```
+    ----------------------------
+    How can I utilize community methods with `Client`?
+        - First, you must set the community id.
+        - You can set the community id by using the `set_community_id` method
+        - Or the `fetch_community_id` method if you do not know the community id.
+
+    `**Community Example**`
+    ```python
+    from pymino import Client
+
+    client = Client()
+
+    client.login(email="email", password="password")
+
+    print(f"Logged in: {client.is_authenticated}")
+
+    client.fetch_community_id("http://aminoapps.com/c/CommunityName")
+    # Or
+    client.set_community_id(123456789)
+
+    print(f"Community ID has been set: {client.community_id}")
+    ```
+    ----------------------------
+    `**Community Methods**`
+    ```python
+    from pymino import Client
+
+    client = Client()
+
+    client.login(email="email", password="password")
+
+    client.fetch_community_id("http://aminoapps.com/c/CommunityName")
+
+    client.community.send_message(
+        chatId = "000000-0000-0000-0000-000000",
+        content = "Hello, world!"
+    ) # This will send in the community you set the community id for.
+
+    #Alternatively, you can use the community id as a parameter.
+    comId = client.fetch_community_id("http://aminoapps.com/c/CommunityName")
+    client.community.send_message(
+        chatId = "000000-0000-0000-0000-000000",
+        content = "Hello, world!",
+        comId = comId
+    )
+    ```
+    
     """
     def __init__(self, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)

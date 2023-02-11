@@ -4,9 +4,24 @@
 ### If you have any questions or need help, feel free to join the [Discord server](https://discord.gg/JMJpzpsMNJ).
 #
 ## Installation
+### Recommended installation method is through pip.
 ```bash
 pip install pymino
 ```
+### Alternatively you can clone the repository and install it manually.
+```bash
+git clone https://github.com/forevercynical/pymino.git
+```
+
+```bash
+cd pymino
+```
+
+```bash
+python setup.py install
+```
+
+
 #
 ### Client Class Usage
 ```python

@@ -10,12 +10,12 @@ setup(
     description="Amino API wrapper to make bots easier to use",
     url="https://github.com/forevercynical/pymino",
     packages=find_packages(),
-    long_description = (Path(__file__).parent / "readme.md").read_text(),
+    long_description = (Path(__file__).parent / "README.md").read_text(),
     long_description_content_type="text/markdown",
     install_requires=[
-    "requests==2.28.1",
+    "requests",
+    "colorama==0.4.6",
     "websocket-client==1.4.1",
-    "colorama==0.4.6"
     ],
     keywords=[
     "amino",

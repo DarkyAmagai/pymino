@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: pymino
-Version: 1.1.1.3
+Version: 1.1.0.5
 Summary: Amino API wrapper to make bots easier to use
 Home-page: https://github.com/forevercynical/pymino
 Author: forevercynical
 Author-email: me@cynical.gg
 License: MIT
-Keywords: amino,pymino,narvii,amino-api,narvii-bots,aminoapps,amino-bot,amino-bots
+Keywords: aminoapps,amino,amino-bots,amino-bot,amino-bot-api,amino-bot-api-python,amino-bot-api-python3,amino-bot-api-python3-library,pymino
 Requires-Python: >=3.7
 Description-Content-Type: text/markdown
 License-File: LICENSE
@@ -17,9 +17,24 @@ License-File: LICENSE
 ### If you have any questions or need help, feel free to join the [Discord server](https://discord.gg/JMJpzpsMNJ).
 #
 ## Installation
+### Recommended installation method is through pip.
 ```bash
 pip install pymino
 ```
+### Alternatively you can clone the repository and install it manually.
+```bash
+git clone https://github.com/forevercynical/pymino.git
+```
+
+```bash
+cd pymino
+```
+
+```bash
+python setup.py install
+```
+
+
 #
 ### Client Class Usage
 ```python
@@ -122,5 +137,3 @@ from pymino.ext import *
 
 ### Still interested in docs? You can read them [here](https://pymino.info/index.html).
 #
-
-
