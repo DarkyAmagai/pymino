@@ -1,7 +1,8 @@
+from uuid import uuid4
 from contextlib import suppress
 from colorama import Fore, Style
+from httplib2 import Http as Http2
 from typing import Optional, Union, Tuple, Callable
-from requests import Session as HTTPClient, Response as HTTPResponse
 
 from .generate import *
 from ..entities import *
@@ -11,6 +12,7 @@ if orjson_exists():
 else:
     from json import loads, dumps
 
+from requests import Session as Http, Response as HttpResponse
 from requests.exceptions import (
             ConnectionError,
             ReadTimeout,
@@ -25,18 +27,18 @@ class RequestHandler:
 
     `**Parameters**``
     - `bot` - The main bot class.
-    - `session` - The session to use for requests.
     - `proxy` - The proxy to use for requests.
 
     """
-    def __init__(self, bot, session: HTTPClient, proxy: Optional[str] = None) -> None:
+    def __init__(self, bot, proxy: Optional[str] = None):
         self.bot            = bot
+        self._handler:      Http2 = Http2()           
+        self.proxy_handler: Http = Http()
         self.sid:           Optional[str] = None
         self.userId:        Optional[str] = None
-        self.session:       HTTPClient = session
         self.orjson:        bool = orjson_exists()
         self.proxy:         dict = {"http": proxy,"https": proxy} if proxy is not None else None
-
+    
     def service_url(self, url: str) -> str:
         """
         `service_url` - Appends the endpoint to the service url
@@ -60,7 +62,7 @@ class RequestHandler:
             "CONNECTION": "Keep-Alive",
             "ACCEPT-ENCODING": "gzip, deflate, br",
             "NDCAUTH": f"sid={self.sid}",
-            "AUID": self.userId
+            "AUID": self.userId or str(uuid4())
             }
 
     def fetch_request(self, method: str) -> Callable:
@@ -74,14 +76,84 @@ class RequestHandler:
         - `Callable` - The request method.
         
         """
-
         request_methods = {
-            "GET": self.session.get,
-            "POST": self.session.post,
-            "DELETE": self.session.delete,
+            "GET": self.proxy_handler.get,
+            "POST": self.proxy_handler.post,
+            "DELETE": self.proxy_handler.delete,
             }
         return request_methods[method]
+    
+    def run_proxy(
+            self,
+            method: str,
+            url: str,
+            data: Union[dict, bytes, None],
+            headers: dict,
+            content_type: Optional[str]
+        ) -> Union[int, str]:
+        """
+        `run_proxy` - Runs the request with a proxy
+        
+        `**Parameters**``
+        - `method` - The request method to use.
+        - `url` - The url to send the request to.
+        - `data` - The data to send with the request.
+        - `headers` - The headers to send with the request.
+        - `content_type` - The content type of the data.
+        
+        `**Returns**``
+        - `Union[int, str]` - The status code and response from the request.
+        
+        """
+        try:
+            response: HttpResponse = self.fetch_request(method)(
+                url, data=data, headers=headers, proxies=self.proxy
+            )
+        except (
+            ConnectionError,
+            ReadTimeout,
+            SSLError,
+            ProxyError,
+            ConnectTimeout,
+        ):
+            self.handler(method, url, data, content_type)
 
+        return response.status_code, response.text
+
+    def run_without(
+            self,
+            method: str,
+            url: str,
+            data: Union[dict, bytes, None],
+            headers: dict,
+            content_type: Optional[str]
+        ) -> Union[int, str]:
+        """
+        `run_without` - Runs the request without a proxy
+        
+        `**Parameters**``
+        - `method` - The request method to use.
+        - `url` - The url to send the request to.
+        - `data` - The data to send with the request.
+        - `headers` - The headers to send with the request.
+        - `content_type` - The content type of the data.
+        
+        `**Returns**``
+        - `Union[int, str]` - The status code and response from the request.
+        
+        """
+        try:
+            response, content = self._handler.request(
+                url,
+                method=method,
+                body=data,
+                headers=headers
+            )
+        except (Exception):
+            self.handler(method, url, data, content_type)
+
+        return response.status, content
+        
     def handler(
         self,
         method: str,
@@ -104,24 +176,18 @@ class RequestHandler:
         """
 
         url, headers, data = self.service_handler(url, data, content_type)
+
         if all([method=="POST", data is None]):
             headers["CONTENT-TYPE"] = "application/octet-stream"
         
-        try:
-            response: HTTPResponse = self.fetch_request(method)(
-                url, data=data, headers=headers, proxies=self.proxy
-            )
-        except (
-            ConnectionError,
-            ReadTimeout,
-            SSLError,
-            ProxyError,
-            ConnectTimeout,
-        ):
-            self.handler(method, url, data, content_type)
+        proxy_map = {True: self.run_proxy, False: self.run_without}
 
-        self.print_response(response)
-        return self.handle_response(response)
+        status_code, content = proxy_map[self.proxy is not None](
+            method, url, data, headers, content_type
+        )
+
+        self.print_response(method=method, url=url, status_code=status_code)
+        return self.handle_response(status_code=status_code, response=content)
 
     def service_handler(
         self,
@@ -209,7 +275,7 @@ class RequestHandler:
         })
         return headers, data
 
-    def handle_response(self, response: HTTPResponse) -> dict:
+    def handle_response(self, status_code: int, response: bytes) -> dict:
         """
         `handle_response` - Checks the response and returns the response data if successful
 
@@ -222,31 +288,34 @@ class RequestHandler:
         """
         response_map = {403: Forbidden, 502: BadGateway, 503: ServiceUnavailable}
 
-        if response.status_code != 200:
+        if status_code != 200:
             
-            if response.status_code in response_map:
-                raise response_map[response.status_code]
+            if status_code in response_map:
+                raise response_map[status_code]
             
             with suppress(Exception):
-                if dict(response.json()).get("api:statuscode") == 105:
+                if loads(response).get("api:statuscode") == 105:
                     return self.bot.run(self.email, self.password)
 
-            raise APIException(response.text)
+            raise APIException(response)
+        
+        return loads(response)
 
-        return loads(response.text)
-
-    def print_response(self, response: HTTPResponse) -> None:
+    def print_response(self, method: str, url: str, status_code: int):
         """
         `print_response` - Prints the response if debug is enabled
 
         `**Parameters**``
+        - `method` - The request method used.
+        - `url` - The url the request was sent to.
+        - `status_code` - The status code of the response.
         - `response` - The response to print.
 
         """
         if self.bot.debug:
-            if response.status_code != 200:
+            if status_code != 200:
                 color = Fore.RED
             else:
-                color = {"GET": Fore.GREEN, "POST": Fore.YELLOW, "DELETE": Fore.MAGENTA}.get(response.request.method, Fore.RED)
+                color = {"GET": Fore.GREEN, "POST": Fore.YELLOW, "DELETE": Fore.MAGENTA}.get(method, Fore.RED)
 
-            print(f"{color}{Style.BRIGHT}{response.request.method}{Style.RESET_ALL} - {response.url}")
+            print(f"{color}{Style.BRIGHT}{method}{Style.RESET_ALL} - {url}")

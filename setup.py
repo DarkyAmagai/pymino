@@ -5,7 +5,7 @@ setup(
     name="pymino",
     license="MIT",
     author="forevercynical",
-    version="1.1.1.5",
+    version="1.1.1.8",
     author_email="me@cynical.gg",
     description="Amino API wrapper to make bots easier to use",
     url="https://github.com/forevercynical/pymino",
@@ -15,6 +15,7 @@ setup(
     install_requires=[
     "requests",
     "colorama==0.4.6",
+    "httplib2==0.21.0",
     "websocket-client==1.4.1",
     ],
     keywords=[

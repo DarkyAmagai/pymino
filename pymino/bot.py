@@ -3,12 +3,11 @@ from base64 import b64decode
 from functools import reduce
 from colorama import Fore, Style
 from typing import Optional, Union
-from requests import Session as HTTPClient
 
+from .ext import *
 from .ext.entities import *
 from .ext.utilities import *
 from .ext.socket import WSClient
-from .ext import Community, RequestHandler, Account
 
 if orjson_exists():
     from orjson import loads
@@ -30,17 +29,189 @@ class Bot(WSClient):
 
         - `disable_socket` - Whether to disable the socket.
 
-    `**Example**``
-    ```python
-    from pymino import Bot
+    ----------------------------
+    When should I use `Bot` instead of `Client`?
 
-    bot = Bot(
-        command_prefix="!",
-        community_id="1234567890"
-        )
+    - If you want to create a bot that responds to commands or events.
+    - `Client` does not respond to commands or events.
 
-    bot.run(sid="sid")
-    ```
+    ----------------------------
+
+    How do I login to my bot account?
+
+    - You can login to your bot account by using the `run` method.
+
+    ----------------------------
+
+    How do I use the `run` method?
+    
+    - It's simple! Just use the `run` method like this:
+
+        ```py
+        bot = Bot()
+        #NOTE: Keep in mind bot.run() should be the last line of your code.
+        bot.run(email="email", password="password")
+        ```
+
+    ----------------------------
+    How do I login to my bot account with a proxy?
+
+    - It's as easy as adding a `proxy` parameter to the `bot` class.
+
+        ```py
+        bot = Bot(proxy="http://username:password@ip:port")
+
+        bot.run(email="email", password="password")
+        ```
+    ----------------------------
+    How do I know if my bot is ready?
+
+    - You can check if your bot is ready by using the `is_ready` attribute.
+    - `is_ready` is a `bool` that is `True` if the bot is ready and `False` if the bot is not ready.
+    - Alternatively, you can use the `on_ready` event.
+    - `on_ready` is an event that is called when the bot is ready.
+
+    ----------------------------
+    How do I use the `on_ready` event?
+
+    - You can use the `ready` event like this:
+
+        ```py
+        bot = Bot()
+
+        @bot.on("on_ready")
+        def on_ready():
+            print(f"Logged in as {bot.profile.username}(bot.profile.userId)")
+
+        bot.run(email="email", password="password")
+        ```
+    ----------------------------
+    How do I use the is_ready attribute?
+
+    - You can use the `is_ready` attribute like this:
+
+        ```py
+        bot = Bot()
+
+        bot.run(email="email", password="password")
+
+        if bot.is_ready:
+            print(f"Logged in as {bot.profile.username}(bot.profile.userId)")
+
+        ```
+    ----------------------------
+    How do I set the community id for my bot?
+
+    - If you know the community id, you can use the `set_community_id` method to set the community id for your bot.
+    - Alternatively, if you do not know the community id, you can use the `fetch_community_id` method to get the community id from the community's link.
+
+    ----------------------------
+    How do I use the `set_community_id` method?
+
+    - You can use the `set_community_id` method like this:
+
+        ```py
+        bot = Bot()
+
+        bot.run(email="email", password="password")
+        bot.set_community_id(community_id=123456789)
+        ```
+    ----------------------------
+    How do I use the `fetch_community_id` method?
+
+    - You can use the `fetch_community_id` method like this:
+
+        ```py
+        bot = Bot()
+
+        bot.run(email="email", password="password")
+        bot.fetch_community_id(community_link="https://aminoapps.com/c/OnePiece")
+        ```
+    ----------------------------
+    Ok, I'm ready to make my first bot! What do I do now?
+    - You can start by making a `command`.
+    - They are functions that are called when a user sends a message that starts with the `command_prefix`.
+    - You can make a command like this:
+
+        ```py
+        from pymino import Bot
+        from pymino.ext import *
+
+        bot = Bot()
+
+        @bot.command(command_name="ping")
+        def ping_command(ctx: Context):
+            ctx.send("Pong!")
+
+        bot.run(email="email", password="password")
+        ```
+    ----------------------------
+    What is my command prefix?
+    - Your command prefix by default is `!`.
+    - You can change your command prefix by using the `command_prefix` parameter in the `Bot` class.
+    - You can change your command prefix like this:
+
+        ```py
+        bot = Bot(command_prefix=".")
+        # Now your command prefix is "." instead of "!".
+        ```
+    ----------------------------
+    Can I use multiple names for my command?
+    - Yes! You can use multiple names for your command by using the `aliases` parameter in the `command` decorator.
+    - You can use multiple names for your command like this:
+
+        ```py
+        from pymino import Bot
+        from pymino.ext import *
+
+        bot = Bot()
+        #NOTE: This will register the command as "ping", "p", and "pong".
+        # Meaning the command will be called if the message starts with "!ping", "!p", or "!pong".
+        @bot.command(command_name="ping", aliases=["p", "pong"])
+        def ping_command(ctx: Context):
+            ctx.send("Pong!")
+
+        bot.run(email="email", password="password")
+        ```
+    ----------------------------
+    How about cooldowns? Can I use them?
+    - Yes! You can use cooldowns for your commands by using the `cooldown` parameter in the `command` decorator.
+    - You can use cooldowns like this:
+
+        ```py
+        from pymino import Bot
+        from pymino.ext import *
+
+        bot = Bot()
+        #NOTE: This will set the cooldown for the command to 5 seconds.
+        # The cooldown is user based, meaning that each user will have their own cooldown.
+        @bot.command(command_name="ping", cooldown=5)
+        def ping_command(ctx: Context):
+            ctx.send("Pong!")
+
+        bot.run(email="email", password="password")
+        ```
+    ----------------------------
+    Is there a help command built in?
+    - Yes! There is a built in help command that you can use.
+    - It will return a list of all the commands that the bot has and their descriptions.
+    
+    How do I set the description for my command?
+    - You can set the description for your command by using the `command_description` parameter in the `command` decorator.
+    - You can set the description for your command like this:
+
+        ```py
+        from pymino import Bot
+        from pymino.ext import *
+
+        bot = Bot()
+        # This way when the user uses the help command, it will return the description for the command.
+        @bot.command(command_name="ping", command_description="This command will return pong.")
+        def ping_command(ctx: Context):
+            ctx.send("Pong!")
+
+        bot.run(email="email", password="password")
+        ```
     """
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
@@ -50,10 +221,8 @@ class Bot(WSClient):
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
-        self.session:           HTTPClient = HTTPClient()
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
-                                session=self.session,
                                 proxy=kwargs.get("proxy")
                                 )
         self.community:         Community = Community(
@@ -233,4 +402,3 @@ class Bot(WSClient):
         self.community.community_id = community_id
 
         return community_id
-    

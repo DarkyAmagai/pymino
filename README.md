@@ -119,10 +119,7 @@ from pymino.ext import *
 ```
 
 # Documentation
-
-### Documentation is not updated regularly, feel free to read the source code itself as it is has more up to date information.
-
-### Still interested in docs? You can read them [here](https://pymino.info/index.html).
+### The documentation is available on the [website](https://pymino.info/index.html).
 #
 
 

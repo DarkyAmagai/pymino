@@ -13,19 +13,23 @@ class Client():
     `Client` - This is the main client.
 
     `**Parameters**``
-    - `**kwargs` - Any other parameters to use for the client.
+    - `**kwargs` - any other parameters to use for the client.
 
-        - `device_id` - The device id to use for the client.
+    - `device_id` - device id to use for the client.
 
-        - `proxy` - The proxy to use for the client. `proxy` must be `str`.
+    - `proxy` - proxy string to use for the client.
+    
     ----------------------------
     Why use `Client` over `Bot`?
-        - Used for scripts rather than bots.
-        - Lightweight, does not utilize websocket.
+
+    - Used for scripts rather than bots.
+    - Lightweight, does not utilize websocket.
+
     ----------------------------
     Do I have to be logged in to use `Client`?
-        - No, you do not have to be logged in to use `Client`.
-        - However, you will not be able to use any methods that require authentication.
+
+    - No, you do not have to be logged in to use `Client`.
+    - However, you will not be able to use any methods that require authentication.
 
     `**NON-AUTH EXAMPLE**`
     ```python
@@ -105,7 +109,7 @@ class Client():
         comId = comId
     )
     ```
-    
+
     """
     def __init__(self, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
@@ -115,10 +119,8 @@ class Client():
         self.sid:               str = None
         self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
-        self.session:           HTTPClient = HTTPClient()
         self.request:           RequestHandler = RequestHandler(
                                 self,
-                                session=self.session,
                                 proxy=kwargs.get("proxy")
                                 )
         self.account:           Account = Account(

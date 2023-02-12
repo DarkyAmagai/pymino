@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pymino
-Version: 1.1.1.5
+Version: 1.1.1.8
 Summary: Amino API wrapper to make bots easier to use
 Home-page: https://github.com/forevercynical/pymino
 Author: forevercynical
@@ -10,7 +10,6 @@ Keywords: aminoapps,amino,amino-bots,amino-bot,amino-bot-api,amino-bot-api-pytho
 Requires-Python: >=3.7
 Description-Content-Type: text/markdown
 License-File: LICENSE
-
 # pymino
 ## A Python wrapper to communicate with Amino Apps API.
 ### Easily create a bot for Amino Apps using a modern easy to use synchronous library.
@@ -132,8 +131,5 @@ from pymino.ext import *
 ```
 
 # Documentation
-
-### Documentation is not updated regularly, feel free to read the source code itself as it is has more up to date information.
-
-### Still interested in docs? You can read them [here](https://pymino.info/index.html).
+### The documentation is available on the [website](https://pymino.info/index.html).
 #

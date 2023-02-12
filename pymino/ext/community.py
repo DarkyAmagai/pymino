@@ -14,12 +14,93 @@ class Community:
     
     `**Parameters**`
 
-    - `bot` - The bot client.
+    - `bot` or `client` - the client we are using.
 
-    - `session` - The session to use.
+    - `session` - the session we use to make requests.
 
-    - `community_id` - The community id to use. Defaults to `None`.
+    - `community_id` - comId to use for the methods.
 
+    ----------------------------
+    I'm getting a `NotLoggedIn` error, what is the solution?
+
+    - You need to login to the client before using the specific method.
+
+    ----------------------------
+
+    I'm getting a `MissingCommunityId` error, what is the solution?
+
+    - You need to pass the community id to the method or set the community id in the `Community` class.
+
+    ```python
+    >>> SET COMMUNITY ID (RECOMMENDED FOR SINGLE-COMMUNITY BOTS)
+
+    from pymino import Bot as Client
+
+    client = Client()
+
+    client.fetch_community_id(community_link="https://aminoapps.com/c/your-community-link")
+    # or if you already have the community id
+    client.set_community_id(community_id=123456789)
+
+    >>> PASS COMMUNITY ID TO METHOD (RECOMMENDED FOR MULTI-COMMUNITY BOTS)
+
+    client.community.join_community(comId=123456789)
+    ```
+    ----------------------------
+    Does every function require the community id?
+    - No, some functions don't require the community id. If the function doesn't require the community id, it will be stated in the documentation.
+
+    ----------------------------
+    How do I get a (chat, blog, user) id?
+    - You can get the id by using the `fetch_object_id` method.
+
+    ```python
+    >>> GET OBJECT ID (CHAT, BLOG, USER) FROM LINK 
+
+    from pymino import Bot as Client # This can be Client or Bot, it's whatever you want to use.
+
+    client = Client()
+
+    objectId = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
+    print(objectId) # OUTPUT: The object id from the link.
+    ```
+    ----------------------------
+    How do I send a message to a chat?
+    - You can send a message to a chat by using the `send_message` method.
+
+    ```python
+    >>> SEND MESSAGE TO CHAT
+
+    from pymino import Bot as Client # This can be Client or Bot, it's whatever you want to use.
+
+    client = Client()
+
+    client.community.send_message(
+        chatId="000000-0000-0000-000000",
+        content="Hello, world!",
+        comId=123456789 # We need to pass the community id because we didn't set it in the Community class.
+    )
+    ```
+    ----------------------------
+    How do I send an image to a chat?
+    - You can send an image to a chat by using the `send_image` method.
+    - It's very similar to the `send_message` method.
+    - You'll need either image url or path to the image.
+
+    ```python
+    >>> SEND IMAGE TO CHAT
+
+    from pymino import Bot as Client # This can be Client or Bot, it's whatever you want to use.
+
+    client = Client()
+
+    client.community.send_image(
+        chatId="000000-0000-0000-000000",
+        image="https://i.imgur.com/your-image.png", # or image="path/to/image.png"
+        comId=123456789 # We need to pass the community id because we didn't set it in the Community class.
+    )
+    ```
+    ----------------------------
     """
     def __init__(self, bot, session, community_id: Union[str, int] = None) -> None:
         self.bot                = bot
@@ -401,9 +482,10 @@ class Community:
 
         `**Parameters**`
 
-        - `status` - The status to set. Defaults to `1`.
-        - `1` - Online
-        - `2` - Offline
+        `status` - The status to set. Defaults to `1`.
+
+            1 - Online
+            2 - Offline
         
         `**Example**`
 
@@ -411,7 +493,9 @@ class Community:
         from pymino import Bot
         
         bot = Bot()
-        bot.community.online_status()
+
+        bot.community.online_status(status=2) # Sets the status to offline
+        
         bot.run(sid=sid)
         ```
         """
