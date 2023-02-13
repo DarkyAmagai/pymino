@@ -5,7 +5,7 @@ setup(
     name="pymino",
     license="MIT",
     author="forevercynical",
-    version="1.1.1.8",
+    version="1.1.1.9",
     author_email="me@cynical.gg",
     description="Amino API wrapper to make bots easier to use",
     url="https://github.com/forevercynical/pymino",
