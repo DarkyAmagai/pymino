@@ -2,15 +2,17 @@ from uuid import uuid4
 from contextlib import suppress
 from colorama import Fore, Style
 from httplib2 import Http as Http2
+from json import loads, dumps, JSONDecodeError
 from typing import Optional, Union, Tuple, Callable
 
 from .generate import *
 from ..entities import *
 
 if orjson_exists():
-    from orjson import loads, dumps
-else:
-    from json import loads, dumps
+    from orjson import (
+        loads as orjson_loads,
+        dumps as orjson_dumps
+        )
 
 from requests import Session as Http, Response as HttpResponse
 from requests.exceptions import (
@@ -264,7 +266,7 @@ class RequestHandler:
         """
 
         if not isinstance(data, bytes):
-            data = dumps(data).decode("utf-8") if self.orjson else dumps(data)
+            data = orjson_dumps(data).decode("utf-8") if self.orjson else dumps(data)
 
         headers.update({
             "CONTENT-LENGTH": f"{len(data)}",
@@ -299,7 +301,10 @@ class RequestHandler:
 
             raise APIException(response)
         
-        return loads(response)
+        try:
+            return orjson_loads(response) if self.orjson else loads(response)
+        except JSONDecodeError:
+            return loads(response)
 
     def print_response(self, method: str, url: str, status_code: int):
         """

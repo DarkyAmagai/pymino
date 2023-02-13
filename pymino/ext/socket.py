@@ -4,6 +4,7 @@ from typing import Optional
 from threading import Thread
 from time import sleep as delay
 from urllib.parse import urlencode
+from json import loads, dumps, JSONDecodeError
 
 from .entities import *
 from .context import EventHandler
@@ -11,9 +12,10 @@ from .utilities.generate import *
 from .dispatcher import MessageDispatcher
 
 if orjson_exists():
-    from orjson import loads, dumps
-else:
-    from json import loads, dumps
+    from orjson import (
+        loads as orjson_loads,
+        dumps as orjson_dumps
+        )
 
 try:
     from websocket import (
@@ -97,7 +99,11 @@ class WSClient(EventHandler):
 
     def on_websocket_message(self, ws: WebSocket, message: dict) -> None:
         """Handles websocket messages."""
-        raw_message = loads(message)
+        try:
+            raw_message = orjson_loads(message) if self.orjson else loads(message)
+        except JSONDecodeError:
+            raw_message = loads(message)
+
         self.dispatcher.handle(raw_message)
 
     def _handle_message(self, message: dict) -> None:
@@ -125,7 +131,7 @@ class WSClient(EventHandler):
         
     def send_websocket_message(self, message: dict) -> None:
         """Sends a websocket message."""
-        return self.ws.send(dumps(message).decode() if self.orjson else dumps(message))
+        return self.ws.send(orjson_dumps(message).decode() if self.orjson else dumps(message))
 
     def stop_websocket(self) -> None:
         """Stops the websocket."""
