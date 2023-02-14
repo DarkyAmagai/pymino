@@ -467,7 +467,7 @@ class Client():
             ))
 
     @authenticated
-    def join_chat(self, chatId: int) -> ApiResponse:
+    def join_chat(self, chatId: str) -> ApiResponse:
         """
         `join_chat` - Joins a chat.
 
@@ -492,7 +492,7 @@ class Client():
             ))
 
     @authenticated
-    def leave_chat(self, chatId: int) -> ApiResponse:
+    def leave_chat(self, chatId: str) -> ApiResponse:
         """
         `leave_chat` - Leaves a chat.
 

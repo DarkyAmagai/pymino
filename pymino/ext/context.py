@@ -227,19 +227,15 @@ class Context():
             )
         ```
         """
-        if mentioned is None:
-            mentioned = []
-        return CMessage(self.__send_message__(
+        if mentioned is None: mentioned = []
+
+        message: CMessage = self.__send_message__(
             content=message,
             extensions = {
                 "linkSnippetList": [{
                 "mediaType": 100,
                 "mediaUploadValue": self.encode_media(
-                    self.__handle_media__(
-                        media=image,
-                        content_type="image/jpg",
-                        media_value=False
-                    )
+                    self.__handle_media__(media=image, content_type="image/jpg", media_value=False)
                 ),
                 "mediaUploadValueContentType": "image/png",
                 "link": link
@@ -248,7 +244,9 @@ class Context():
             {"uid": self.message.author.userId}
             ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
             ] if isinstance(mentioned, list) else None
-            }))
+            })
+
+        return message
     
     @_run
     def send_embed(
@@ -285,7 +283,7 @@ class Context():
             )
         ```
         """
-        return CMessage(self.__send_message__(
+        message: CMessage = self.__send_message__(
             content=message,
             attachedObject = {
                 "title": title,
@@ -294,11 +292,13 @@ class Context():
                 "link": link
                 },
             extensions = {
-                "mentionedArray": [{
-                    "uid": self.message.author.userId}
-                    ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-                    ] if isinstance(mentioned, list) else None
-            }))
+                "mentionedArray": [
+                {"uid": self.message.author.userId}
+                ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
+                ] if isinstance(mentioned, list) else None
+            })
+        
+        return message
 
     def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
         response = None
@@ -350,11 +350,13 @@ class Context():
         ```
         """
         sticker_id = sticker_id.replace("ndcsticker://", "") if sticker_id.startswith("ndcsticker://") else sticker_id
-        return CMessage(self.__send_message__(
+        message: CMessage = self.__send_message__(
             type=3,
             stickerId=sticker_id,
             mediaValue=f"ndcsticker://{sticker_id}"
-            ))
+            )
+        
+        return message
 
     @_run
     def send_image(self, image: str) -> CMessage:
@@ -373,15 +375,16 @@ class Context():
             ctx.send_image(image="https://i.imgur.com/image.jpg")
         ```
         """
-        return CMessage(self.__send_message__(
+        message: CMessage = self.__send_message__(
             mediaType=100,
             mediaUploadValue=self.encode_media(
                 self.__handle_media__(
-                media=image,
-                content_type="image/jpg",
-                media_value=False
-            ))
-            ))
+                    media=image,
+                    content_type="image/jpg",
+                    media_value=False
+            )))
+
+        return message
             
     @_run
     def send_gif(self, gif: str) -> CMessage:
@@ -400,16 +403,16 @@ class Context():
             ctx.send_gif(gif="https://i.imgur.com/image.gif")
         ```
         """
-        return CMessage(self.__send_message__(
+        message: CMessage = self.__send_message__(
             mediaType=100,
             mediaUploadValue=self.encode_media(
-            self.__handle_media__(
-            media=gif,
-            content_type="image/gif",
-            media_value=False
-            )),
-            mediaUploadValueContentType="image/gif"
-            ))
+                self.__handle_media__(
+                    media=gif,
+                    content_type="image/gif",
+                    media_value=False
+            )))
+        
+        return message
 
     @_run
     def send_audio(self, audio: str) -> CMessage:
@@ -428,15 +431,16 @@ class Context():
             ctx.send_audio(audio="output.mp3")
         ```
         """
-        return CMessage(self.__send_message__(
-            type=2,
+        message: CMessage = self.__send_message__(
             mediaType=110,
             mediaUploadValue=self.encode_media(
-            self.__handle_media__(
-            media=audio,
-            content_type="audio/aac",
-            media_value=False
-            ))))
+                self.__handle_media__(
+                    media=audio,
+                    content_type="audio/aac",
+                    media_value=False
+            )))
+        
+        return message
 
     @_run
     def join_chat(self, chatId: str=None) -> ApiResponse:
@@ -1105,4 +1109,3 @@ class EventHandler(Context):
         elif any([event != "text_message", event != "user_online"]):
             with suppress(KeyError):
                 return self._events[event](Context(data, self.request))
-        

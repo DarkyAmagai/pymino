@@ -29,9 +29,9 @@ def generate_signature(data: str) -> str:
     - `str` - Returns a signature as a string.
     """
     signature = [ 0x19 ]
-
+    
     signature.extend(new(
         b'\xdf\xa5\xed\x19-\xdan\x88\xa1/\xe1!0\xdcb\x06\xb1%\x1eD',
-        data.encode("utf-8"), sha1).digest())
+        str(data).encode("utf-8"), sha1).digest())
 
     return b64encode(bytes(signature)).decode("utf-8")
