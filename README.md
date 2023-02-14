@@ -121,5 +121,3 @@ from pymino.ext import *
 # Documentation
 ### The documentation is available on the [website](https://pymino.info/index.html).
 #
-
-
