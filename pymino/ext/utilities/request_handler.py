@@ -1,26 +1,27 @@
 from uuid import uuid4
+from ujson import loads, dumps
 from contextlib import suppress
 from colorama import Fore, Style
 from httplib2 import Http as Http2
-from json import loads, dumps, JSONDecodeError
 from typing import Optional, Union, Tuple, Callable
 
-from .generate import *
-from ..entities import *
+from ..entities.handlers import orjson_exists
+from .generate import device_id, generate_signature
+
+from requests import (
+    Session as Http, Response as HttpResponse
+    )
+from ..entities import (
+    Forbidden, BadGateway, APIException, ServiceUnavailable
+    )
+from requests.exceptions import (
+    ConnectionError, ReadTimeout, SSLError, ProxyError, ConnectTimeout
+    )
 
 if orjson_exists():
     from orjson import (
         loads as orjson_loads,
         dumps as orjson_dumps
-        )
-
-from requests import Session as Http, Response as HttpResponse
-from requests.exceptions import (
-            ConnectionError,
-            ReadTimeout,
-            SSLError,
-            ProxyError,
-            ConnectTimeout
         )
 
 class RequestHandler:
@@ -290,21 +291,21 @@ class RequestHandler:
         """
         response_map = {403: Forbidden, 502: BadGateway, 503: ServiceUnavailable}
 
-        if status_code != 200:
-            
-            if status_code in response_map:
-                raise response_map[status_code]
-            
-            with suppress(Exception):
-                if loads(response).get("api:statuscode") == 105:
+        with suppress(Exception):
+
+            if status_code != 200:
+                
+                if status_code in response_map:
+                    raise response_map[status_code]
+                
+                if dict(loads(response)).get("api:statuscode") == 105:
                     return self.bot.run(self.email, self.password)
 
-            raise APIException(response)
+                raise APIException(response)
         
-        try:
             return orjson_loads(response) if self.orjson else loads(response)
-        except JSONDecodeError:
-            return loads(response)
+
+        return loads(response)
 
     def print_response(self, method: str, url: str, status_code: int):
         """
@@ -318,9 +319,5 @@ class RequestHandler:
 
         """
         if self.bot.debug:
-            if status_code != 200:
-                color = Fore.RED
-            else:
-                color = {"GET": Fore.GREEN, "POST": Fore.YELLOW, "DELETE": Fore.MAGENTA}.get(method, Fore.RED)
-
+            color = Fore.RED if status_code != 200 else {"GET": Fore.GREEN, "POST": Fore.YELLOW, "DELETE": Fore.MAGENTA}.get(method, Fore.RED)
             print(f"{color}{Style.BRIGHT}{method}{Style.RESET_ALL} - {url}")

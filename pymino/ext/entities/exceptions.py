@@ -1,8 +1,4 @@
-try:
-    from orjson import loads
-except ImportError:
-    from json import loads
-
+from ujson import loads
 from contextlib import suppress
 
 class UnsupportedService(Exception):

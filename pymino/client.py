@@ -1,12 +1,22 @@
 from time import time
+from ujson import loads
 from base64 import b64decode
 from functools import reduce
-from typing import Optional
-from requests import Session as HTTPClient
+from colorama import Fore, Style
+from typing import Callable, Optional, Union
 
-from .ext.entities import *
-from .ext.utilities import *
+from .ext.utilities.generate import device_id
+from .ext.entities.handlers import check_debugger
+from .ext.entities.userprofile import UserProfile
 from .ext import RequestHandler, Account, Community
+from .ext.entities.messages import CMessage, PrepareMessage
+
+from .ext.entities.exceptions import (
+    LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
+    )
+from .ext.entities.general import (
+    ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet
+    )
 
 class Client():
     """
@@ -118,7 +128,7 @@ class Client():
         self.userId:            str = None
         self.sid:               str = None
         self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
-        self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
+        self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate_device_id()
         self.request:           RequestHandler = RequestHandler(
                                 self,
                                 proxy=kwargs.get("proxy")
@@ -283,6 +293,19 @@ class Client():
 
         return response
 
+    @authenticated
+    def disconnect_google(self, password: str) -> dict:
+        return self.request.handler(
+            method="POST",
+            url="/g/s/auth/disconnect",
+            data={
+                "deviceID": self.device_id,
+                "secret": f"0 {password}",
+                "type": 30,
+                "timestamp": int(time() * 1000),
+                }
+            )
+            
     @authenticated
     def logout(self) -> None:
         """
@@ -500,6 +523,7 @@ class Client():
         """
         return self.account.register(email=email, password=password, username=username, verificationCode=verificationCode)
 
+    @authenticated
     def delete_request(self, email: str, password: str) -> ApiResponse:
         """
         `delete_request` - Deletes an account.
@@ -522,6 +546,7 @@ class Client():
         """
         return self.account.delete_request(email=email, password=password)
 
+    @authenticated
     def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
         """
         `delete_request_cancel` - Cancels a delete request.
@@ -623,6 +648,7 @@ class Client():
         """
         return self.account.fetch_profile()
 
+    @authenticated
     def set_amino_id(self, aminoId: str) -> ApiResponse:
         """
         `set_amino_id` - Sets the amino id of the client.
@@ -644,6 +670,7 @@ class Client():
         """
         return self.account.set_amino_id(aminoId=aminoId)
 
+    @authenticated
     def fetch_wallet(self) -> Wallet:
         """
         `fetch_wallet` - Fetches the wallet of the client.
@@ -709,6 +736,7 @@ class Client():
         """
         return self.account.activate_email(email=email, code=code)
 
+    @authenticated
     def reset_password(self, email: str, new_password: str, code: str) -> ResetPassword:
         """
         `reset_password` - Resets a password.
@@ -732,6 +760,7 @@ class Client():
         """
         return self.account.reset_password(email=email, newPassword=new_password, code=code)
 
+    @authenticated
     def send_message(self, content: str, chatId: str, **kwargs) -> CMessage:
         """
         `send_message` - Sends a message.
@@ -757,3 +786,28 @@ class Client():
             method="POST", url=f"/g/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content, **kwargs).json()
             ))
+    
+    def generate_device_id(self) -> str:
+        """
+        `generate_device_id` - Generates a device id.
+
+        `**Parameters**``
+        - `None`
+
+        `**Example**``
+
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        deviceId = client.generate_device_id()
+
+        print(deviceId)
+
+        ```
+
+        `**Returns**``
+        - `str` - The device id.
+        """
+        return device_id()

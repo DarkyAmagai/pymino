@@ -1,7 +1,8 @@
 from re import findall
 from typing import Union
-from .userprofile import UserProfile, UserProfileList
+
 from .exceptions import InvalidLink
+from .userprofile import UserProfile, UserProfileList
 
 class ApiResponse:
     def __init__(self, data: Union[dict, str]) -> None:

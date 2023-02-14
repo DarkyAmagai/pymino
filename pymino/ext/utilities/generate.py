@@ -32,6 +32,6 @@ def generate_signature(data: str) -> str:
 
     signature.extend(new(
         b'\xdf\xa5\xed\x19-\xdan\x88\xa1/\xe1!0\xdcb\x06\xb1%\x1eD',
-        str(data).encode("utf-8"), sha1).digest())
+        data.encode("utf-8"), sha1).digest())
 
     return b64encode(bytes(signature)).decode("utf-8")

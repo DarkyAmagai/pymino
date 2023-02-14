@@ -1,12 +1,28 @@
-from io import BytesIO
-from random import randint
-from time import time, timezone
-from base64 import b64encode
-from requests import get
 from uuid import uuid4
-from typing import BinaryIO, Optional, Union
+from io import BytesIO
+from requests import get
+from random import randint
+from base64 import b64encode
+from time import time, timezone
 
-from .entities import *
+from typing import BinaryIO, List, Optional, Union
+
+from .entities.threads import CThread, CThreadList
+from .entities.userprofile import UserProfile, UserProfileList
+
+from .entities.messages import (
+    CMessage, CMessages, PrepareMessage
+    )
+from .entities.exceptions import (
+    InvalidImage, MissingCommunityId,
+    MissingTimers, NoDataProvided, NotLoggedIn
+    )
+from .entities.general import (
+    ApiResponse, CBlog, CBlogList, CChatMembers,
+    CComment, CCommentList, CCommunity, CCommunityList,
+    CheckIn, CommunityInvitation, Coupon, FeaturedBlogs,
+    InvitationId, LinkInfo, Notification
+    )
 
 class Community:
     """
@@ -495,7 +511,7 @@ class Community:
         bot = Bot()
 
         bot.community.online_status(status=2) # Sets the status to offline
-        
+
         bot.run(sid=sid)
         ```
         """

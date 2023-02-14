@@ -2,19 +2,23 @@ from os import system
 from random import randint
 from typing import Optional
 from threading import Thread
-from time import sleep as delay
+from contextlib import suppress
+from time import sleep as delay, time
 from urllib.parse import urlencode
-from json import loads, dumps, JSONDecodeError
+from ujson import loads, dumps, JSONDecodeError
 
-from .entities import *
 from .context import EventHandler
-from .utilities.generate import *
 from .dispatcher import MessageDispatcher
+from .entities.wsevents import EventTypes
+from .entities.userprofile import OnlineMembers
+from .entities.messages import Channel, Message
+from .entities.exceptions import WrongWebSocketPackage
+from .utilities.generate import device_id, generate_signature
+from .entities.handlers import is_android, is_repl, notify, orjson_exists
 
 if orjson_exists():
     from orjson import (
-        loads as orjson_loads,
-        dumps as orjson_dumps
+        loads as orjson_loads, dumps as orjson_dumps
         )
 
 try:

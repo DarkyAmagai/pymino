@@ -1,12 +1,16 @@
-from requests import Session as HTTPClient
-from .entities import *
-from .utilities import *
+from time import time
+
+from .utilities.generate import device_id
+from .entities.userprofile import UserProfile
+from .entities.general import (
+    ApiResponse, Authenticate, ResetPassword, Wallet
+    )
 
 class Account:
     """
     Account class for handling account related requests.
     """
-    def __init__(self, session: HTTPClient):
+    def __init__(self, session):
         self.session = session
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:

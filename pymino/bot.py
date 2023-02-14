@@ -1,18 +1,21 @@
 from time import time
+from ujson import loads
 from base64 import b64decode
 from functools import reduce
 from colorama import Fore, Style
 from typing import Optional, Union
 
-from .ext import *
-from .ext.entities import *
-from .ext.utilities import *
 from .ext.socket import WSClient
-
-if orjson_exists():
-    from orjson import loads
-else:
-    from json import loads
+from .ext.account import Account
+from .ext.community import Community
+from .ext.utilities.generate import device_id
+from .ext.entities.userprofile import UserProfile
+from .ext.entities.handlers import check_debugger
+from .ext.utilities.request_handler import RequestHandler
+from .ext.entities.general import ApiResponse, CCommunity
+from .ext.entities.exceptions import (
+    LoginFailed, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
+    )
 
 class Bot(WSClient):
     """
