@@ -5,7 +5,7 @@ setup(
     name="pymino",
     license="MIT",
     author="forevercynical",
-    version="1.1.3.1",
+    version="1.1.3.2",
     author_email="me@cynical.gg",
     description="Easily create a bot for Amino Apps using a modern easy to use synchronous library.",
     url="https://github.com/forevercynical/pymino",
