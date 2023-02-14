@@ -5,12 +5,12 @@ from functools import reduce
 from colorama import Fore, Style
 from typing import Callable, Optional, Union
 
-from .ext.utilities.generate import device_id
+
 from .ext.entities.handlers import check_debugger
 from .ext.entities.userprofile import UserProfile
 from .ext import RequestHandler, Account, Community
 from .ext.entities.messages import CMessage, PrepareMessage
-
+from .ext.utilities.generate import device_id as generate_device_id
 from .ext.entities.exceptions import (
     LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
     )
@@ -128,7 +128,7 @@ class Client():
         self.userId:            str = None
         self.sid:               str = None
         self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
-        self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate_device_id()
+        self.device_id:         Optional[str] = kwargs.get("device_id") or generate_device_id()
         self.request:           RequestHandler = RequestHandler(
                                 self,
                                 proxy=kwargs.get("proxy")
@@ -295,6 +295,23 @@ class Client():
 
     @authenticated
     def disconnect_google(self, password: str) -> dict:
+        """
+        `disconnect_google` - Disconnects the google account from the client account.
+
+        `**Parameters**`
+        - `password` - The password of the amino account.
+
+        `**Example**`
+
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.disconnect_google(password="sUp3rS3cr3tP4ssw0rd")
+        
+        ```
+        """
         return self.request.handler(
             method="POST",
             url="/g/s/auth/disconnect",
@@ -786,28 +803,3 @@ class Client():
             method="POST", url=f"/g/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content, **kwargs).json()
             ))
-    
-    def generate_device_id(self) -> str:
-        """
-        `generate_device_id` - Generates a device id.
-
-        `**Parameters**``
-        - `None`
-
-        `**Example**``
-
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        deviceId = client.generate_device_id()
-
-        print(deviceId)
-
-        ```
-
-        `**Returns**``
-        - `str` - The device id.
-        """
-        return device_id()
