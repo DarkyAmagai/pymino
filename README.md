@@ -1,7 +1,18 @@
 # pymino
+![Discord](https://img.shields.io/discord/926853226152755280?color=blueviolet&label=discord%20server)
+![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/forevercynical/pymino?color=blueviolet)
+![GitHub last commit](https://img.shields.io/github/last-commit/forevercynical/pymino?label=last%20updated&color=blueviolet)
+![PyPI - Downloads](https://img.shields.io/pypi/dw/pymino?color=blueviolet)
 ## A Python wrapper to communicate with Amino Apps API.
 ### Easily create a bot for Amino Apps using a modern easy to use synchronous library.
-### If you have any questions or need help, feel free to join the [Discord server](https://discord.gg/JMJpzpsMNJ).
+### If you have any questions or need help, feel free to join the discord server below.
+
+<p align="center">
+  <a href="https://discord.gg/JMJpzpsMNJ">
+    <img src="https://cdn.discordapp.com/attachments/965717722166100018/1075621812832047154/Discord-logo-2015-500x281.png" alt="Join Our Discord Server" width="200" height="100">
+  </a>
+</p>
+
 #
 ## Installation
 ### Recommended installation method is through pip.
