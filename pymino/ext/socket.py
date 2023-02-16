@@ -3,8 +3,8 @@ from random import randint
 from typing import Optional
 from threading import Thread
 from contextlib import suppress
-from time import sleep as delay, time
 from urllib.parse import urlencode
+from time import sleep as delay, time
 from ujson import loads, dumps, JSONDecodeError
 
 from .context import EventHandler
@@ -22,11 +22,7 @@ if orjson_exists():
         )
 
 try:
-    from websocket import (
-        WebSocket,
-        WebSocketApp,
-        WebSocketConnectionClosedException
-        )
+    from websocket import WebSocket, WebSocketApp
 except ImportError as e:
     system("pip uninstall websocket -y")
     system("pip install websocket-client==1.4.1")
@@ -35,14 +31,10 @@ except ImportError as e:
 class WSClient(EventHandler):
     """
     `WSClient` is a class that handles the websocket.
-
-    `**Parameters**`
-    - `bot` - The bot client to use.
-
     """
-    def __init__(self, bot):
+    def __init__(self):
         self.ws:            WebSocketApp = None
-        self.bot            = bot
+        self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
         self.dispatcher:    MessageDispatcher = MessageDispatcher()
         self.channel:       Optional[Channel] = None
@@ -72,7 +64,7 @@ class WSClient(EventHandler):
             on_close=self.on_websocket_close,
             header={
             "NDCDEVICEID": device_id(),
-            "NDCAUTH": f"sid={self.bot.sid}",
+            "NDCAUTH": f"sid={self.sid}",
             "NDC-MSG-SIG": generate_signature(ws_data)
             })
         return self.start_processes()
@@ -81,20 +73,6 @@ class WSClient(EventHandler):
         """Starts the websocket processes."""
         for process in[self.ws.run_forever, self.heartbeat]:
             Thread(target=process).start()
-
-    def heartbeat(self) -> None:
-        """Sends a heartbeat to the websocket."""""
-        run_check = any([is_android(), is_repl()])
-        while True:
-            with suppress(WebSocketConnectionClosedException):
-                notify() if run_check else None
-                delay(randint(25, 50))
-                self.send_websocket_message({
-                    "o":{
-                        "threadChannelUserInfoList": [],
-                        "id": randint(1, 100)},
-                        "t": 116
-                        })  
 
     def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
         """Handles websocket errors."""
@@ -114,9 +92,13 @@ class WSClient(EventHandler):
         """Sends the message to the event handler."""
         message: Message = Message(message)
         if self.userId == message.userId: return None
+        
+        None if any(
+            [message.ndcId is None, message.ndcId == 0]
+        ) else self._communities.add(message.ndcId)
 
         key = self.event_types.get(f"{message.type}:{message.mediaType}")
-        
+
         if key != None:
             return Thread(target=self._handle_event, args=(key, message)).start()
 
@@ -143,11 +125,64 @@ class WSClient(EventHandler):
 
     def on_websocket_open(self, ws: WebSocket) -> None:
         """Handles websocket open events."""
-        if all([self.bot.community_id != None, "user_online" in self._events]):
+        if all([self.community_id != None, "user_online" in self._events]):
             return self.send_websocket_message({
                 "t": 300,
                 "o": {
-                    "ndcId": self.bot.community_id,
-                    "topic": f"ndtopic:x{self.bot.community_id}:online-members",
+                    "ndcId": self.community_id,
+                    "topic": f"ndtopic:x{self.community_id}:online-members",
                     "id": int(time() * 1000)
                 }})
+
+    def _last_active(self, last_activity_time: float) -> bool:
+        """Returns True if the last activity was 5 minutes ago."""""
+        return time() - last_activity_time >= 300
+
+    def _last_message(self, last_message_time: float) -> bool:
+        """Returns True if the last message was 30 seconds ago."""
+        return time() - last_message_time >= 30
+
+    def _send_message(self) -> None:
+        """Sends a message to the websocket."""
+        self.send_websocket_message({
+            "o":{
+                "threadChannelUserInfoList": [],
+                "id": randint(1, 100)},
+                "t": 116
+                })
+
+    def _activity_status(self) -> None:
+        """Sets the user's activity status to online."""
+        for comId in self._communities:
+            delay(randint(5, 10))
+            self.community.online_status(comId=comId)
+            self.community.send_active(comId=comId,
+            timers=[{"start": int(time()), "end": int(time()) + 300}]
+            )
+
+    def heartbeat(self) -> None:
+        """Runs a few background processes."""
+        run_check = any([is_android(), is_repl()])
+
+        start_time          = time()
+        last_activity_time  = start_time
+        last_message_time   = start_time
+
+        while True:
+            current_time = time()
+            notify() if run_check else None
+
+            with suppress(Exception):
+
+                if self._last_message(last_message_time):
+                    self._send_message()
+                    last_message_time = current_time
+
+                if current_time - start_time >= 86400:
+                    start_time = current_time
+
+                if all([self._last_active(last_activity_time), current_time - start_time <= 36000]):
+                    self._activity_status()
+                    last_activity_time = current_time
+
+                delay(randint(25, 50))

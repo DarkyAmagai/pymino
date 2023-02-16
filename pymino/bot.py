@@ -239,7 +239,7 @@ class Bot(WSClient):
 
         if self.community_id:   self.set_community_id(community_id)
 
-        WSClient.__init__(self, bot=self)
+        WSClient.__init__(self)
 
 
     def authenticate(self, email: str, password: str, device_id: str = None) -> dict:
