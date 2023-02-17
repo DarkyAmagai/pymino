@@ -7,9 +7,8 @@ from ujson import loads, dumps, JSONDecodeError
 from typing import Optional, Union, Tuple, Callable
 
 from .lite_cache import LiteCache
-from ..entities.handlers import orjson_exists
 from .generate import device_id, generate_signature
-
+from ..entities.handlers import orjson_exists, retry
 
 from requests import (
     Session as Http, Response as HttpResponse
@@ -45,9 +44,18 @@ class RequestHandler:
         self.sid:           Optional[str] = None
         self.userId:        Optional[str] = None
         self.orjson:        bool = orjson_exists()
-        self.response_map:  dict = {403: Forbidden, 502: BadGateway, 503: ServiceUnavailable}
-        self.proxy:         dict = {"http": proxy,"https": proxy} if proxy is not None else None
-    
+
+        self.proxy:         dict = {
+            "http": proxy,
+            "https": proxy
+            } if proxy is not None else None
+        
+        self.response_map:  dict = {
+            403: Forbidden,
+            502: BadGateway,
+            503: ServiceUnavailable
+            }
+
     def service_url(self, url: str) -> str:
         """
         `service_url` - Appends the endpoint to the service url
@@ -166,7 +174,8 @@ class RequestHandler:
             self.handler(method, url, data, content_type)
 
         return response.status, content
-        
+    
+    @retry
     def handler(
         self,
         method: str,
@@ -333,7 +342,7 @@ class RequestHandler:
 
         with suppress(OrjsonDecodeError if self.orjson else JSONDecodeError):
             if status_code != 200:
-                self.raise_error(status_code)
+                self.raise_error(status_code, response)
 
             return orjson_loads(response) if self.orjson else loads(response)
 

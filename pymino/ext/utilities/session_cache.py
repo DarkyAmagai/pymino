@@ -1,4 +1,4 @@
-from os import path
+from os import path, mkdir
 from typing import TextIO
 from ujson import load, dump, JSONDecodeError
 
@@ -7,8 +7,17 @@ class SessionCache:
         self.email:     str = email
         self.sid:       str = sid
         self.response:  dict = response
+
         file_dir:       str = path.dirname(path.abspath(__file__))
-        self.cache_file = path.join(file_dir, "cache", "login_cache.json")
+        
+        if not path.exists(path.join(file_dir, "cache")):
+            mkdir(path.join(file_dir, "cache"))
+
+        if not path.exists(path.join(file_dir, "cache", "login_cache.json")):
+            with open(path.join(file_dir, "cache", "login_cache.json"), "w") as f:
+                f.write("")
+
+        self.cache_file: str = path.join(file_dir, "cache", "login_cache.json")
 
     def save(self, force_update: bool = False) -> None:
         if all([self.already_exists(), not force_update]):

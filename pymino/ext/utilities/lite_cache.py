@@ -23,6 +23,10 @@ class LiteCache:
             "cache",
             f"{sub('https?://', '', url).replace('/', '_')}.json"
             )
+        
+        if not path.exists(self.cache_file):
+            with open(self.cache_file, "w") as f:
+                f.write("")
 
     def is_link_resolution(self) -> bool:
         return search("link-resolution", self.url) is not None
