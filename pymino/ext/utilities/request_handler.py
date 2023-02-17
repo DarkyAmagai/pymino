@@ -1,12 +1,15 @@
+from re import search
 from uuid import uuid4
-from ujson import loads, dumps
 from contextlib import suppress
 from colorama import Fore, Style
 from httplib2 import Http as Http2
+from ujson import loads, dumps, JSONDecodeError
 from typing import Optional, Union, Tuple, Callable
 
+from .lite_cache import LiteCache
 from ..entities.handlers import orjson_exists
 from .generate import device_id, generate_signature
+
 
 from requests import (
     Session as Http, Response as HttpResponse
@@ -21,7 +24,8 @@ from requests.exceptions import (
 if orjson_exists():
     from orjson import (
         loads as orjson_loads,
-        dumps as orjson_dumps
+        dumps as orjson_dumps,
+        JSONDecodeError as OrjsonDecodeError
         )
 
 class RequestHandler:
@@ -35,11 +39,13 @@ class RequestHandler:
     """
     def __init__(self, bot, proxy: Optional[str] = None):
         self.bot            = bot
+        self.lite_cache     = LiteCache
         self._handler:      Http2 = Http2()           
         self.proxy_handler: Http = Http()
         self.sid:           Optional[str] = None
         self.userId:        Optional[str] = None
         self.orjson:        bool = orjson_exists()
+        self.response_map:  dict = {403: Forbidden, 502: BadGateway, 503: ServiceUnavailable}
         self.proxy:         dict = {"http": proxy,"https": proxy} if proxy is not None else None
     
     def service_url(self, url: str) -> str:
@@ -68,6 +74,10 @@ class RequestHandler:
             "AUID": self.userId or str(uuid4())
             }
 
+    def is_link_resolution(self, url: str) -> bool:
+        """Lite cache method to check if the url is a link resolution"""
+        return search("link-resolution", url) is not None
+    
     def fetch_request(self, method: str) -> Callable:
         """
         `fetch_request` - Returns the request method
@@ -177,20 +187,33 @@ class RequestHandler:
         - `dict` - The response from the request.
         
         """
+        url = self.service_url(url)
 
-        url, headers, data = self.service_handler(url, data, content_type)
+        if self.is_link_resolution(url):
+            check_cache = self.lite_cache(url, method, data).get()
+            if check_cache is not None:
+                self.print_response(method="LITE", url=url, status_code=200)
+                return check_cache
+
+        url, headers, binary_data = self.service_handler(url, data, content_type)
 
         if all([method=="POST", data is None]):
             headers["CONTENT-TYPE"] = "application/octet-stream"
-        
+
         proxy_map = {True: self.run_proxy, False: self.run_without}
 
         status_code, content = proxy_map[self.proxy is not None](
-            method, url, data, headers, content_type
+            method, url, binary_data, headers, content_type
         )
 
         self.print_response(method=method, url=url, status_code=status_code)
-        return self.handle_response(status_code=status_code, response=content)
+
+        response = self.handle_response(status_code=status_code, response=content)
+
+        if self.is_link_resolution(url) and status_code == 200:
+            self.lite_cache(url, method, data=data, response=response).save()
+
+        return response
 
     def service_handler(
         self,
@@ -210,15 +233,13 @@ class RequestHandler:
         - `Tuple[str, dict, Union[dict, bytes, None]]` - The service url, headers and data.
 
         """
-
-        service_url = self.service_url(url)
         
         headers = {"NDCDEVICEID": device_id(), **self.service_headers()}
 
         if data or content_type:
             headers, data = self.fetch_signature(data, headers, content_type)
 
-        return service_url, headers, self.ensure_utf8(data)
+        return url, headers, self.ensure_utf8(data)
 
     def ensure_utf8(self, data: Union[dict, bytes, None]) -> Union[dict, bytes, None]:
         """
@@ -278,31 +299,42 @@ class RequestHandler:
         })
         return headers, data
 
+    def raise_error(self, status_code: int, response: bytes) -> None:
+        """
+        `raise_error` - Raises an error if the status code is in the response map
+        
+        `**Parameters**``
+        - `status_code` - The status code of the response.
+        - `response` - The response from the request.
+        
+        `**Returns**``
+        - `None` - Raises an error if the status code is in the response map.
+        
+        """
+        if status_code in self.response_map:
+            raise self.response_map[status_code]
+        elif dict(loads(response)).get("api:statuscode") == 105:
+            return self.bot.run(self.email, self.password)
+        else:
+            raise APIException(response)
+        
     def handle_response(self, status_code: int, response: bytes) -> dict:
         """
-        `handle_response` - Checks the response and returns the response data if successful
-
-        `**Parameters**``
-        - `response` - The response to check.
-
-        `**Returns**``
-        - `dict` - The response data.
-
-        """
-        response_map = {403: Forbidden, 502: BadGateway, 503: ServiceUnavailable}
-
-        with suppress(Exception):
-
-            if status_code != 200:
-                
-                if status_code in response_map:
-                    raise response_map[status_code]
-                
-                if dict(loads(response)).get("api:statuscode") == 105:
-                    return self.bot.run(self.email, self.password)
-
-                raise APIException(response)
+        `handle_response` - Handles the response and returns the response as a dict
         
+        `**Parameters**``
+        - `status_code` - The status code of the response.
+        - `response` - The response to handle.
+        
+        `**Returns**``
+        - `dict` - The response as a dict.
+        
+        """
+
+        with suppress(OrjsonDecodeError if self.orjson else JSONDecodeError):
+            if status_code != 200:
+                self.raise_error(status_code)
+
             return orjson_loads(response) if self.orjson else loads(response)
 
         return loads(response)
@@ -319,5 +351,10 @@ class RequestHandler:
 
         """
         if self.bot.debug:
-            color = Fore.RED if status_code != 200 else {"GET": Fore.GREEN, "POST": Fore.YELLOW, "DELETE": Fore.MAGENTA}.get(method, Fore.RED)
+            color = Fore.RED if status_code != 200 else {
+                "GET": Fore.GREEN,
+                "POST": Fore.LIGHTWHITE_EX,
+                "DELETE": Fore.MAGENTA,
+                "LITE": Fore.YELLOW
+                }.get(method, Fore.RED)
             print(f"{color}{Style.BRIGHT}{method}{Style.RESET_ALL} - {url}")

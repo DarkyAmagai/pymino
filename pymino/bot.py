@@ -9,8 +9,9 @@ from .ext.socket import WSClient
 from .ext.account import Account
 from .ext.community import Community
 from .ext.utilities.generate import device_id
-from .ext.entities.userprofile import UserProfile
 from .ext.entities.handlers import check_debugger
+from .ext.entities.userprofile import UserProfile
+from .ext.utilities.session_cache import SessionCache
 from .ext.utilities.request_handler import RequestHandler
 from .ext.entities.general import ApiResponse, CCommunity
 from .ext.entities.exceptions import (
@@ -309,15 +310,26 @@ class Bot(WSClient):
         ```
         """
         if email and password:
+            cached: str = SessionCache(email=email).get()
+            if cached:
+                self.sid:               str = cached
+                self.request.sid:       str = cached
+                self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), self.sid + "=" * (-len(self.sid) % 4)).encode())[1:-20].decode())["2"]
+                try:
+                    response:           dict = self.fetch_account()
+                except Exception:
+                    response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+
+            else:
+                self.sid = None
+                response: dict = self.authenticate(email=email, password=password, device_id=device_id)
 
             for key, value in {"email": email, "password": password}.items():
-                setattr(self.request, key, value)
-
-            response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+                setattr(self.request, key, value)            
 
         elif sid:
             self.sid:               str = sid
-            self.request.sid:       str = self.sid
+            self.request.sid:       str = sid
             self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
             response:               dict = self.fetch_account()
 
@@ -325,21 +337,28 @@ class Bot(WSClient):
             raise MissingEmailPasswordOrSid
 
         if response:
-            return self.__run__(response, sid)
+            return self.__run__(response)
         else:
             raise LoginFailed
 
-    def __run__(self, response: dict, sid: str) -> Union[None, Exception]:
+    def __run__(self, response: dict) -> Union[None, Exception]:
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
             self.profile:       UserProfile = UserProfile(response)
 
-        self.sid:               str = sid or response['sid']
-        self.userId:            str = self.profile.userId
-        self.community.userId:  str = self.userId
-        self.request.sid:       str = self.sid
-        self.request.userId:    str = self.userId
+        if not self.sid:
+            force_update:           bool = True
+            self.sid:               str = response["sid"]
+        else:
+            force_update:           bool = False
+
+        self.userId:                str = self.profile.userId
+        self.community.userId:      str = self.userId
+        self.request.sid:           str = self.sid
+        self.request.userId:        str = self.userId
+
+        SessionCache(email=self.request.email, sid=self.sid, response=response).save(force_update=force_update)
 
         if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
             self.is_ready = True

@@ -5,10 +5,10 @@ from functools import reduce
 from colorama import Fore, Style
 from typing import Callable, Optional, Union
 
-
 from .ext.entities.handlers import check_debugger
 from .ext.entities.userprofile import UserProfile
 from .ext import RequestHandler, Account, Community
+from .ext.utilities.session_cache import SessionCache
 from .ext.entities.messages import CMessage, PrepareMessage
 from .ext.utilities.generate import device_id as generate_device_id
 from .ext.entities.exceptions import (
@@ -255,15 +255,27 @@ class Client():
         ```
         """
         if email and password:
+            cached: str = SessionCache(email=email).get()
+            if cached:
+                self.sid:               str = cached
+                self.request.sid:       str = cached
+                self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), self.sid + "=" * (-len(self.sid) % 4)).encode())[1:-20].decode())["2"]
+                try:
+                    response:           dict = self.fetch_account()
+                except Exception:
+                    self.sid = None
+                    response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+
+            else:
+                self.sid = None
+                response: dict = self.authenticate(email=email, password=password, device_id=device_id)
 
             for key, value in {"email": email, "password": password}.items():
-                setattr(self.request, key, value)
-
-            response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+                setattr(self.request, key, value)            
 
         elif sid:
             self.sid:               str = sid
-            self.request.sid:       str = self.sid
+            self.request.sid:       str = sid
             self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
             response:               dict = self.fetch_account()
 
@@ -271,22 +283,50 @@ class Client():
             raise MissingEmailPasswordOrSid
 
         if response:
-            return self.__run__(response, sid)
+            return self.__run__(response)
         else:
             raise LoginFailed
+        
+    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> dict:
+        """
+        `run` - runs the client.
 
-    def __run__(self, response: dict, sid: str) -> Union[None, Exception]:
+        `**Parameters**`
+        - `email` - The email to use to login. Defaults to `None`.
+        - `password` - The password to use to login. Defaults to `None`.
+        - `sid` - The sid to use to login. Defaults to `None`.
+        - `device_id` - The device id to use to login. Defaults to `None`.
+
+        `**Example**`
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.run(email="email", password="password")
+        ```
+        """
+        return self.login(email=email, password=password, sid=sid, device_id=device_id)
+
+    def __run__(self, response: dict) -> Union[None, Exception]:
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
             self.profile:       UserProfile = UserProfile(response)
 
-        self.sid:               str = sid or response['sid']
-        self.userId:            str = self.profile.userId
-        self.community.userId:  str = self.userId
-        self.request.sid:       str = self.sid
-        self.request.userId:    str = self.userId
-        self.is_authenticated:  bool = True
+        if not self.sid:
+            force_update:           bool = True
+            self.sid:               str = response["sid"]
+        else:
+            force_update:           bool = False
+
+        self.userId:                str = self.profile.userId
+        self.community.userId:      str = self.userId
+        self.request.sid:           str = self.sid
+        self.request.userId:        str = self.userId
+        self.is_authenticated:      bool = True
+
+        SessionCache(email=self.request.email, sid=self.sid, response=response).save(force_update=force_update)
 
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
