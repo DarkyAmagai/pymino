@@ -1,9 +1,8 @@
 from re import search
 from uuid import uuid4
-from contextlib import suppress
+from ujson import loads, dumps
 from colorama import Fore, Style
 from httplib2 import Http as Http2
-from ujson import loads, dumps, JSONDecodeError
 from typing import Optional, Union, Tuple, Callable
 
 from .lite_cache import LiteCache
@@ -23,8 +22,7 @@ from requests.exceptions import (
 if orjson_exists():
     from orjson import (
         loads as orjson_loads,
-        dumps as orjson_dumps,
-        JSONDecodeError as OrjsonDecodeError
+        dumps as orjson_dumps
         )
 
 class RequestHandler:
@@ -198,12 +196,6 @@ class RequestHandler:
         """
         url = self.service_url(url)
 
-        if self.is_link_resolution(url):
-            check_cache = self.lite_cache(url, method, data).get()
-            if check_cache is not None:
-                self.print_response(method="LITE", url=url, status_code=200)
-                return check_cache
-
         url, headers, binary_data = self.service_handler(url, data, content_type)
 
         if all([method=="POST", data is None]):
@@ -217,12 +209,8 @@ class RequestHandler:
 
         self.print_response(method=method, url=url, status_code=status_code)
 
-        response = self.handle_response(status_code=status_code, response=content)
+        return self.handle_response(status_code=status_code, response=content)
 
-        if self.is_link_resolution(url) and status_code == 200:
-            self.lite_cache(url, method, data=data, response=response).save()
-
-        return response
 
     def service_handler(
         self,
@@ -308,26 +296,24 @@ class RequestHandler:
         })
         return headers, data
 
-    def raise_error(self, status_code: int, response: bytes) -> None:
+    def raise_error(self, response: dict) -> None:
         """
-        `raise_error` - Raises an error if the status code is in the response map
+        `raise_error` - Raises an error if an error is in the response
         
         `**Parameters**``
-        - `status_code` - The status code of the response.
         - `response` - The response from the request.
         
         `**Returns**``
         - `None` - Raises an error if the status code is in the response map.
         
         """
-        if status_code in self.response_map:
-            raise self.response_map[status_code]
-        elif dict(loads(response)).get("api:statuscode") == 105:
-            return self.bot.run(self.email, self.password)
+        if response.get("api:statuscode", 200) == 105:
+            return self.bot.run(self.email, self.password, use_cache=False)
+        
         else:
             raise APIException(response)
         
-    def handle_response(self, status_code: int, response: bytes) -> dict:
+    def handle_response(self, status_code: int, response: str) -> dict:
         """
         `handle_response` - Handles the response and returns the response as a dict
         
@@ -339,14 +325,18 @@ class RequestHandler:
         - `dict` - The response as a dict.
         
         """
+        if status_code in self.response_map:
+            raise self.response_map[status_code]
+        
+        try:
+            response = orjson_loads(response) if self.orjson else loads(response)
+        except Exception:
+            response = loads(response)
 
-        with suppress(OrjsonDecodeError if self.orjson else JSONDecodeError):
-            if status_code != 200:
-                self.raise_error(status_code, response)
+        if status_code != 200:
+            self.raise_error(response)
 
-            return orjson_loads(response) if self.orjson else loads(response)
-
-        return loads(response)
+        return response
 
     def print_response(self, method: str, url: str, status_code: int):
         """

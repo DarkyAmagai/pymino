@@ -1,4 +1,3 @@
-from ujson import loads
 from contextlib import suppress
 
 class UnsupportedService(Exception):
@@ -258,7 +257,7 @@ class UserHasBeenDeleted(Exception):
         super().__init__(response)
 
 class APIException(Exception):
-    def __init__(self, response: str):
+    def __init__(self, response: dict):
         self.exception_map = {
             100: UnsupportedService,
             102: FileTooLarge,
@@ -330,10 +329,9 @@ class APIException(Exception):
         self.status_code = None
 
         with suppress(Exception):
-            json_response: dict = loads(response)
-            self.status_code: int = json_response.get("api:statuscode", response)
-            self.message: str = json_response.get("api:message", response)
-            self.url: str = json_response.get("url", response)
+            self.status_code: int = response.get("api:statuscode", response)
+            self.message: str = response.get("api:message", response)
+            self.url: str = response.get("url")
         
         if any([
             not isinstance(self.status_code, int),

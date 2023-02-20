@@ -290,7 +290,7 @@ class Bot(WSClient):
         self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
-    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> None:
+    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> None:
         """
         `run` - runs the bot.
 
@@ -310,7 +310,7 @@ class Bot(WSClient):
         ```
         """
         if email and password:
-            cached: str = SessionCache(email=email).get()
+            cached: str = SessionCache(email=email).get() if use_cache else None
             if cached:
                 self.sid:               str = cached
                 self.request.sid:       str = cached

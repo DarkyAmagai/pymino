@@ -1,11 +1,12 @@
 from re import search
 from time import sleep
-from functools import wraps
 from sys import platform
+from functools import wraps
+from typing import Callable
 from datetime import datetime
 from os import system, environ
 from contextlib import suppress
-from typing import Callable
+
 from colorama import Fore, Style
 
 from .exceptions import BadGateway, Forbidden, ServiceUnavailable
@@ -17,14 +18,15 @@ def check_debugger() -> bool:
     with suppress(Exception):
         return any([
             search("vscode", environ.get("TERM_PROGRAM")),
-            search("pycharm", environ.get("TERM_PROGRAM"))
+            search("pycharm", environ.get("TERM_PROGRAM")),
+            is_repl(), is_android()
             ])
 
 def retry(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         failed = 0
-        while failed < 3:
+        while failed <= 2:
             try:
                 return func(*args, **kwargs)
             except (
@@ -32,9 +34,14 @@ def retry(func: Callable) -> Callable:
             Forbidden, BadGateway
             ):
                 failed += 1
-                sleep(failed + 1)
+                print_retry() if check_debugger() else None
         return func(*args, **kwargs)
     return wrapper
+
+def print_retry():
+    print(f"{Fore.RED}[!] {Fore.YELLOW}An error occurred while trying to connect to the server.{Style.RESET_ALL}")
+    print(f"{Fore.RED}[!] {Fore.YELLOW}Waiting 1 second before trying again.{Style.RESET_ALL}")
+    sleep(1)
     
 def orjson_exists() -> bool:
     """

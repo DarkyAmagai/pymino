@@ -235,7 +235,7 @@ class Client():
                 }
             )).json()
 
-    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> dict:
+    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> dict:
         """
         `login` - logs in to the client.
 
@@ -255,7 +255,7 @@ class Client():
         ```
         """
         if email and password:
-            cached: str = SessionCache(email=email).get()
+            cached: str = SessionCache(email=email).get() if use_cache else None
             if cached:
                 self.sid:               str = cached
                 self.request.sid:       str = cached
