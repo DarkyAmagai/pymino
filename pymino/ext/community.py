@@ -21,7 +21,7 @@ from .entities.general import (
     ApiResponse, CBlog, CBlogList, CChatMembers,
     CComment, CCommentList, CCommunity, CCommunityList,
     CheckIn, CommunityInvitation, Coupon, FeaturedBlogs,
-    InvitationId, LinkInfo, Notification
+    InvitationId, LinkInfo, Notification, QuizRankingList
     )
 
 class Community:
@@ -1862,13 +1862,15 @@ class Community:
             method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"))
 
     @community
-    def fetch_quiz(self, quizId: str, comId: str = None):
+    def fetch_quiz(self, quizId: str, start: int = 0, size: int = 10, comId: Union[str, int] = None) -> QuizRankingList:
         """
         `fetch_quiz` is the method that fetches a quiz's information.
         
         `**Parameters**`
-        
         - `quizId` - The quiz ID to fetch.
+        - `start` - The start index of the ranking list.
+        - `size` - The size of the ranking list.
+        - `comId` - The community ID to use.
         
         `**Example**`
         
@@ -1878,11 +1880,14 @@ class Community:
         bot = Bot()
         bot.community.fetch_quiz(quizId = "5f4d2e0e0a0a0a0a0a0a0a0a")
         bot.run(sid=sid)
+        
         ```
         """
-        return self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}")
-
+        return QuizRankingList(self.session.handler(
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}"
+            ))
+    
     @community
     def fetch_user(self, userId: str, comId: Union[str, int] = None) -> UserProfile:
         """

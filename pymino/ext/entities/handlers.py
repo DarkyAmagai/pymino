@@ -21,27 +21,6 @@ def check_debugger() -> bool:
             search("pycharm", environ.get("TERM_PROGRAM")),
             is_repl(), is_android()
             ])
-
-def retry(func: Callable) -> Callable:
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        failed = 0
-        while failed <= 2:
-            try:
-                return func(*args, **kwargs)
-            except (
-            ServiceUnavailable,
-            Forbidden, BadGateway
-            ):
-                failed += 1
-                print_retry() if check_debugger() else None
-        return func(*args, **kwargs)
-    return wrapper
-
-def print_retry():
-    print(f"{Fore.RED}[!] {Fore.YELLOW}An error occurred while trying to connect to the server.{Style.RESET_ALL}")
-    print(f"{Fore.RED}[!] {Fore.YELLOW}Waiting 1 second before trying again.{Style.RESET_ALL}")
-    sleep(1)
     
 def orjson_exists() -> bool:
     """

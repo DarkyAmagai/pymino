@@ -1,5 +1,5 @@
 from re import findall
-from typing import Union
+from typing import Union, List
 
 from .exceptions import InvalidLink
 from .userprofile import UserProfile, UserProfileList
@@ -771,6 +771,212 @@ class FeaturedBlogs:
         self.ref_object_type:           list = [x.ref_object_type for x in parser]
         self.ref_object_id:             list = [x.ref_object_id for x in parser]
         self.author:                    UserProfileList = UserProfileList([x.author.json() for x in parser])
+
+    def json(self) -> Union[dict, None]:
+        return self.data
+    
+class QuizRanking:
+    def __init__(self, data: dict):
+        self.data:  dict = data
+
+    def return_none(func):
+        def wrapper(*args, **kwargs):
+            return None if args[0].data is None else func(*args, **kwargs)
+        return wrapper
+    
+    @property
+    @return_none
+    def highest_mode(self) -> Union[int, None]:
+        """
+        `highest_mode` - Returns the highest mode of the quiz.
+        """
+        return self.data.get('highestMode')
+    
+    @property
+    @return_none
+    def modified_time(self) -> Union[str, None]:
+        """
+        `modified_time` - Returns the last time the quiz was modified.
+        """
+        return self.data.get('modifiedTime')
+    
+    @property
+    @return_none
+    def is_finished(self) -> Union[bool, None]:
+        """
+        `is_finished` - Returns whether the quiz is finished or not.
+        """
+        return self.data.get('isFinished')
+    
+    @property
+    @return_none
+    def hell_is_finished(self) -> Union[bool, None]:
+        """
+        `hell_is_finished` - Returns whether the quiz is finished in hell mode or not.
+        """
+        return self.data.get('hellIsFinished')
+    
+    @property
+    @return_none
+    def highest_score(self) -> Union[int, None]:
+        """
+        `highest_score` - Returns the highest score of the quiz.
+        """
+        return self.data.get('highestScore')
+    
+    @property
+    @return_none
+    def beat_rate(self) -> Union[None, None]:
+        """
+        `beat_rate` - Returns the beat rate of the quiz.
+        """
+        return self.data.get('beatRate')
+    
+    @property
+    @return_none
+    def last_beat_rate(self) -> Union[None, None]:
+        """
+        `last_beat_rate` - Returns the last beat rate of the quiz.
+        """
+        return self.data.get('lastBeatRate')
+    
+    @property
+    @return_none
+    def total_times(self) -> Union[int, None]:
+        """
+        `total_times` - Returns the total times the quiz has been played.
+        """
+        return self.data.get('totalTimes')
+    
+    @property
+    @return_none
+    def latest_score(self) -> Union[int, None]:
+        """
+        `latest_score` - Returns the latest score of the quiz.
+        """
+        return self.data.get('latestScore')
+    
+    @property
+    @return_none
+    def author(self) -> UserProfile:
+        """
+        `author` - Returns the author of the quiz.
+        """
+        return UserProfile(self.data.get('author'))
+    
+    @property
+    @return_none
+    def latest_mode(self) -> Union[int, None]:
+        """
+        `latest_mode` - Returns the latest mode of the quiz.
+        """
+        return self.data.get('latestMode')
+    
+    @property
+    @return_none
+    def created_time(self) -> Union[str, None]:
+        """
+        `created_time` - Returns the time the quiz was created.
+        """
+        return self.data.get('createdTime')
+    
+    def json(self) -> Union[dict, None]:
+        return self.data
+
+class QuizRankingList:
+    def __init__(self, data: dict):
+        self.data:                          dict = data.get("quizResultRankingList")
+
+    @property
+    def __parser__(self) -> List[QuizRanking]:
+        """
+        `__parser__` - Returns a list of QuizRanking objects.
+        """
+        return [QuizRanking(x) for x in self.data]
+    
+    @property
+    def highest_mode(self) -> list:
+        """
+        `highest_mode` - Returns a list of the highest mode of the quiz.
+        """
+        return [x.highest_mode for x in self.__parser__]
+    
+    @property
+    def modified_time(self) -> list:
+        """
+        `modified_time` - Returns a list of the last time the quiz was modified.
+        """
+        return [x.modified_time for x in self.__parser__]
+    
+    @property
+    def is_finished(self) -> list:
+        """
+        `is_finished` - Returns a list of whether the quiz is finished or not.
+        """
+        return [x.is_finished for x in self.__parser__]
+    
+    @property
+    def hell_is_finished(self) -> list:
+        """
+        `hell_is_finished` - Returns a list of whether the quiz is finished in hell mode or not.
+        """
+        return [x.hell_is_finished for x in self.__parser__]
+    
+    @property
+    def highest_score(self) -> list:
+        """
+        `highest_score` - Returns a list of the highest score of the quiz.
+        """
+        return [x.highest_score for x in self.__parser__]
+    
+    @property
+    def beat_rate(self) -> list:
+        """
+        `beat_rate` - Returns a list of the beat rate of the quiz.
+        """
+        return [x.beat_rate for x in self.__parser__]
+    
+    @property
+    def last_beat_rate(self) -> list:
+        """
+        `last_beat_rate` - Returns a list of the last beat rate of the quiz.
+        """
+        return [x.last_beat_rate for x in self.__parser__]
+    
+    @property
+    def total_times(self) -> list:
+        """
+        `total_times` - Returns a list of the total times the quiz has been played.
+        """
+        return [x.total_times for x in self.__parser__]
+    
+    @property
+    def latest_score(self) -> list:
+        """
+        `latest_score` - Returns a list of the latest score of the quiz.
+        """
+        return [x.latest_score for x in self.__parser__]
+    
+    @property
+    def author(self) -> UserProfileList:
+        """
+        `author` - Returns a list of the author of the quiz.
+        """
+        return UserProfileList([x.author.json() for x in self.__parser__])
+    
+    @property
+    def latest_mode(self) -> list:
+        """
+        `latest_mode` - Returns a list of the latest mode of the quiz.
+        """
+        return [x.latest_mode for x in self.__parser__]
+    
+    @property
+    def created_time(self) -> list:
+        """
+        `created_time` - Returns a list of the time the quiz was created.
+        """
+        return [x.created_time for x in self.__parser__]
 
     def json(self) -> Union[dict, None]:
         return self.data

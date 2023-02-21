@@ -6,8 +6,9 @@ from httplib2 import Http as Http2
 from typing import Optional, Union, Tuple, Callable
 
 from .lite_cache import LiteCache
+from ..entities.handlers import orjson_exists
 from .generate import device_id, generate_signature
-from ..entities.handlers import orjson_exists, retry
+
 
 from requests import (
     Session as Http, Response as HttpResponse
@@ -168,12 +169,11 @@ class RequestHandler:
                 body=data,
                 headers=headers
             )
-        except (Exception):
+        except Exception:
             self.handler(method, url, data, content_type)
 
         return response.status, content
     
-    @retry
     def handler(
         self,
         method: str,
@@ -351,8 +351,8 @@ class RequestHandler:
         """
         if self.bot.debug:
             color = Fore.RED if status_code != 200 else {
-                "GET": Fore.GREEN,
-                "POST": Fore.LIGHTWHITE_EX,
+                "GET": Fore.BLUE,
+                "POST": Fore.GREEN,
                 "DELETE": Fore.MAGENTA,
                 "LITE": Fore.YELLOW
                 }.get(method, Fore.RED)

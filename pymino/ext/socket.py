@@ -34,6 +34,7 @@ class WSClient(EventHandler):
     """
     def __init__(self):
         self.ws:            WebSocketApp = None
+        self.online_status: bool = True        
         self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
         self.dispatcher:    MessageDispatcher = MessageDispatcher()
@@ -154,11 +155,17 @@ class WSClient(EventHandler):
     def _activity_status(self) -> None:
         """Sets the user's activity status to online."""
         for comId in self._communities:
+
+            if self.online_status:
+                try:
+                    self.community.online_status(comId=comId)
+                    self.community.send_active(comId=comId,
+                    timers=[{"start": int(time()), "end": int(time()) + 300}]
+                    )
+                except Exception:
+                    self.online_status = False
+
             delay(randint(5, 10))
-            self.community.online_status(comId=comId)
-            self.community.send_active(comId=comId,
-            timers=[{"start": int(time()), "end": int(time()) + 300}]
-            )
 
     def heartbeat(self) -> None:
         """Runs a few background processes."""
