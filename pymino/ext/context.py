@@ -2,6 +2,7 @@ from requests import get
 from threading import Thread
 from base64 import b64encode
 from contextlib import suppress
+from colorama import Fore, Style
 from time import sleep as delay, time
 from inspect import signature as inspect_signature
 from typing import BinaryIO, Callable, List, Union
@@ -542,7 +543,15 @@ class EventHandler(Context):
         if name in self._events:
             self._events[name](*args) 
 
-    def command(self, command_name: str, command_description: str=None, aliases: list=[], cooldown: int=0) -> Callable:
+    def command(
+        self,
+        name: str=None,
+        description: str=None,
+        usage: str=None,
+        aliases: list=[],
+        cooldown: int=0,
+        **kwargs
+    ) -> Callable:
         """
         `command` - This creates a command.
         
@@ -598,10 +607,33 @@ class EventHandler(Context):
             return ctx.send(content=message)
         ```
         """
+        
+        if "command_name" in kwargs:
+            self._is_deprecated("command_name", "name")
+            name = kwargs["command_name"]
+
+        elif name is None:
+            raise ValueError("Please supply a name for the command. Example: @bot.command(name='ping')")
+
+        if "command_description" in kwargs:
+            self._is_deprecated("command_description", "description")
+            description = kwargs["command_description"]
+
         def decorator(func: Callable) -> Callable:
-            self._commands.add_command(Command(func, command_name, command_description=command_description, aliases=aliases, cooldown=cooldown))
+            self._commands.add_command(
+                Command(
+                    func=func,
+                    name=name,
+                    description=description,
+                    usage=usage,
+                    aliases=aliases,
+                    cooldown=cooldown
+                ))
             return func
         return decorator
+    
+    def _is_deprecated(self, parameter: str, new_parameter: str):
+        print(f"{Style.BRIGHT}{Fore.RED}WARNING:{Style.RESET_ALL} '{parameter}' is deprecated. Please use '{new_parameter}' instead.")
 
     def command_exists(self, command_name: str) -> bool:
         """

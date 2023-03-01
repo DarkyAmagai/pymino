@@ -21,7 +21,7 @@ from .entities.general import (
     ApiResponse, CBlog, CBlogList, CChatMembers,
     CComment, CCommentList, CCommunity, CCommunityList,
     CheckIn, CommunityInvitation, Coupon, FeaturedBlogs,
-    InvitationId, LinkInfo, Notification, QuizRankingList
+    InvitationId, LinkInfo, NotificationList, QuizRankingList
     )
 
 class Community:
@@ -546,7 +546,7 @@ class Community:
             ))
 
     @community
-    def fetch_notifications(self, size: Optional[int] = 25, comId: Union[str, int] = None) -> Notification:
+    def fetch_notifications(self, size: Optional[int] = 25, comId: Union[str, int] = None) -> NotificationList:
         """
         `fetch_notifications` is the method that fetches the notifications.
 
@@ -564,7 +564,7 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return Notification(self.session.handler(
+        return NotificationList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/notification?pagingType=t&size={size}"
             ))
@@ -3297,3 +3297,119 @@ class Community:
             },
             "t": 112
         })
+
+    @community
+    def disable_chat(self, chatId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `disable_chat` is the method that disables a chat.
+
+        `**Parameters**`
+
+        - `chatId` - The chat ID to disable.
+
+        - `reason` - The reason for disabling the chat. [Optional]
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+
+        @bot.command("disable")
+        def disable(ctx: Context, message: str):
+            bot.community.disable_chat(chatId=ctx.chatId, reason=message)
+        
+        bot.run(sid=sid)
+        ```
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
+            data = {
+            "adminOpName": 110,
+            "adminOpValue": 9,
+            "timestamp": int(time() * 1000)
+            } if reason is None else {
+            "adminOpNote": {"content": reason},
+            "adminOpName": 110,
+            "adminOpValue": 9,
+            "timestamp": int(time() * 1000)
+            }))
+            
+    @community
+    def disable_blog(self, blogId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `disable_blog` is the method that disables a blog.
+
+        `**Parameters**`
+
+        - `blogId` - The blog ID to disable.
+
+        - `reason` - The reason for disabling the blog. [Optional]
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+
+        @bot.command("disable")
+        def disable(ctx: Context, message: str):
+            bot.community.disable_blog(blogId=ctx.blogId, reason=message)
+        
+        bot.run(sid=sid)
+        ```
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
+            data = {
+            "adminOpName": 110,
+            "adminOpValue": 9,
+            "timestamp": int(time() * 1000)
+            } if reason is None else {
+            "adminOpNote": {"content": reason},
+            "adminOpName": 110,
+            "adminOpValue": 9,
+            "timestamp": int(time() * 1000)
+            }))
+    
+    @community
+    def hide_user(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        `hide_user` is the method that hides a user.
+
+        `**Parameters**`
+
+        - `userId` - The user ID to hide.
+
+        - `reason` - The reason for hiding the user. [Optional]
+
+        `**Example**`
+
+        ```python
+        from pymino import Bot
+
+        bot = Bot()
+
+        @bot.command("hide")
+        def hide(ctx: Context, message: str):
+            bot.community.hide_user(userId=ctx.userId, reason=message)
+        
+        bot.run(sid=sid)
+        ```
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data = {
+            "adminOpName": 18,
+            "timestamp": int(time() * 1000)
+            } if reason is None else {
+            "adminOpNote": {"content": reason},
+            "adminOpName": 18,
+            "timestamp": int(time() * 1000)
+            }))
+    

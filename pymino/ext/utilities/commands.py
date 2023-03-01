@@ -7,19 +7,19 @@ class Command:
     
     `**Parameters**`
     - `func` - The function to run when the command is called.
-    - `command_name` - The name of the command.
-    - `command_description` - The description of the command. `Defaults` to `None`.
+    - `name` - The name of the command.
+    - `description` - The description of the command. `Defaults` to `None`.
+    - `usage` - The usage of the command. `Defaults` to `None`.
     - `aliases` - The aliases of the command. `Defaults` to `None`.
     - `cooldown` - The cooldown of the command. `Defaults` to `0`.
     
     """
-    def __init__(self, func: Callable, command_name: str, command_description: str=None, aliases: list = None, cooldown: int=0):
-        if aliases is None:
-            aliases = []
+    def __init__(self, func: Callable, name: str, description: str=None, usage: str=None, aliases: list=None, cooldown: int=0):
         self.func:           Callable = func
-        self.name:           str = command_name
-        self.description:    str = command_description
-        self.aliases:        list = aliases
+        self.name:           str = name
+        self.description:    str = description
+        self.usage:          str = usage
+        self.aliases:        list = [] if aliases is None else aliases
         self.cooldown:       int = cooldown
 
 class Commands:
@@ -107,6 +107,16 @@ class Commands:
         
         """
         return {command.name: command.description for command in self.commands}
+    
+    def __command_usages__(self) -> list:
+        """
+        `__command_usages__` - Fetches all command usages from the command list.
+        
+        `**Returns**`
+        - `list[str]` - The command usages that were fetched.
+        
+        """
+        return {command.name: command.usage for command in self.commands}
 
     def __command_cooldowns__(self) -> list:
         """
@@ -162,7 +172,7 @@ class Commands:
         help_message = "[bcu]Commands\n" + "\n[ic]This is a list of all the commands available on this bot.\n"
 
         for command in self.commands:
-            help_message += f"\n[uc]{command.name}\n[ic]{command.description}"
+            help_message += f"\n[uc]{command.name}\n[ic]{command.description}\n[uc]Usage: [ic]{command.usage}\n"
         help_message += "\n\n[ic]This message was generated automatically. If you have any questions, please contact the bot owner."
         return help_message
 

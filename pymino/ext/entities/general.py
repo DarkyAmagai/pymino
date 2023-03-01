@@ -440,6 +440,28 @@ class Notification:
     def json(self) -> Union[dict, str]:
         return self.data
     
+class NotificationList:
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data = data.get("notificationList", data)
+        self.parser = [Notification(x) for x in self.data]
+        self.parentText = [x.parentText for x in self.parser]
+        self.objectId = [x.objectId for x in self.parser]
+        self.contextText = [x.contextText for x in self.parser]
+        self.type = [x.type for x in self.parser]
+        self.parentId = [x.parentId for x in self.parser]
+        self.operator = UserProfileList([x.operator.json() for x in self.parser])
+        self.createdTime = [x.createdTime for x in self.parser]
+        self.parentType = [x.parentType for x in self.parser]
+        self.comId = [x.comId for x in self.parser]
+        self.notificationId = [x.notificationId for x in self.parser]
+        self.objectText = [x.objectText for x in self.parser]
+        self.contextValue = [x.contextValue for x in self.parser]
+        self.contextComId = [x.contextComId for x in self.parser]
+        self.objectType = [x.objectType for x in self.parser]
+
+    def json(self) -> Union[dict, str]:
+        return self.data
+    
 class ResetPassword:
     def __init__(self, data: Union[dict, str]) -> None:
         self.data = data

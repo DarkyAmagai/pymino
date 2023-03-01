@@ -5,7 +5,6 @@ from colorama import Fore, Style
 from httplib2 import Http as Http2
 from typing import Optional, Union, Tuple, Callable
 
-from .lite_cache import LiteCache
 from ..entities.handlers import orjson_exists
 from .generate import device_id, generate_signature
 
@@ -37,7 +36,6 @@ class RequestHandler:
     """
     def __init__(self, bot, proxy: Optional[str] = None):
         self.bot            = bot
-        self.lite_cache     = LiteCache
         self._handler:      Http2 = Http2()           
         self.proxy_handler: Http = Http()
         self.sid:           Optional[str] = None
@@ -80,10 +78,6 @@ class RequestHandler:
             "NDCAUTH": f"sid={self.sid}",
             "AUID": self.userId or str(uuid4())
             }
-
-    def is_link_resolution(self, url: str) -> bool:
-        """Lite cache method to check if the url is a link resolution"""
-        return search("link-resolution", url) is not None
     
     def fetch_request(self, method: str) -> Callable:
         """
@@ -103,7 +97,7 @@ class RequestHandler:
             }
         return request_methods[method]
     
-    def run_proxy(
+    def send_request(
             self,
             method: str,
             url: str,
@@ -112,7 +106,7 @@ class RequestHandler:
             content_type: Optional[str]
         ) -> Union[int, str]:
         """
-        `run_proxy` - Runs the request with a proxy
+        `send_request` - Sends a request
         
         `**Parameters**``
         - `method` - The request method to use.
@@ -129,6 +123,7 @@ class RequestHandler:
             response: HttpResponse = self.fetch_request(method)(
                 url, data=data, headers=headers, proxies=self.proxy
             )
+            return response.status_code, response.text
         except (
             ConnectionError,
             ReadTimeout,
@@ -137,42 +132,6 @@ class RequestHandler:
             ConnectTimeout,
         ):
             self.handler(method, url, data, content_type)
-
-        return response.status_code, response.text
-
-    def run_without(
-            self,
-            method: str,
-            url: str,
-            data: Union[dict, bytes, None],
-            headers: dict,
-            content_type: Optional[str]
-        ) -> Union[int, str]:
-        """
-        `run_without` - Runs the request without a proxy
-        
-        `**Parameters**``
-        - `method` - The request method to use.
-        - `url` - The url to send the request to.
-        - `data` - The data to send with the request.
-        - `headers` - The headers to send with the request.
-        - `content_type` - The content type of the data.
-        
-        `**Returns**``
-        - `Union[int, str]` - The status code and response from the request.
-        
-        """
-        try:
-            response, content = self._handler.request(
-                url,
-                method=method,
-                body=data,
-                headers=headers
-            )
-        except Exception:
-            self.handler(method, url, data, content_type)
-
-        return response.status, content
     
     def handler(
         self,
@@ -201,16 +160,13 @@ class RequestHandler:
         if all([method=="POST", data is None]):
             headers["CONTENT-TYPE"] = "application/octet-stream"
 
-        proxy_map = {True: self.run_proxy, False: self.run_without}
-
-        status_code, content = proxy_map[self.proxy is not None](
+        status_code, content = self.send_request(
             method, url, binary_data, headers, content_type
         )
 
         self.print_response(method=method, url=url, status_code=status_code)
 
         return self.handle_response(status_code=status_code, response=content)
-
 
     def service_handler(
         self,

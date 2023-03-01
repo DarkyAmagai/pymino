@@ -235,7 +235,7 @@ class Client():
                 }
             )).json()
 
-    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> dict:
+    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> Union[dict, str]:
         """
         `login` - logs in to the client.
 
@@ -287,7 +287,7 @@ class Client():
         else:
             raise LoginFailed
         
-    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None) -> dict:
+    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> Union[dict, str]:
         """
         `run` - runs the client.
 
@@ -306,9 +306,9 @@ class Client():
         client.run(email="email", password="password")
         ```
         """
-        return self.login(email=email, password=password, sid=sid, device_id=device_id)
+        return self.login(email=email, password=password, sid=sid, device_id=device_id, use_cache=use_cache)
 
-    def __run__(self, response: dict) -> Union[None, Exception]:
+    def __run__(self, response: dict) -> dict:
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
@@ -839,7 +839,7 @@ class Client():
         `**Returns**``
         - `CMessage` - The message that was sent.
         """
-        return CMessage(self.session.handler(
+        return CMessage(self.request.handler(
             method="POST", url=f"/g/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content, **kwargs).json()
             ))

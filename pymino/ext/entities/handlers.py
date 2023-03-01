@@ -1,15 +1,10 @@
 from re import search
-from time import sleep
-from sys import platform
-from functools import wraps
-from typing import Callable
 from datetime import datetime
 from os import system, environ
+from pip import main as pipmain
 from contextlib import suppress
 
 from colorama import Fore, Style
-
-from .exceptions import BadGateway, Forbidden, ServiceUnavailable
 
 def check_debugger() -> bool:
     """
@@ -32,8 +27,8 @@ def orjson_exists() -> bool:
         from orjson import dumps as dumps
         return True
     except ImportError:
-        system("pip install orjson")
-        system("cls") if platform == "win32" else system("clear")
+        pipmain(["install", "orjson"])
+        system("cls || clear")
         return True
     
 def is_android() -> bool:

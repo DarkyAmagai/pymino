@@ -256,6 +256,10 @@ class UserHasBeenDeleted(Exception):
     def __init__(self, response: str):
         super().__init__(response)
 
+class DataNoLongerExists(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
 class APIException(Exception):
     def __init__(self, response: dict):
         self.exception_map = {
@@ -302,6 +306,7 @@ class APIException(Exception):
             806: CommunityCreateLimitReached,
             814: CommunityDisabled,
             833: CommunityDeleted,
+            1600: DataNoLongerExists,
             1606: TooManyInviteUsers,
             1611: ChatInvitesDisabled,
             1612: RemovedFromChat,
@@ -333,18 +338,16 @@ class APIException(Exception):
             self.message: str = response.get("api:message", response)
             self.url: str = response.get("url")
         
-        if any([
-            not isinstance(self.status_code, int),
-            self.status_code not in self.exception_map
-        ]):
-            raise API_ERROR(response)
-        
-        exception = self.exception_map.get(self.status_code)
-        if self.exception_map.get(self.status_code):
-            if self.url is not None:
-                self.message = f"{self.message} ({self.url})"
+            if not any([not isinstance(self.status_code, int), self.status_code not in self.exception_map]):
+                exception = self.exception_map.get(self.status_code)
 
-            raise exception(self.message)
+                if self.url is not None:
+                    self.message = f"{self.message} ({self.url})"
+
+                if exception is not None:
+                    raise exception(self.message)
+            
+        raise API_ERROR(response)
             
 class MissingCommunityId(Exception):
     def __init__(self):
