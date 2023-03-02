@@ -172,7 +172,7 @@ class Commands:
         help_message = "[bcu]Commands\n" + "\n[ic]This is a list of all the commands available on this bot.\n"
 
         for command in self.commands:
-            help_message += f"\n[uc]{command.name}\n[ic]{command.description}\n[uc]Usage: [ic]{command.usage}\n"
+            help_message += f"\n[uc]{command.name}\n[ic]{command.description}\n[uc]Usage: {command.usage}\n"
         help_message += "\n\n[ic]This message was generated automatically. If you have any questions, please contact the bot owner."
         return help_message
 
