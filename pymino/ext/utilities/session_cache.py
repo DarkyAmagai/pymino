@@ -3,10 +3,10 @@ from typing import TextIO
 from ujson import load, dump, JSONDecodeError
 
 class SessionCache:
-    def __init__(self, email: str, sid: str=None, response: dict=None):
+    def __init__(self, email: str, sid: str=None, device_id: str=None):
         self.email:     str = email
         self.sid:       str = sid
-        self.response:  dict = response
+        self.device_id: str = device_id
 
         file_dir:       str = path.dirname(path.abspath(__file__))
         
@@ -24,7 +24,14 @@ class SessionCache:
             return self.get()
 
         with open(self.cache_file, "a+") as file:
-            self.save_helper(file, {"email": self.email, "sid": self.sid}, force_update)
+            self.save_helper(
+                file, {
+                    "email": self.email,
+                    "sid": self.sid,
+                    "device_id": self.device_id
+                    }
+                , force_update
+                )
 
     def save_helper(self, file: TextIO, data: dict, force_update: bool) -> None:
         file.seek(0)
@@ -63,7 +70,7 @@ class SessionCache:
         
         try:
             return next((
-                cache_data["sid"]
+                (cache_data["sid"], cache_data["device_id"])
                 for cache_data in cached_data
                 if cache_data["email"] == self.email
             ), None)

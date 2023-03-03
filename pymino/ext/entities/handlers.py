@@ -1,3 +1,5 @@
+from base64 import urlsafe_b64decode
+from json import loads
 from re import search
 from datetime import datetime
 from os import system, environ
@@ -49,3 +51,9 @@ def notify() -> None:
     """
     print(f"\n{Fore.MAGENTA}[PYMINO] | {Fore.GREEN}BOT STATUS: {Fore.YELLOW}ONLINE | {Style.RESET_ALL}{datetime.now().strftime('%H:%M:%S')}\n")
     print(f"{Fore.RED}[!] {Fore.YELLOW}If you see this message, you can safely ignore it. The bot is still running and will continue to run until you stop it.{Style.RESET_ALL}\n")
+
+def parse_auid(sid: str) -> str:
+    """Parses the user ID from a session ID."""
+    decoded_sid = urlsafe_b64decode(f"{sid}==")
+    decoded_json: dict = loads(decoded_sid[1:-20].decode())
+    return decoded_json["2"]

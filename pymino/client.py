@@ -1,15 +1,12 @@
 from time import time
-from ujson import loads
-from base64 import b64decode
-from functools import reduce
 from colorama import Fore, Style
 from typing import Callable, Optional, Union
 
-from .ext.entities.handlers import check_debugger
 from .ext.entities.userprofile import UserProfile
 from .ext import RequestHandler, Account, Community
 from .ext.utilities.session_cache import SessionCache
 from .ext.entities.messages import CMessage, PrepareMessage
+from .ext.entities.handlers import check_debugger, parse_auid
 from .ext.utilities.generate import device_id as generate_device_id
 from .ext.entities.exceptions import (
     LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
@@ -235,7 +232,14 @@ class Client():
                 }
             )).json()
 
-    def login(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> Union[dict, str]:
+    def login(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        sid: Optional[str] = None,
+        device_id: Optional[str] = None,
+        use_cache: bool = True
+    ) -> None:
         """
         `login` - logs in to the client.
 
@@ -255,39 +259,56 @@ class Client():
         ```
         """
         if email and password:
-            cached: str = SessionCache(email=email).get() if use_cache else None
+            cached: tuple = SessionCache(email=email).get() if use_cache else None
+
             if cached:
-                self.sid:               str = cached
-                self.request.sid:       str = cached
-                self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), self.sid + "=" * (-len(self.sid) % 4)).encode())[1:-20].decode())["2"]
+                self.sid: str = cached[0]
+                self.request.sid: str = cached[0]
+                self.userId: str = parse_auid(cached[0])
+
                 try:
                     response:           dict = self.fetch_account()
                 except Exception:
-                    self.sid = None
-                    response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+                    response: dict = self.authenticate(
+                        email=email,
+                        password=password,
+                        device_id=cached[1]
+                        )
 
             else:
                 self.sid = None
-                response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+                response: dict = self.authenticate(
+                    email=email,
+                    password=password,
+                    device_id=device_id
+                    )
 
             for key, value in {"email": email, "password": password}.items():
                 setattr(self.request, key, value)            
 
         elif sid:
-            self.sid:               str = sid
-            self.request.sid:       str = sid
-            self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
-            response:               dict = self.fetch_account()
+            self.sid: str = sid
+            self.request.sid: str = sid
+            self.userId: str = parse_auid(sid)
+            response: dict = self.fetch_account()
 
         else:
             raise MissingEmailPasswordOrSid
 
-        if response:
-            return self.__run__(response)
-        else:
+        if not response:
             raise LoginFailed
         
-    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> Union[dict, str]:
+        else:
+            return self.__run__(response)
+        
+    def run(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        sid: Optional[str] = None,
+        device_id: Optional[str] = None,
+        use_cache: bool = True
+    ) -> None:
         """
         `run` - runs the client.
 
@@ -312,21 +333,22 @@ class Client():
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
-            self.profile:       UserProfile = UserProfile(response)
+            self.profile: UserProfile = UserProfile(response)
 
         if not self.sid:
-            force_update:           bool = True
-            self.sid:               str = response["sid"]
+            force_update: bool = True
+            self.sid: str = response["sid"]
         else:
-            force_update:           bool = False
+            force_update: bool = False
 
-        self.userId:                str = self.profile.userId
-        self.community.userId:      str = self.userId
-        self.request.sid:           str = self.sid
-        self.request.userId:        str = self.userId
-        self.is_authenticated:      bool = True
+        self.userId: str = self.profile.userId
+        self.community.userId: str = self.userId
+        self.request.sid: str = self.sid
+        self.request.userId: str = self.userId
+        self.is_authenticated: bool = True
 
-        SessionCache(email=self.request.email, sid=self.sid, response=response).save(force_update=force_update)
+        if hasattr(self.request, "email") and hasattr(self.request, "password"):
+            SessionCache(email=self.request.email, sid=self.sid, device_id=self.device_id).save(force_update=force_update)
 
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")

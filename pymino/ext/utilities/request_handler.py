@@ -1,22 +1,24 @@
-from re import search
 from uuid import uuid4
 from ujson import loads, dumps
 from colorama import Fore, Style
-from httplib2 import Http as Http2
 from typing import Optional, Union, Tuple, Callable
 
 from ..entities.handlers import orjson_exists
 from .generate import device_id, generate_signature
+from requests import Session as Http, Response as HttpResponse
 
-
-from requests import (
-    Session as Http, Response as HttpResponse
-    )
 from ..entities import (
-    Forbidden, BadGateway, APIException, ServiceUnavailable
+    Forbidden,
+    BadGateway,
+    APIException,
+    ServiceUnavailable
     )
 from requests.exceptions import (
-    ConnectionError, ReadTimeout, SSLError, ProxyError, ConnectTimeout
+    ConnectionError,
+    ReadTimeout,
+    SSLError,
+    ProxyError,
+    ConnectTimeout
     )
 
 if orjson_exists():
@@ -35,12 +37,11 @@ class RequestHandler:
 
     """
     def __init__(self, bot, proxy: Optional[str] = None):
-        self.bot            = bot
-        self._handler:      Http2 = Http2()           
-        self.proxy_handler: Http = Http()
-        self.sid:           Optional[str] = None
-        self.userId:        Optional[str] = None
-        self.orjson:        bool = orjson_exists()
+        self.bot             = bot
+        self.http_handler:  Http = Http()
+        self.sid:            Optional[str] = None
+        self.userId:         Optional[str] = None
+        self.orjson:         bool = orjson_exists()
 
         self.proxy:         dict = {
             "http": proxy,
@@ -91,9 +92,9 @@ class RequestHandler:
         
         """
         request_methods = {
-            "GET": self.proxy_handler.get,
-            "POST": self.proxy_handler.post,
-            "DELETE": self.proxy_handler.delete,
+            "GET": self.http_handler.get,
+            "POST": self.http_handler.post,
+            "DELETE": self.http_handler.delete,
             }
         return request_methods[method]
     
@@ -263,11 +264,13 @@ class RequestHandler:
         - `None` - Raises an error if the status code is in the response map.
         
         """
-        if response.get("api:statuscode", 200) == 105:
-            return self.bot.run(self.email, self.password, use_cache=False)
+        if all([
+            response.get("api:statuscode", 200) == 105,
+            hasattr(self, "email"),
+            hasattr(self, "password")
+            ]): return self.bot.run(self.email, self.password, use_cache=False)
         
-        else:
-            raise APIException(response)
+        else: raise APIException(response)
         
     def handle_response(self, status_code: int, response: str) -> dict:
         """

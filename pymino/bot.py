@@ -1,7 +1,4 @@
 from time import time
-from ujson import loads
-from base64 import b64decode
-from functools import reduce
 from colorama import Fore, Style
 from typing import Optional, Union
 
@@ -9,10 +6,10 @@ from .ext.socket import WSClient
 from .ext.account import Account
 from .ext.community import Community
 from .ext.utilities.generate import device_id
-from .ext.entities.handlers import check_debugger
 from .ext.entities.userprofile import UserProfile
 from .ext.utilities.session_cache import SessionCache
 from .ext.utilities.request_handler import RequestHandler
+from .ext.entities.handlers import check_debugger, parse_auid
 from .ext.entities.general import ApiResponse, CCommunity
 from .ext.entities.exceptions import (
     LoginFailed, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
@@ -290,7 +287,14 @@ class Bot(WSClient):
         self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
-    def run(self, email: str=None, password: str=None, sid: str=None, device_id: str=None, use_cache: bool=True) -> None:
+    def run(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        sid: Optional[str] = None,
+        device_id: Optional[str] = None,
+        use_cache: bool = True
+    ) -> None:
         """
         `run` - runs the bot.
 
@@ -312,35 +316,45 @@ class Bot(WSClient):
         if email and password:
             cached: str = SessionCache(email=email).get() if use_cache else None
             if cached:
-                self.sid:               str = cached
-                self.request.sid:       str = cached
-                self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), self.sid + "=" * (-len(self.sid) % 4)).encode())[1:-20].decode())["2"]
+                self.sid: str = cached[0]
+                self.request.sid: str = cached[0]
+                self.userId: str = parse_auid(cached[0])
+
                 try:
-                    response:           dict = self.fetch_account()
+                    response: dict = self.fetch_account()
                 except Exception:
-                    response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+                    response: dict = self.authenticate(
+                        email=email,
+                        password=password,
+                        device_id=cached[1]
+                        )
 
             else:
                 self.sid = None
-                response: dict = self.authenticate(email=email, password=password, device_id=device_id)
+                response: dict = self.authenticate(
+                    email=email,
+                    password=password,
+                    device_id=device_id
+                    )
 
             for key, value in {"email": email, "password": password}.items():
                 setattr(self.request, key, value)            
 
         elif sid:
-            self.sid:               str = sid
-            self.request.sid:       str = sid
-            self.userId:            str = loads(b64decode(reduce(lambda a, e: a.replace(*e), ("-+", "_/"), sid + "=" * (-len(sid) % 4)).encode())[1:-20].decode())["2"]
-            response:               dict = self.fetch_account()
+            self.sid: str = sid
+            self.request.sid: str = sid
+            self.userId: str = parse_auid(sid)
+            response: dict = self.fetch_account()
 
         else:
             raise MissingEmailPasswordOrSid
 
-        if response:
-            return self.__run__(response)
-        else:
+        if not response:
             raise LoginFailed
-
+        
+        else:
+            return self.__run__(response)
+        
     def __run__(self, response: dict) -> Union[None, Exception]:
         if response["api:statuscode"] != 0: input(response), exit()
 
@@ -348,17 +362,22 @@ class Bot(WSClient):
             self.profile:       UserProfile = UserProfile(response)
 
         if not self.sid:
-            force_update:           bool = True
-            self.sid:               str = response["sid"]
+            force_update: bool = True
+            self.sid: str = response["sid"]
         else:
-            force_update:           bool = False
+            force_update: bool = False
 
-        self.userId:                str = self.profile.userId
-        self.community.userId:      str = self.userId
-        self.request.sid:           str = self.sid
-        self.request.userId:        str = self.userId
+        self.userId: str = self.profile.userId
+        self.community.userId: str = self.userId
+        self.request.sid: str = self.sid
+        self.request.userId: str = self.userId
 
-        SessionCache(email=self.request.email, sid=self.sid, response=response).save(force_update=force_update)
+        if hasattr(self.request, "email") and hasattr(self.request, "password"):
+            SessionCache(
+                email=self.request.email,
+                sid=self.sid,
+                device_id=self.device_id
+                ).save(force_update=force_update)
 
         if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
             self.is_ready = True
