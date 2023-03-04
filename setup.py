@@ -21,6 +21,7 @@ setup(
         "ujson==5.5.0",
         "colorama==0.4.6",
         "websocket-client==1.4.1",
+        "diskcache==5.4.0"
     ],
     keywords=[
         "amino",
