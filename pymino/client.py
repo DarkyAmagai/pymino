@@ -1,12 +1,13 @@
 from time import time
+from diskcache import Cache
 from colorama import Fore, Style
 from typing import Callable, Optional, Union
 
+from .ext.entities.handlers import *
 from .ext.entities.userprofile import UserProfile
 from .ext import RequestHandler, Account, Community
-from .ext.utilities.session_cache import SessionCache
 from .ext.entities.messages import CMessage, PrepareMessage
-from .ext.entities.handlers import check_debugger, parse_auid
+
 from .ext.utilities.generate import device_id as generate_device_id
 from .ext.entities.exceptions import (
     LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
@@ -124,6 +125,7 @@ class Client():
         self.is_authenticated:  bool = False
         self.userId:            str = None
         self.sid:               str = None
+        self.cache:             Cache = Cache("cache")
         self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
         self.device_id:         Optional[str] = kwargs.get("device_id") or generate_device_id()
         self.request:           RequestHandler = RequestHandler(
@@ -139,6 +141,12 @@ class Client():
                                 community_id=self.community_id
                                 )
 
+    def authenticated(func: Callable):
+        def wrapper(*args, **kwargs):
+            if not args[0].is_authenticated: raise LoginRequired
+            return func(*args, **kwargs)
+        return wrapper
+    
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
         `fetch_community_id` - fetches the community id from a community link.
@@ -159,9 +167,13 @@ class Client():
         client.fetch_community_id("https://aminoapps.com/c/CommunityName")
         ```
         """
-        community_id = CCommunity(self.request.handler(
-            method="GET", url=f"/g/s/link-resolution?q={community_link}")
-            ).comId
+        KEY = str((community_link, "comId"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, CCommunity(self.request.handler(
+                method="GET", url=f"/g/s/link-resolution?q={community_link}")
+                ).comId)
+            
+        community_id = self.cache.get(KEY)
 
         if set_community_id:
             self.set_community_id(community_id)
@@ -194,12 +206,6 @@ class Client():
         self.community.community_id = community_id
 
         return community_id
-
-    def authenticated(func: Callable):
-        def wrapper(*args, **kwargs):
-            if not args[0].is_authenticated: raise LoginRequired
-            return func(*args, **kwargs)
-        return wrapper
     
     def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
@@ -259,15 +265,15 @@ class Client():
         ```
         """
         if email and password:
-            cached: tuple = SessionCache(email=email).get() if use_cache else None
+            if use_cache and cache_exists(email=email):
+                cached = fetch_cache(email=email)
 
-            if cached:
                 self.sid: str = cached[0]
                 self.request.sid: str = cached[0]
                 self.userId: str = parse_auid(cached[0])
 
                 try:
-                    response:           dict = self.fetch_account()
+                    response: dict = self.fetch_account()
                 except Exception:
                     response: dict = self.authenticate(
                         email=email,
@@ -336,10 +342,7 @@ class Client():
             self.profile: UserProfile = UserProfile(response)
 
         if not self.sid:
-            force_update: bool = True
             self.sid: str = response["sid"]
-        else:
-            force_update: bool = False
 
         self.userId: str = self.profile.userId
         self.community.userId: str = self.userId
@@ -347,8 +350,8 @@ class Client():
         self.request.userId: str = self.userId
         self.is_authenticated: bool = True
 
-        if hasattr(self.request, "email") and hasattr(self.request, "password"):
-            SessionCache(email=self.request.email, sid=self.sid, device_id=self.device_id).save(force_update=force_update)
+        if hasattr(self.request, "email"):
+            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")

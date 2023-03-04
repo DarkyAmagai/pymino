@@ -2,6 +2,7 @@ from uuid import uuid4
 from io import BytesIO
 from requests import get
 from random import randint
+from diskcache import Cache
 from base64 import b64encode
 from time import time, timezone
 
@@ -119,10 +120,11 @@ class Community:
     ----------------------------
     """
     def __init__(self, bot, session, community_id: Union[str, int] = None) -> None:
-        self.bot                = bot
-        self.session            = session       
-        self.community_id:      Union[str, int] = community_id
-        self.userId:            Optional[str] = None
+        self.bot = bot
+        self.session = session
+        self.cache = Cache("cache")
+        self.community_id: Union[str, int] = community_id
+        self.userId: Optional[str] = None
         if self.userId is None: return 
 
     def community(func):
@@ -182,16 +184,19 @@ class Community:
 
         bot = Bot()
 
-        bot.community.fetch_object(objectId = "74b46f21-39b2-4a11-97aa-d68135925703")
+        bot.community.fetch_object(objectId="74b46f21-39b2-4a11-97aa-d68135925703")
 
         bot.run(sid=sid)
         ```
         """
-        return LinkInfo(self.session.handler(
-            method = "POST",
-            url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
-            data = {"objectId": objectId, "targetCode": target_code, "objectType": object_type, "timestamp": int(time() * 1000)}
-            ))
+        KEY = str((objectId, self.community_id if comId is None else comId))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, self.session.handler(
+                method = "POST",
+                url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
+                data = {"objectId": objectId, "targetCode": target_code, "objectType": object_type, "timestamp": int(time() * 1000)}
+                ))
+        return LinkInfo(self.cache.get(KEY))
     
     def fetch_object_id(self, link: str) -> str:
         """
@@ -206,14 +211,17 @@ class Community:
         from pymino import Bot
 
         bot = Bot()
-        objectId = bot.community.fetch_object_id(link = "https://www.aminoapps.com.com/p/as12s34S")
+        objectId = bot.community.fetch_object_id(link = "https://aminoapps.com/p/14sw6")
         bot.run(sid=sid)
         ```
         """
-        return LinkInfo(self.session.handler(
-            method = "GET",
-            url = f"/g/s/link-resolution?q={link}"
-            )).objectId
+        KEY = str((link, "OBJECT_ID"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, self.session.handler(
+                method = "GET",
+                url = f"/g/s/link-resolution?q={link}"
+                ))
+        return LinkInfo(self.cache.get(KEY)).objectId
 
     def fetch_object_info(self, link: str) -> LinkInfo:
         """
@@ -233,10 +241,13 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return LinkInfo(self.session.handler(
-            method = "GET",
-            url = f"/g/s/link-resolution?q={link}"
-            ))
+        KEY = str((link, "OBJECT_INFO"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, self.session.handler(
+                method = "GET",
+                url = f"/g/s/link-resolution?q={link}"
+                ))
+        return LinkInfo(self.cache.get(KEY))
     
     def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
         """
@@ -256,11 +267,14 @@ class Community:
         bot.run(sid=sid)
         ```
         """
-        return CCommunity(self.session.handler(
-            method = "GET",
-            url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
-            ))
-    
+        KEY = str((comId, "COMMUNITY_INFO"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, self.session.handler(
+                method = "GET",
+                url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
+                ))
+        return CCommunity(self.cache.get(KEY))
+
     def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
         `joined_communities` is the method that fetches the communities the user has joined.

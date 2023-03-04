@@ -38,17 +38,17 @@ class RequestHandler:
     """
     def __init__(self, bot, proxy: Optional[str] = None):
         self.bot             = bot
-        self.http_handler:  Http = Http()
+        self.http_handler:   Http = Http()
         self.sid:            Optional[str] = None
         self.userId:         Optional[str] = None
         self.orjson:         bool = orjson_exists()
 
-        self.proxy:         dict = {
+        self.proxy = {
             "http": proxy,
             "https": proxy
             } if proxy is not None else None
         
-        self.response_map:  dict = {
+        self.response_map = {
             403: Forbidden,
             502: BadGateway,
             503: ServiceUnavailable

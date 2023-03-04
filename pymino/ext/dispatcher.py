@@ -1,3 +1,5 @@
+from typing import Callable
+
 class MessageDispatcher:
     """
     `MessageDispatcher` - Simple message dispatcher that allows you to register handlers for specific message types.
@@ -20,7 +22,7 @@ class MessageDispatcher:
     def __init__(self):
         self.dispatch_table = {}
 
-    def register(self, message_type: int, handler: callable):
+    def register(self, message_type: int, handler: Callable):
         self.dispatch_table[message_type] = handler
 
     def handle(self, message: dict):

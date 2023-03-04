@@ -1,6 +1,8 @@
 from base64 import urlsafe_b64decode
+from diskcache import Cache
 from json import loads
 from re import search
+from .messages import Message
 from datetime import datetime
 from os import system, environ
 from pip import main as pipmain
@@ -57,3 +59,18 @@ def parse_auid(sid: str) -> str:
     decoded_sid = urlsafe_b64decode(f"{sid}==")
     decoded_json: dict = loads(decoded_sid[1:-20].decode())
     return decoded_json["2"]
+
+def cache_login(email: str, device: str, sid: str):
+    """Cache the login credentials for the current user."""
+    cache = Cache("cache")
+    cache[email] = {"device": device, "sid": sid}
+
+def fetch_cache(email: str) -> tuple:
+    """Fetch the login credentials for the current user."""
+    cache = Cache("cache")
+    return cache[email]["sid"], cache[email]["device"]
+
+def cache_exists(email: str) -> bool:
+    """Check if the cache exists for the current user."""
+    cache = Cache("cache")
+    return email in cache

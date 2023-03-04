@@ -5,11 +5,10 @@ from typing import Optional, Union
 from .ext.socket import WSClient
 from .ext.account import Account
 from .ext.community import Community
+from .ext.entities.handlers import *
 from .ext.utilities.generate import device_id
 from .ext.entities.userprofile import UserProfile
-from .ext.utilities.session_cache import SessionCache
 from .ext.utilities.request_handler import RequestHandler
-from .ext.entities.handlers import check_debugger, parse_auid
 from .ext.entities.general import ApiResponse, CCommunity
 from .ext.entities.exceptions import (
     LoginFailed, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
@@ -314,8 +313,8 @@ class Bot(WSClient):
         ```
         """
         if email and password:
-            cached: str = SessionCache(email=email).get() if use_cache else None
-            if cached:
+            if use_cache and cache_exists(email=email):
+                cached = fetch_cache(email=email)
                 self.sid: str = cached[0]
                 self.request.sid: str = cached[0]
                 self.userId: str = parse_auid(cached[0])
@@ -359,25 +358,18 @@ class Bot(WSClient):
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
-            self.profile:       UserProfile = UserProfile(response)
+            self.profile: UserProfile = UserProfile(response)
 
         if not self.sid:
-            force_update: bool = True
             self.sid: str = response["sid"]
-        else:
-            force_update: bool = False
 
         self.userId: str = self.profile.userId
         self.community.userId: str = self.userId
         self.request.sid: str = self.sid
         self.request.userId: str = self.userId
 
-        if hasattr(self.request, "email") and hasattr(self.request, "password"):
-            SessionCache(
-                email=self.request.email,
-                sid=self.sid,
-                device_id=self.device_id
-                ).save(force_update=force_update)
+        if hasattr(self.request, "email"):
+            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
             self.is_ready = True

@@ -40,7 +40,8 @@ class Account:
         ```
         """
         return Authenticate(self.session.handler(
-            method = "POST", url="/g/s/auth/register",
+            method = "POST",
+            url="/g/s/auth/register",
             data={
                 "secret": f"0 {password}",
                 "deviceID": device_id(),
@@ -48,16 +49,11 @@ class Account:
                 "clientType": 100,
                 "nickname": username,
                 "validationContext": {
-                    "data": {
-                        "code": verificationCode
-                    },
-                    "type": 1,
-                    "identity": email
-                },
+                    "data": {"code": verificationCode}, "type": 1, "identity": email},
                 "type": 1,
                 "identity": email,
                 "timestamp": int(time() * 1000)
-            }))
+                }))
 
     def delete_request(self, email: str, password: str) -> ApiResponse:
         """
@@ -80,13 +76,14 @@ class Account:
         print(response)
         ```"""
         return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/account/delete-request",
-        data={
-            "secret": f"0 {password}",
-            "deviceID": device_id(),
-            "email": email,
-            "timestamp": int(time() * 1000)
-        }))
+            method = "POST",
+            url="/g/s/account/delete-request",
+            data={
+                "secret": f"0 {password}",
+                "deviceID": device_id(),
+                "email": email,
+                "timestamp": int(time() * 1000)
+            }))
 
     def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
         """
@@ -110,13 +107,14 @@ class Account:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/account/delete-request/cancel",
-        data={
-            "secret": f"0 {password}",
-            "deviceID": device_id(),
-            "email": email,
-            "timestamp": int(time() * 1000)
-        }))
+            method = "POST",
+            url="/g/s/account/delete-request/cancel",
+            data={
+                "secret": f"0 {password}",
+                "deviceID": device_id(),
+                "email": email,
+                "timestamp": int(time() * 1000)
+            }))
 
     def check_device(self, deviceId: str) -> ApiResponse:
         """
@@ -224,11 +222,9 @@ class Account:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/account/change-amino-id",
-            data={
-                "aminoId": aminoId,
-                "timestamp": int(time() * 1000)
-            }))
+            method="POST",
+            url="/g/s/account/change-amino-id",
+            data={"aminoId": aminoId, "timestamp": int(time() * 1000)}))
 
     def fetch_wallet(self) -> Wallet:
         """
@@ -244,8 +240,7 @@ class Account:
         response = bot.fetch_wallet()
         print(response)
         """
-        return Wallet(self.session.handler(
-            method = "GET", url="/g/s/wallet"))
+        return Wallet(self.session.handler(method="GET", url="/g/s/wallet"))
 
     def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
         """
@@ -299,18 +294,17 @@ class Account:
         ```
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/auth/activate-email",
+            method = "POST",
+            url="/g/s/auth/activate-email",
             data={
                 "type": 1,
                 "identity": email,
-                "data": {
-                    "code":code
-                    },
+                "data": {"code":code},
                 "deviceID": device_id(),
                 "timestamp": int(time() * 1000)
             }))
 
-    def reset_password(self, email: str, new_password: str, code: str, deviceId: str = None) -> ResetPassword:
+    def reset_password(self, email: str, new_password: str, code: str, deviceId: str = device_id()) -> ResetPassword:
         """
         `**reset_password**` - Resets the password.
 
@@ -333,20 +327,17 @@ class Account:
         print(response)
         ```
         """
-        deviceId = deviceId or device_id()
         return ResetPassword(self.session.handler(
             method = "POST", url="/g/s/auth/reset-password",
             data={
                 "updateSecret": f"0 {new_password}",
                 "emailValidationContext": {
-                    "data": {
-                        "code": code
-                    },
+                    "data": {"code": code},
                     "type": 1,
                     "identity": email,
                     "level": 2,
                     "deviceID": deviceId
                 },
                 "phoneNumberValidationContext": None,
-                "deviceID": device_id
+                "deviceID": deviceId
             }))
