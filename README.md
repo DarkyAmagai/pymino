@@ -28,7 +28,7 @@
   cd pymino
   python setup.py install</code></pre>
   
-  <p>For more detailed documentation and usage examples, check out the project's <a href="https://pymino.readthedocs.io/en/latest/">official documentation</a>.</p>
+  <p>For more detailed documentation and usage examples, check out the project's <a href="https://pymino.info/index.html">official documentation</a>.</p>
 </div>
 
 <h2>Client Class Usage</h2>
@@ -123,8 +123,3 @@ def error(error: Exception): # This will be called when an error occurs.
     print(f"An error has occurred: {error}")
 
 bot.run("email", "password") or bot.run("sid") # You can login with email and password or sid.</code></pre>
-
-
-# Documentation
-### The documentation is available on the [website](https://pymino.info/index.html).
-#
