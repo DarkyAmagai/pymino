@@ -60,30 +60,6 @@ client.community.send_message(
     comId=123
 )</code></pre>
 
-<style>
-pre {
-  font-size: 1.1rem;
-  background-color: #f7f7f7;
-  border-radius: 5px;
-  padding: 1rem;
-  margin: 2rem 0;
-}
-pre code {
-  font-family: 'JetBrains Mono', monospace;
-  color: #333;
-  display: block;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-.language-python {
-  background-color: #f7f7f7;
-  border-radius: 5px;
-  padding: 1rem;
-  overflow: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.1rem;
-}
-</style>
 
 <h2>Bot Class Usage</h2>
 
@@ -147,31 +123,6 @@ def error(error: Exception): # This will be called when an error occurs.
     print(f"An error has occurred: {error}")
 
 bot.run("email", "password") or bot.run("sid") # You can login with email and password or sid.</code></pre>
-
-<style>
-pre {
-  font-size: 1.1rem;
-  background-color: #f7f7f7;
-  border-radius: 5px;
-  padding: 1rem;
-  margin: 2rem 0;
-}
-pre code {
-  font-family: 'JetBrains Mono', monospace;
-  color: #333;
-  display: block;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-.language-python {
-  background-color: #f7f7f7;
-  border-radius: 5px;
-  padding: 1rem;
-  overflow: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.1rem;
-}
-</style>
 
 
 # Documentation
