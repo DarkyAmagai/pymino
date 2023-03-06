@@ -7,6 +7,7 @@ class EventTypes:
             "1:0": "strike_message",
             "2:110": "voice_message",
             "3:113": "sticker_message",
+            "50:0": "share_exurl_message",
             "52:0": "vc_not_answered",
             "53:0": "vc_not_cancelled",
             "54:0": "vc_not_declined",

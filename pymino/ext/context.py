@@ -313,6 +313,9 @@ class Context():
                 media = open(media, "rb").read()
         except Exception as e:
             raise InvalidImage from e
+        
+        if content_type == "audio/aac":
+            return self.encode_media(media)
 
         if media_value:
             return self.upload_media(media=media, content_type=content_type)
@@ -321,6 +324,7 @@ class Context():
             raise InvalidImage
 
         return media
+    
 
     def encode_media(self, file: bytes) -> str:
         return b64encode(file).decode()
@@ -433,13 +437,13 @@ class Context():
         ```
         """
         message: CMessage = self.__send_message__(
+            type=2,
             mediaType=110,
-            mediaUploadValue=self.encode_media(
-                self.__handle_media__(
+            mediaUploadValue=self.__handle_media__(
                     media=audio,
                     content_type="audio/aac",
                     media_value=False
-            )))
+            ))
         
         return message
 
@@ -1119,6 +1123,12 @@ class EventHandler(Context):
             return func
         return decorator
 
+    def on_share_exurl_message(self):
+        def decorator(func):
+            self._events["share_exurl_message"] = func
+            return func
+        return decorator
+    
     def on_invite_message(self):
         def decorator(func):
             self._events["invite_message"] = func

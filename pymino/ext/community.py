@@ -6,8 +6,9 @@ from diskcache import Cache
 from base64 import b64encode
 from time import time, timezone
 
-from typing import BinaryIO, List, Optional, Union
+from typing import BinaryIO, Callable, List, Optional, Union
 
+from .entities.enums import *
 from .entities.threads import CThread, CThreadList
 from .entities.userprofile import UserProfile, UserProfileList
 
@@ -25,137 +26,164 @@ from .entities.general import (
     InvitationId, LinkInfo, NotificationList, QuizRankingList
     )
 
+
 class Community:
     """
-    `Community` is the class that handles community related actions.
-    
-    `**Parameters**`
+    The `Community` class handles community related actions.
 
-    - `bot` or `client` - the client we are using.
+    **Parameters:**
 
-    - `session` - the session we use to make requests.
+    - `bot` or `client` (`Bot` or `Client`): The client instance that this object belongs to.
+    - `session` (`requests.Session`): The session object used to make requests.
+    - `community_id` (`int`, optional): The community ID to use for the methods. If not provided, the default community ID
+      set in the `Community` instance will be used.
 
-    - `community_id` - comId to use for the methods.
+    ------------------------
+    ## NotLoggedIn Error
 
-    ----------------------------
-    I'm getting a `NotLoggedIn` error, what is the solution?
+    If you get a `NotLoggedIn` error, you need to log in to the client before using the specific method.
 
-    - You need to login to the client before using the specific method.
+    ------------------------
+    ## MissingCommunityId Error
 
-    ----------------------------
+    If you get a `MissingCommunityId` error, you need to pass the community ID to the method or set the community ID in
+    the `Community` class.
 
-    I'm getting a `MissingCommunityId` error, what is the solution?
-
-    - You need to pass the community id to the method or set the community id in the `Community` class.
-
-    ```python
-    >>> SET COMMUNITY ID (RECOMMENDED FOR SINGLE-COMMUNITY BOTS)
-
-    from pymino import Bot as Client
+    ```
+    # Set community ID (recommended for single-community bots)
 
     client = Client()
 
+    # To fetch the community ID from a link
     client.fetch_community_id(community_link="https://aminoapps.com/c/your-community-link")
-    # or if you already have the community id
+
+    # To manually set the community ID
     client.set_community_id(community_id=123456789)
 
-    >>> PASS COMMUNITY ID TO METHOD (RECOMMENDED FOR MULTI-COMMUNITY BOTS)
-
+    # Pass community ID to method (recommended for multi-community bots)
     client.community.join_community(comId=123456789)
     ```
-    ----------------------------
-    Does every function require the community id?
-    - No, some functions don't require the community id. If the function doesn't require the community id, it will be stated in the documentation.
 
-    ----------------------------
-    How do I get a (chat, blog, user) id?
-    - You can get the id by using the `fetch_object_id` method.
+    ------------------------
+    ## Object IDs
 
-    ```python
-    >>> GET OBJECT ID (CHAT, BLOG, USER) FROM LINK 
+    To get the ID of an object (e.g. a chat, blog, or user), use the `fetch_object_id` method.
 
-    from pymino import Bot as Client # This can be Client or Bot, it's whatever you want to use.
+    ```
+    # Get object ID (chat, blog, user) from link 
 
     client = Client()
 
-    objectId = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
-    print(objectId) # OUTPUT: The object id from the link.
+    object_id = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
+    print(object_id) # Output: the object ID from the link.
     ```
-    ----------------------------
-    How do I send a message to a chat?
-    - You can send a message to a chat by using the `send_message` method.
 
-    ```python
-    >>> SEND MESSAGE TO CHAT
+    ------------------------
+    ## Sending Messages and Images to Chats
 
-    from pymino import Bot as Client # This can be Client or Bot, it's whatever you want to use.
+    To send a message to a chat, use the `send_message` method.
+
+    ```
+    # Send message to chat
 
     client = Client()
 
     client.community.send_message(
         chatId="000000-0000-0000-000000",
         content="Hello, world!",
-        comId=123456789 # We need to pass the community id because we didn't set it in the Community class.
+        comId=123456789 # We need to pass the community ID because we didn't set it in the `Community` instance.
     )
     ```
-    ----------------------------
-    How do I send an image to a chat?
-    - You can send an image to a chat by using the `send_image` method.
-    - It's very similar to the `send_message` method.
-    - You'll need either image url or path to the image.
 
-    ```python
-    >>> SEND IMAGE TO CHAT
+    To send an image to a chat, use the `send_image` method. You'll need either the image URL or path to the image.
 
-    from pymino import Bot as Client # This can be Client or Bot, it's whatever you want to use.
+    ```
+    # Send image to chat
 
     client = Client()
 
     client.community.send_image(
         chatId="000000-0000-0000-000000",
         image="https://i.imgur.com/your-image.png", # or image="path/to/image.png"
-        comId=123456789 # We need to pass the community id because we didn't set it in the Community class.
+        comId=123456789 # We need to pass the community ID because we didn't set it in the `Community` instance.
     )
     ```
-    ----------------------------
+
     """
+
     def __init__(self, bot, session, community_id: Union[str, int] = None) -> None:
         self.bot = bot
         self.session = session
         self.cache = Cache("cache")
         self.community_id: Union[str, int] = community_id
         self.userId: Optional[str] = None
-        if self.userId is None: return 
+        if self.userId is None: return
 
-    def community(func):
+
+    def community(func: Callable) -> Callable:
+        """
+        A decorator that ensures the user is logged in and a community ID is present before running the decorated function.
+
+        :param func: The function to be decorated.
+        :type func: Callable
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: The result of calling the decorated function.
+        :rtype: Any
+
+        Before using this decorator, you must initialize a `Community` instance with either a `community_id` or by setting it 
+        after fetching the community ID with `fetch_community_id` method.
+
+        **Example usage:**
+
+        >>> client = Bot()
+        >>> client.fetch_community_id(community_link="https://aminoapps.com/c/your-community-link")
+        >>> client.community_id = 123456789
+
+        >>> @community
+        >>> def my_function(self, comId: str):
+        >>>     # Function code
+        """
         def community_func(*args, **kwargs):
-            if not args[0].userId: raise NotLoggedIn
+            if not args[0].userId:
+                raise NotLoggedIn("You are not logged in. Please login before using this function.")
             if not any([args[0].community_id, kwargs.get("comId")]):
-                raise MissingCommunityId
+                raise MissingCommunityId("Please provide a community id to the bot before running it or add it to the function call.")
             return func(*args, **kwargs)
         return community_func
+
 
     @community
     def invite_code(self, comId: Union[str, int] = None) -> CommunityInvitation:
         """
-        `invite_code` is the method that gets the invite code for the community.
+        Generates an invite code for the community.
 
-        `**Parameters**`
+        :param comId: The ID of the community, defaults to None.
+        :type comId: Union[str, int], optional
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: A CommunityInvitation object containing the invite code information.
+        :rtype: CommunityInvitation
 
-        - None
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        `**Example**`
+        `CommunityInvitation`:
 
-        ```python
+        - `data`: The raw response data from the API.
+        - `communityInvitation`: The invite code information data.
+        - `status`: The status of the invite code.
+        - `duration`: The duration of the invite code.
+        - `invitationId`: The ID of the invite code.
+        - `link`: The link to the community with the invite code.
+        - `modifiedTime`: The time when the invite code was last modified.
+        - `ndcId`: The NDC ID of the community.
+        - `createdTime`: The time when the invite code was created.
+        - `inviteCode`: The invite code.
 
-        from pymino import Bot
+        **Example usage:**
 
-        bot = Bot()
-
-        bot.community.invite_code()
-
-        bot.run(sid=sid)
-        ```
+        >>> invite_code = client.community.invite_code(comId=123456)
+        >>> print(invite_code.inviteCode)
         """
         return CommunityInvitation(self.session.handler(
             method = "POST",
@@ -163,58 +191,98 @@ class Community:
             data = {"duration": 0, "force": True, "timestamp": int(time() * 1000)}
             ))
 
+
     @community
-    def fetch_object(self, objectId: str, object_type: int = 0, target_code: int = 1, comId: Union[str, int] = None) -> LinkInfo:
+    def fetch_object(
+        self,
+        objectId: str,
+        objectType: ObjectTypes = ObjectTypes.USER,
+        comId: Union[str, int] = None,
+        **kwargs
+        ) -> LinkInfo:
         """
-        `fetch_object` is the method that fetches the object info from an object id.
+        Fetches the link information of an object given its ID.
 
-        `**Parameters**`
+        :param objectId: The ID of the object whose link information is to be fetched.
+        :type objectId: str
+        :param objectType: The type of the object, defaults to ObjectTypes.USER.
+        :type objectType: ObjectTypes, optional
+        :param comId: The ID of the community, defaults to None.
+        :type comId: Union[str, int], optional
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: A LinkInfo object containing the link information of the object.
+        :rtype: LinkInfo
 
-        - `objectId` - The object id to fetch the object info from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        The method caches the link information for faster access in future calls.
 
-        - `object_type` - The object type. Defaults to `0`.
+        `ObjectTypes`:
 
-        - `target_code` - The target code. Defaults to `1`.
+        - `USER`: 0
+        - `BLOG`: 1
+        - `WIKI`: 2
+        - `CHAT`: 12
 
-        `**Example**`
+        `LinkInfo`:
 
-        ```python
+        - `data`: The raw response data from the API.
+        - `linkInfoV2`: The link information data.
+        - `path`: The path of the object.
+        - `extensions`: The extensions data.
+        - `objectId`: The ID of the object.
+        - `shareURLShortCode`: The short code of the share URL.
+        - `targetCode`: The target code.
+        - `ndcId`: The NDC ID.
+        - `comId`: The community ID.
+        - `fullPath`: The full path of the object.
+        - `shortCode`: The short code of the object.
+        - `objectType`: The type of the object.
 
-        from pymino import Bot
+        **Example usage:**
 
-        bot = Bot()
-
-        bot.community.fetch_object(objectId="74b46f21-39b2-4a11-97aa-d68135925703")
-
-        bot.run(sid=sid)
-        ```
+        >>> link_info = client.community.fetch_object(objectId="0000-00000-00000-0000", objectType=ObjectTypes.BLOG, comId=123456)
+        >>> print(link_info.fullPath)
         """
+        if "object_type" in kwargs: #TODO: Remove this in the near future.
+            objectType = kwargs["object_type"]
+            print("Warning: The 'object_type' parameter is deprecated. Please use 'objectType' instead.")
+
         KEY = str((objectId, self.community_id if comId is None else comId))
         if not self.cache.get(KEY):
             self.cache.set(KEY, self.session.handler(
                 method = "POST",
                 url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
-                data = {"objectId": objectId, "targetCode": target_code, "objectType": object_type, "timestamp": int(time() * 1000)}
+                data = {
+                    "objectId": objectId,
+                    "targetCode": 1,
+                    "objectType": objectType.value if isinstance(objectType, ObjectTypes) else objectType,
+                    "timestamp": int(time() * 1000)
+                    }
                 ))
         return LinkInfo(self.cache.get(KEY))
-    
+
+
     def fetch_object_id(self, link: str) -> str:
         """
-        `fetch_object_id` is the method that fetches the object id from a link.
+        Fetches the object ID given a link to the object.
 
-        `**Parameters**`
+        :param link: The link to the object.
+        :type link: str
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: The ID of the object.
+        :rtype: str
 
-        - `link` - The link to fetch the object id from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        The method caches the object ID for faster access in future calls.
 
-        `**Example**`
-        ```python
-        from pymino import Bot
+        **Example usage:**
 
-        bot = Bot()
-        objectId = bot.community.fetch_object_id(link = "https://aminoapps.com/p/14sw6")
-        bot.run(sid=sid)
-        ```
+        >>> object_id = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
+        >>> print(object_id)
         """
+
         KEY = str((link, "OBJECT_ID"))
         if not self.cache.get(KEY):
             self.cache.set(KEY, self.session.handler(
@@ -223,24 +291,42 @@ class Community:
                 ))
         return LinkInfo(self.cache.get(KEY)).objectId
 
+
     def fetch_object_info(self, link: str) -> LinkInfo:
         """
-        `fetch_object_info` is the method that fetches the object info from a link.
+        Fetches information about an object given its link.
 
-        `**Parameters**`
+        :param link: The link to the object.
+        :type link: str
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: A LinkInfo object containing information about the object.
+        :rtype: LinkInfo
 
-        - `link` - The link to fetch the object info from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        The method caches the object information for faster access in future calls.
 
-        `**Example**`
+        `LinkInfo`:
 
-        ```python
-        from pymino import Bot
+        - `data`: The raw response data from the API.
+        - `linkInfoV2`: The link information data.
+        - `path`: The path of the object.
+        - `extensions`: The extensions data.
+        - `objectId`: The ID of the object.
+        - `shareURLShortCode`: The short code of the share URL.
+        - `targetCode`: The target code.
+        - `ndcId`: The NDC ID.
+        - `comId`: The community ID.
+        - `fullPath`: The full path of the object.
+        - `shortCode`: The short code of the object.
+        - `objectType`: The type of the object.
 
-        bot = Bot()
-        objectInfo = bot.community.fetch_object_info(link = "https://www.aminoapps.com.com/p/as12s34S")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        >>> object_info = client.community.fetch_object_info(link="https://aminoapps.com/p/w2Fs6H")
+        >>> print(object_info.objectId)
         """
+
         KEY = str((link, "OBJECT_INFO"))
         if not self.cache.get(KEY):
             self.cache.set(KEY, self.session.handler(
@@ -248,25 +334,57 @@ class Community:
                 url = f"/g/s/link-resolution?q={link}"
                 ))
         return LinkInfo(self.cache.get(KEY))
-    
+
+
     def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
         """
-        `fetch_community` is the method that fetches the community info.
+        Fetches information about a community given its ID.
 
-        `**Parameters**`
+        :param comId: The ID of the community to fetch. If None, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises InvalidCommunity: If the community does not exist.
+        :return: A CCommunity object containing information about the community.
+        :rtype: CCommunity
 
-        - `comId` - The community id to fetch. If not provided, it will use the community id in the client.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        The method caches the community information for faster access in future calls.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_community(comId = "123456789").json()
-        bot.run(sid=sid)
-        ```
+        `CCommunity`:
+
+        - `data`: The raw response data from the API.
+        - `keywords`: The keywords of the community.
+        - `activeInfo`: The active info of the community.
+        - `themePack`: The theme pack of the community.
+        - `status`: The status of the community.
+        - `probationStatus`: The probation status of the community.
+        - `updatedTime`: The time the community was last updated.
+        - `primaryLanguage`: The primary language of the community.
+        - `modifiedTime`: The time the community was last modified.
+        - `membersCount`: The number of members in the community.
+        - `tagline`: The tagline of the community.
+        - `name`: The name of the community.
+        - `endpoint`: The endpoint of the community.
+        - `communityHeadList`: The community head list.
+        - `listedStatus`: The listed status of the community.
+        - `extensions`: The extensions data.
+        - `mediaList`: The media list of the community.
+        - `userAddedTopicList`: The user-added topic list of the community.
+        - `communityHeat`: The heat of the community.
+        - `templateId`: The template ID of the community.
+        - `searchable`: Whether the community is searchable.
+        - `createdTime`: The time the community was created.
+        - `invitation`: The ID of the invitation for the community.
+        - `ndcId`: The NDC ID of the community.
+        - `comId`: The ID of the community.
+        - `icon`: The icon of the community.
+
+        **Example usage:**
+
+        >>> community_info = client.community.fetch_community(comId="123456")
+        >>> print(community_info.name)
         """
+
         KEY = str((comId, "COMMUNITY_INFO"))
         if not self.cache.get(KEY):
             self.cache.set(KEY, self.session.handler(
@@ -275,126 +393,202 @@ class Community:
                 ))
         return CCommunity(self.cache.get(KEY))
 
+
     def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
-        `joined_communities` is the method that fetches the communities the user has joined.
-
-        `**Parameters**`
-
-        - `start` - The start index of the community list. Defaults to `0`.
-
-        - `size` - The size of the community list. Defaults to `50`.
+        Fetches a list of communities the user has joined.
         
-        `**Example**`
-
-        ```python
-        from pymino import Bot
+        :param start: The index to start fetching from. Defaults to 0.
+        :type start: int, optional
+        :param size: The number of communities to fetch. Defaults to 50.
+        :type size: str, optional
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A CCommunityList object containing the list of communities.
+        :rtype: CCommunityList
         
-        bot = Bot()
-        bot.community.joined_communities().json
-        bot.run(sid=sid)
-        ```
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        
+        `CCommunityList`:
+        
+        - `data`: The raw response data from the API.
+        - `keywords`: The keywords of the community.
+        - `activeInfo`: The active info of the community.
+        - `themePack`: The theme pack of the community.
+        - `status`: The status of the community.
+        - `probationStatus`: The probation status of the community.
+        - `updatedTime`: The time the community was last updated.
+        - `primaryLanguage`: The primary language of the community.
+        - `modifiedTime`: The time the community was last modified.
+        - `membersCount`: The number of members in the community.
+        - `tagline`: The tagline of the community.
+        - `name`: The name of the community.
+        - `endpoint`: The endpoint of the community.
+        - `communityHeadList`: The community head list.
+        - `listedStatus`: The listed status of the community.
+        - `extensions`: The extensions data.
+        - `mediaList`: The media list of the community.
+        - `userAddedTopicList`: The user-added topic list of the community.
+        - `communityHeat`: The heat of the community.
+        - `templateId`: The template ID of the community.
+        - `searchable`: Whether the community is searchable.
+        - `createdTime`: The time the community was created.
+        - `invitation`: The ID of the invitation for the community.
+        - `ndcId`: The NDC ID of the community.
+        - `comId`: The ID of the community.
+        - `icon`: The icon of the community.
+        
+        **Example usage:**
+        
+        >>> community_list = client.community.joined_communities()
+        >>> print(community_list.name)
         """
         return CCommunityList(self.session.handler(
             method = "GET",
             url = f"/g/s/community/joined?v=1&start={start}&size={size}"
             ))
 
+
     @community
     def join_community(self, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `join_community` is the method that joins the community.
-        
-        `**Parameters**`
+        Joins the current or specified community.
 
-        - `comId` - The community id to join. If not provided, it will use the community id in the client.
-        
-        `**Example**`
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.join_community()
-        bot.run(sid=sid)
-        ```
+        :param comId: The ID of the community to join. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
+
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+
+        The function sends a POST request to the API with the timestamp as data.
+
+        `ApiResponse`:
+
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.join_community()
+        >>> if api_response.statuscode == 0:
+        ...     print("Joined community successfully!")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/join", 
             data={"timestamp": int(time() * 1000)}
             ))
-    
-    def fetch_invitationId(self, invite_code: str) -> str:
+
+
+    def fetch_invitationId(self, inviteCode: str, **kwargs) -> str:
         """
-        `fetch_invitationId` is the method that fetches the invitation id from the invite code.
+        Fetches the invitation ID for a given invite code.
 
-        `**Parameters**`
+        :param inviteCode: The invite code to fetch the invitation ID for.
+        :type inviteCode: str
+        :return: The invitation ID.
+        :rtype: str
 
-        - `invite_code` - The invite code to fetch the invitation id from.
+        The function sends a GET request to the API with the invite code as a parameter.
 
-        `**Example**`
+        `InvitationId`:
 
-        ```python
-        from pymino import Bot
+        - `invitationId`: The ID of the invitation.
 
-        bot = Bot()
+        **Example usage:**
 
-        invitationId = bot.community.fetch_invitationId(invite_code="123456789")
-
-        bot.run(sid=sid)
-        ```
-
+        >>> invitation_id = client.fetch_invitationId(invite_code="ABCD1234")
+        >>> print(invitation_id)
         """
+        if "invite_code" in kwargs: #TODO: Remove this in the near future.
+            inviteCode = kwargs["invite_code"]
+            print("The 'invite_code' parameter has been deprecated. Please use 'inviteCode' instead.")
+
         return InvitationId(self.session.handler(
             method = "GET",
-            url = f"/g/s/community/link-identify?q={invite_code}"
+            url = f"/g/s/community/link-identify?q={inviteCode}"
             )).invitationId
-    
+
+
     @community
-    def join_community_by_code(self, invite_code: str, comId: Union[str, int] = None) -> ApiResponse:
+    def join_community_by_code(self, inviteCode: str, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
         """
-        `join_community_by_code` is the method that joins the community by invite code.
+        Joins a community using the invite code.
 
-        `**Parameters**`
+        :param inviteCode: The invite code of the community.
+        :type inviteCode: str
+        :param comId: The ID of the community to join. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
 
-        - `invite_code` - The invite code to join the community.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `comId` - The community id to join. If not provided, it will use the community id in the client.
+        The function sends a POST request to the API with the invitation ID and timestamp as data.
 
-        `**Example**`
-        ```python
-        from pymino import Bot
+        `ApiResponse`:
 
-        bot = Bot()
-        bot.community.join_community_by_code(invite_code = "123456789", comId = "123456789")
-        bot.run(sid=sid)
-        ```
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.join_community_by_code(invite_code="ABC123")
+        >>> if api_response.statuscode == 0:
+        ...     print("Joined community successfully!")
         """
+        if "invite_code" in kwargs: #TODO: Remove this in the near future.
+            inviteCode = kwargs["invite_code"]
+            print("The 'invite_code' parameter has been deprecated. Please use 'inviteCode' instead.")
+
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/community/join",
             data = {
-                "invitationId": self.fetch_invitationId(invite_code=invite_code),
+                "invitationId": self.fetch_invitationId(inviteCode=inviteCode),
                 "timestamp": int(time() * 1000)
                 }
             ))
 
+
     @community
     def leave_community(self, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `leave_community` is the method that leaves the community.
+        Leaves the current or specified community.
 
-        `**Parameters**`
+        :param comId: The ID of the community to leave. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
 
-        - `comId` - The community id to leave. If not provided, it will use the community id in the client.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        `**Example**`
-        ```python
-        from pymino import Bot
+        The function sends a POST request to the API with the timestamp as data.
 
-        bot = Bot()
-        bot.community.leave_community()
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.leave_community()
+        >>> if api_response.statuscode == 0:
+        ...     print("Left community successfully!")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -402,47 +596,89 @@ class Community:
             data={"timestamp": int(time() * 1000)}
             ))
 
+
     @community
     def request_join(self, message: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `request_join` is the method that requests to join the community.
+        Sends a membership request to join the current or specified community.
 
-        `**Parameters**`
+        :param message: The message to include in the membership request.
+        :type message: str
+        :param comId: The ID of the community to request membership to. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
 
-        - `message` - The message to send with the request.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.request_join("Hello, I would like to join your community!")
-        ```
+        The function sends a POST request to the API with the message and timestamp as data.
+
+        `ApiResponse`:
+
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.request_join(message="Please accept my membership request.")
+        >>> if api_response.statuscode == 0:
+        ...     print("Membership request sent successfully!")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/membership-request", 
             data={"message": message, "timestamp": int(time() * 1000)}
             ))
 
+
     @community
-    def flag_community(self, reason: str, flagType: int, comId: Union[str, int] = None) -> ApiResponse:
+    def flag_community(self, reason: str, flagType: FlagTypes = FlagTypes.OFFTOPIC, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `flag_community` is the method that flags the community.
+        Flags the current or specified community with the given reason and flag type.
 
-        `**Parameters**`
-        - `reason` - The reason for flagging the community.
-        - `flagType` - The type of flag to use. Defaults to `1`.
+        :param reason: The reason for flagging the community.
+        :type reason: str
+        :param flagType: The flag type to use. Must be a value from the FlagTypes enum.
+        :type flagType: FlagTypes
+        :param comId: The ID of the community to flag. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
 
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
+        The function sends a POST request to the API with the community ID, flag type, reason, and timestamp as data.
 
-        bot = Bot()
-        bot.community.flag_community("This community is spamming.")
-        bot.run(sid=sid)
-        ```
+        `FlagTypes` enum:
+
+        - `AGGRESSION`: For flagging aggressive content.
+        - `SPAM`: For flagging spam content.
+        - `OFFTOPIC`: For flagging off-topic content.
+        - `VIOLENCE`: For flagging violent content.
+        - `INTOLERANCE`: For flagging intolerant content.
+        - `SUICIDE`: For flagging content related to suicide or self-harm.
+        - `TROLLING`: For flagging trolling behavior.
+        - `PORNOGRAPHY`: For flagging pornographic content.
+
+        `ApiResponse`:
+
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.flag_community(reason="This community contains inappropriate content.", flagType=FlagTypes.PORNOGRAPHY)
+        >>> if api_response.statuscode == 0:
+        ...     print("Community flagged successfully!")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -450,7 +686,7 @@ class Community:
             data={
             "objectId": self.community_id,
             "objectType": 16,
-            "flagType": flagType,
+            "flagType": flagType.value if isinstance(flagType, FlagTypes) else flagType,
             "message": reason,
             "timestamp": int(time() * 1000)
             }))
@@ -458,21 +694,35 @@ class Community:
     @community
     def check_in(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> CheckIn:
         """
-        `check_in` is the method that checks in to the community.
+        Performs a check-in for the current or specified community.
 
-        `**Parameters**`
+        :param timezone: The timezone offset in minutes. Default is -300 (Eastern Time).
+        :type timezone: Optional[int]
+        :param comId: The ID of the community to check-in to. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A CheckIn object containing the check-in data.
+        :rtype: CheckIn
 
-        - `timezone` - The timezone to use. Defaults to `-300`.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.check_in()
-        bot.run(sid=sid)
-        ```
+        The function sends a POST request to the API with the timezone offset and timestamp as data.
+
+        `CheckIn`:
+
+        - `data`: The raw response data from the API.
+        - `checkInHistory`: The check-in history data.
+        - `consecutiveCheckInDays`: The number of consecutive days the user has checked in.
+        - `hasCheckInToday`: Whether the user has checked in today.
+        - `hasAnyCheckIn`: Whether the user has checked in at all.
+        - `history`: The user's check-in history.
+        - `userProfile`: The user's profile data.
+
+        **Example usage:**
+
+        >>> check_in_data = client.community.check_in(timezone=-480)
+        >>> if check_in_data.hasCheckInToday:
+        ...     print("Check-in successful!")
         """
         return CheckIn(self.session.handler(
             method = "POST",
@@ -480,181 +730,397 @@ class Community:
             data={"timezone": timezone, "timestamp": int(time() * 1000)}
             ))
 
+
     @community
     def play_lottery(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `play_lottery` is the method that plays the lottery in the community.
+        Plays the lottery for the current or specified community.
 
-        `**Parameters**`
+        :param timezone: The timezone offset in minutes. Default is -300 (Eastern Time).
+        :type timezone: Optional[int]
+        :param comId: The ID of the community to play the lottery in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
 
-        - `timezone` - The timezone to use. Defaults to `-300`.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.play_lottery()
-        bot.run(sid=sid)
-        ```
+        The function sends a POST request to the API with the timezone offset and timestamp as data.
+
+        `ApiResponse`:
+
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.play_lottery(timezone=-480)
+        >>> if api_response.statuscode == 0:
+        ...     print("Lottery played successfully!")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/check-in/lottery",
             data={"timezone": timezone, "timestamp": int(time() * 1000)}
             ))
+
     
     @community
-    def online_status(self, status: Optional[int] = 1, comId: Union[str, int] = None) -> ApiResponse:
+    def online_status(
+        self,
+        onlineStatus: OnlineTypes = OnlineTypes.ONLINE,
+        comId: Union[str, int] = None,
+        **kwargs
+        ) -> ApiResponse:
         """
-        `online_status` is the method that sets the online status of the community.
+        Sets the online status of the user in the current or specified community.
 
-        `**Parameters**`
+        :param onlineStatus: The online status to set. Default is OnlineTypes.ONLINE.
+        :type onlineStatus: OnlineTypes
+        :param comId: The ID of the community to set the online status in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the API response data.
+        :rtype: ApiResponse
 
-        `status` - The status to set. Defaults to `1`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-            1 - Online
-            2 - Offline
-        
-        `**Example**`
+        The function sends a POST request to the API with the online status and timestamp as data.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
+        `ApiResponse`:
 
-        bot.community.online_status(status=2) # Sets the status to offline
+        - `data`: The raw response data from the API.
+        - `message`: The message from the API response.
+        - `statuscode`: The status code from the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+        - `mediaValue`: The media value of the API response.
 
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        >>> api_response = client.community.online_status(status=OnlineTypes.ONLINE)
+        >>> if api_response.statuscode == 0:
+        ...     print("Online status set successfully!")
         """
+        if "status" in kwargs: #TODO: Remove in the near future.
+            onlineStatus = kwargs["status"]
+            print("The 'status' parameter is deprecated. Please use 'onlineStatus' instead.")
+
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/online-status",
-            data={"status": status, "timestamp": int(time() * 1000)}
+            data={"status": onlineStatus.value, "timestamp": int(time() * 1000)}
             ))
+
 
     @community
     def fetch_new_user_coupon(self, comId: Union[str, int] = None) -> Coupon:
         """
-        `fetch_new_user_coupon` is the method that fetches the new user coupon.
+        Fetches the new user coupon for the current or specified community.
 
-        `**Parameters**`
+        :param comId: The ID of the community to fetch the new user coupon from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A Coupon object containing information about the new user coupon.
+        :rtype: Coupon
 
-        - None
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_new_user_coupon()
-        bot.run(sid=sid)
-        ```
+        The function sends a GET request to the API to fetch the new user coupon data.
+
+        `Coupon`:
+
+        - `data`: The raw response data from the API.
+        - `expiredTime`: The expiration time of the coupon.
+        - `couponId`: The ID of the coupon.
+        - `scopeDesc`: The description of the coupon scope.
+        - `status`: The status of the coupon.
+        - `modifiedTime`: The time the coupon was last modified.
+        - `couponValue`: The value of the coupon.
+        - `expiredType`: The expiration type of the coupon.
+        - `title`: The title of the coupon.
+        - `couponType`: The type of the coupon.
+        - `createdTime`: The time the coupon was created.
+
+        **Example usage:**
+
+        >>> new_user_coupon = client.community.fetch_new_user_coupon()
+        >>> print(new_user_coupon.title)
         """
         return Coupon(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/coupon/new-user-coupon"
             ))
 
+
     @community
     def fetch_notifications(self, size: Optional[int] = 25, comId: Union[str, int] = None) -> NotificationList:
         """
-        `fetch_notifications` is the method that fetches the notifications.
+        Fetches a list of notifications for the current or specified community.
 
-        `**Parameters**`
+        :param size: The number of notifications to fetch. Defaults to 25.
+        :type size: Optional[int]
+        :param comId: The ID of the community to fetch the notifications from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A NotificationList object containing the list of notifications.
+        :rtype: NotificationList
 
-        - `size` - The amount of notifications to fetch. Defaults to `25`.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_notifications()
-        bot.run(sid=sid)
-        ```
+        The function sends a GET request to the API to fetch the notifications list data.
+
+        `NotificationList`:
+
+        - `data`: The raw response data from the API.
+        - `parentText`: A list of parent text for each notification.
+        - `objectId`: A list of object IDs for each notification.
+        - `contextText`: A list of context text for each notification.
+        - `type`: A list of notification types for each notification.
+        - `parentId`: A list of parent IDs for each notification.
+        - `author`: A UserProfileList object containing information about the author of each notification.
+        - `createdTime`: A list of creation times for each notification.
+        - `parentType`: A list of parent types for each notification.
+        - `comId`: A list of community IDs for each notification.
+        - `notificationId`: A list of notification IDs for each notification.
+        - `objectText`: A list of object text for each notification.
+        - `contextValue`: A list of context values for each notification.
+        - `contextComId`: A list of context community IDs for each notification.
+        - `objectType`: A list of object types for each notification.
+
+        **Example usage:**
+
+        >>> notifications = client.community.fetch_notifications(size=10)
+        >>> listOfOfObjectIds = notifications.objectId
         """
         return NotificationList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/notification?pagingType=t&size={size}"
             ))
 
+
     @community
     def fetch_user(self, userId: str, comId: Union[str, int] = None) -> UserProfile:
         """
-        `fetch_user` is the method that fetches a user.
+        Fetches the user profile of the specified user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch the profile for.
+        :type userId: str
+        :param comId: The ID of the community to fetch the user profile from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `UserProfile` object containing information about the user's profile.
+        :rtype: UserProfile
 
-        - `userId` - The user ID to fetch.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_user("5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The function sends a GET request to the API to fetch the user profile data.
+
+        `UserProfile`:
+
+        - `status`: The status of the request.
+        - `mood_sticker`: The mood sticker the user has set.
+        - `wiki_count`: The number of wikis the user has created.
+        - `consecutive_check_in_days`: The number of consecutive days the user has checked in.
+        - `uid`: The user ID of the user.
+        - `modified_time`: The time the user profile was last modified.
+        - `following_status`: The following status of the user.
+        - `online_status`: The online status of the user.
+        - `account_membership_status`: The account membership status of the user.
+        - `is_global`: Whether the user is a global user.
+        - `avatar_frame_id`: The avatar frame ID of the user.
+        - `reputation`: The reputation of the user.
+        - `posts_count`: The number of posts the user has created.
+        - `avatar_frame`: The avatar frame of the user.
+        - `members_count`: The number of members the user has.
+        - `nickname`: The nickname of the user.
+        - `media_list`: The media list of the user.
+        - `icon`: The icon of the user.
+        - `is_nickname_verified`: Whether the user's nickname is verified.
+        - `mood`: The mood of the user.
+        - `level`: The level of the user.
+        - `notification_subscription_status`: The notification subscription status of the user.
+        - `settings`: The settings of the user.
+        - `push_enabled`: Whether push is enabled for the user.
+        - `membership_status`: The membership status of the user.
+        - `influencer_info`: The influencer info of the user.
+        - `content`: The user's profile content.
+        - `follower_count`: The number of followers the user has.
+        - `role`: The role of the user.
+        - `comments_count`: The number of comments the user has on their wall.
+        - `ndc_id`: The ID of the community the user is in.
+        - `created_time`: The time the user was created.
+        - `extensions`: The extensions of the user.
+        - `stories_count`: The number of stories the user has created.
+        - `blogs_count`: The number of blogs the user has created.
+
+        **Example usage:**
+
+        >>> user_profile = client.community.fetch_user(userId='123456')
+        >>> print(user_profile.nickname)
+        'John Doe'
         """
         return UserProfile(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}"
             ))
 
+
     @community
-    def fetch_users(self, type: Optional[str] = "recent", start: Optional[int] = 0, size: Optional[int] = 25, comId: Union[str, int] = None) -> UserProfileList:
+    def fetch_users(
+        self,
+        userType: UserTypes = UserTypes.RECENT,
+        start: Optional[int] = 0,
+        size: Optional[int] = 25,
+        comId: Union[str, int] = None,
+        **kwargs
+    ) -> UserProfileList:
         """
-        `fetch_users` is the method that fetches users.
-
-        `**Parameters**`
-
-        - `type` - The type of users to fetch. Defaults to `recent`. `[recent, leaders, curators]`
-
-        - `start` - The starting point to fetch users from. Defaults to `0`.
-
-        - `size` - The amount of users to fetch. Defaults to `25`.
+        Fetches a list of users in the current or specified community based on the specified user type.
         
-        `**Example**`
+        :param userType: The type of users to fetch. Defaults to `UserTypes.RECENT`.
+        :type userType: UserTypes
+        :param start: The starting point to fetch users from. Defaults to `0`.
+        :type start: Optional[int]
+        :param size: The amount of users to fetch. Defaults to `25`.
+        :type size: Optional[int]
+        :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `UserProfileList` object containing information about the users.
+        :rtype: UserProfileList
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_users()
-        bot.run(sid=sid)
-        ```
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+
+        The function sends a GET request to the API to fetch a list of users.
+
+        `UserTypes`:
+
+        - `LEADERS`: Fetches the leaders of the community.
+        - `CURATORS`: Fetches the curators of the community.
+        - `RECENT`: Fetches the most recent users of the community.
+        - `FEATURED`: Fetches the featured users of the community.
+        - `BANNED`: Fetches the banned users of the community.
+
+        `UserProfileList`:
+
+        - `status`: The status of the request.
+        - `mood_sticker`: The mood sticker the user has set.
+        - `wiki_count`: The number of wikis the user has created.
+        - `consecutive_check_in_days`: The number of consecutive days the user has checked in.
+        - `uid`: The user ID of the user.
+        - `modified_time`: The time the user profile was last modified.
+        - `following_status`: The following status of the user.
+        - `online_status`: The online status of the user.
+        - `account_membership_status`: The account membership status of the user.
+        - `is_global`: Whether the user is a global user.
+        - `avatar_frame_id`: The avatar frame ID of the user.
+        - `reputation`: The reputation of the user.
+        - `posts_count`: The number of posts the user has created.
+        - `avatar_frame`: The avatar frame of the user.
+        - `members_count`: The number of members the user has.
+        - `nickname`: The nickname of the user.
+        - `media_list`: The media list of the user.
+        - `icon`: The icon of the user.
+        - `is_nickname_verified`: Whether the user's nickname is verified.
+        - `mood`: The mood of the user.
+        - `level`: The level of the user.
+        - `notification_subscription_status`: The notification subscription status of the user.
+        - `settings`: The settings of the user.
+        - `push_enabled`: Whether push is enabled for the user.
+        - `membership_status`: The membership status of the user.
+        - `influencer_info`: The influencer info of the user.
+        - `content`: The user's profile content.
+        - `follower_count`: The number of followers the user has.
+        - `role`: The role of the user.
+        - `comments_count`: The number of comments the user has on their wall.
+        - `ndc_id`: The ID of the community the user is in.
+        - `created_time`: The time the user was created.
+        - `extensions`: The extensions of the user.
+        - `stories_count`: The number of stories the user has created.
+        - `blogs_count`: The number of blogs the user has created.
+
+        **Example usage:**
+
+        >>> user_profiles = client.community.fetch_users(userType=UserTypes.CURATORS)
+        >>> print(user_profiles[0].nickname) # Prints the nickname of the first user in the list.
+        'John Doe'
         """
+        if "type" in kwargs: #TODO: Get rid of this in the near future.
+            userType = kwargs["type"]
+            print("WARNING: The 'type' parameter is deprecated. Please use 'userType' instead.")
         return UserProfileList(self.session.handler(
             method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile?type={type}&start={start}&size={size}"
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile?type={userType.value if isinstance(userType, UserTypes) else userType}&start={start}&size={size}"
             ))
 
     @community
     def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
-        `fetch_online_users` is the method that fetches online users.
+        Fetches a list of online users in the current or specified community.
 
-        `**Parameters**`
+        :param start: The starting point to fetch users from. Defaults to `0`.
+        :type start: Optional[int]
+        :param size: The amount of users to fetch. Defaults to `25`.
+        :type size: Optional[int]
+        :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `UserProfileList` object containing information about the online users.
+        :rtype: UserProfileList
 
-        - `start` - The starting point to fetch users from. Defaults to `0`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `size` - The amount of users to fetch. Defaults to `25`.
-        
-        `**Example**`
+        The function sends a GET request to the API to fetch a list of online users.
 
-        ```python
-        from pymino import Bot
-            
-        bot = Bot()
-        bot.community.fetch_online_users()
-        bot.run(sid=sid)
-        ```
+        `UserProfileList`:
+
+        - `status`: The status of the request.
+        - `mood_sticker`: The mood sticker the user has set.
+        - `wiki_count`: The number of wikis the user has created.
+        - `consecutive_check_in_days`: The number of consecutive days the user has checked in.
+        - `uid`: The user ID of the user.
+        - `modified_time`: The time the user profile was last modified.
+        - `following_status`: The following status of the user.
+        - `online_status`: The online status of the user.
+        - `account_membership_status`: The account membership status of the user.
+        - `is_global`: Whether the user is a global user.
+        - `avatar_frame_id`: The avatar frame ID of the user.
+        - `reputation`: The reputation of the user.
+        - `posts_count`: The number of posts the user has created.
+        - `avatar_frame`: The avatar frame of the user.
+        - `members_count`: The number of members the user has.
+        - `nickname`: The nickname of the user.
+        - `media_list`: The media list of the user.
+        - `icon`: The icon of the user.
+        - `is_nickname_verified`: Whether the user's nickname is verified.
+        - `mood`: The mood of the user.
+        - `level`: The level of the user.
+        - `notification_subscription_status`: The notification subscription status of the user.
+        - `settings`: The settings of the user.
+        - `push_enabled`: Whether push is enabled for the user.
+        - `membership_status`: The membership status of the user.
+        - `influencer_info`: The influencer info of the user.
+        - `content`: The user's profile content.
+        - `follower_count`: The number of followers the user has.
+        - `role`: The role of the user.
+        - `comments_count`: The number of comments the user has on their wall.
+        - `ndc_id`: The ID of the community the user is in.
+        - `created_time`: The time the user was created.
+        - `extensions`: The extensions of the user.
+        - `stories_count`: The number of stories the user has created.
+        - `blogs_count`: The number of blogs the user has created.
+
+        **Example usage:**
+
+        >>> online_users = client.community.fetch_online_users()
+        >>> print(online_users[0].nickname) # Prints the nickname of the first user in the list.
+        'John Doe'
         """
         return UserProfileList(self.session.handler(
             method = "GET",
@@ -664,25 +1130,69 @@ class Community:
     @community
     def fetch_followers(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
-        `fetch_followers` is the method that fetches followers.
+        Fetches a list of followers for a specified user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch the followers for.
+        :type userId: str
+        :param start: The starting point to fetch users from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of users to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `UserProfileList` object containing information about the followers.
+        :rtype: UserProfileList
 
-        - `userId` - The user ID to fetch followers from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The starting point to fetch followers from. Defaults to `0`.
+        The function sends a GET request to the API to fetch a list of followers for the specified user.
 
-        - `size` - The amount of followers to fetch. Defaults to `25`.
-        
-        `**Example**`
+        `UserProfileList`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_followers(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `status`: The status of the request.
+        - `mood_sticker`: The mood sticker the user has set.
+        - `wiki_count`: The number of wikis the user has created.
+        - `consecutive_check_in_days`: The number of consecutive days the user has checked in.
+        - `uid`: The user ID of the user.
+        - `modified_time`: The time the user profile was last modified.
+        - `following_status`: The following status of the user.
+        - `online_status`: The online status of the user.
+        - `account_membership_status`: The account membership status of the user.
+        - `is_global`: Whether the user is a global user.
+        - `avatar_frame_id`: The avatar frame ID of the user.
+        - `reputation`: The reputation of the user.
+        - `posts_count`: The number of posts the user has created.
+        - `avatar_frame`: The avatar frame of the user.
+        - `members_count`: The number of members the user has.
+        - `nickname`: The nickname of the user.
+        - `media_list`: The media list of the user.
+        - `icon`: The icon of the user.
+        - `is_nickname_verified`: Whether the user's nickname is verified.
+        - `mood`: The mood of the user.
+        - `level`: The level of the user.
+        - `notification_subscription_status`: The notification subscription status of the user.
+        - `settings`: The settings of the user.
+        - `push_enabled`: Whether push is enabled for the user.
+        - `membership_status`: The membership status of the user.
+        - `influencer_info`: The influencer info of the user.
+        - `content`: The user's profile content.
+        - `follower_count`: The number of followers the user has.
+        - `role`: The role of the user.
+        - `comments_count`: The number of comments the user has on their wall.
+        - `ndc_id`: The ID of the community the user is in.
+        - `created_time`: The time the user was created.
+        - `extensions`: The extensions of the user.
+        - `stories_count`: The number of stories the user has created.
+        - `blogs_count`: The number of blogs the user has created.
+
+        **Example usage:**
+
+        >>> followers = client.community.fetch_followers(userId = "0000-000000-000000-0000")
+        >>> print(followers[0].nickname) # Prints the nickname of the first user in the list.
+        'John Doe'
+        >>> print(followers.uid) # Prints all the user IDs in the list.
+        ['0000-000000-000000-0000', '0000-000000-000000-0001', '0000-000000-000000-0002']
         """
         return UserProfileList(self.session.handler(
             method = "GET",
@@ -692,25 +1202,69 @@ class Community:
     @community
     def fetch_following(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
-        `fetch_following` is the method that fetches following.
+        Fetches a list of users that the specified user is following in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch the following users for.
+        :type userId: str
+        :param start: The starting point to fetch users from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of users to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `UserProfileList` object containing information about the following users.
+        :rtype: UserProfileList
 
-        - `userId` - The user ID to fetch following from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The starting point to fetch following from. Defaults to `0`.
+        The function sends a GET request to the API to fetch a list of users that the specified user is following.
 
-        - `size` - The amount of following to fetch. Defaults to `25`.
-        
-        `**Example**`
+        `UserProfileList`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_following(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `status`: The status of the request.
+        - `mood_sticker`: The mood sticker the user has set.
+        - `wiki_count`: The number of wikis the user has created.
+        - `consecutive_check_in_days`: The number of consecutive days the user has checked in.
+        - `uid`: The user ID of the user.
+        - `modified_time`: The time the user profile was last modified.
+        - `following_status`: The following status of the user.
+        - `online_status`: The online status of the user.
+        - `account_membership_status`: The account membership status of the user.
+        - `is_global`: Whether the user is a global user.
+        - `avatar_frame_id`: The avatar frame ID of the user.
+        - `reputation`: The reputation of the user.
+        - `posts_count`: The number of posts the user has created.
+        - `avatar_frame`: The avatar frame of the user.
+        - `members_count`: The number of members the user has.
+        - `nickname`: The nickname of the user.
+        - `media_list`: The media list of the user.
+        - `icon`: The icon of the user.
+        - `is_nickname_verified`: Whether the user's nickname is verified.
+        - `mood`: The mood of the user.
+        - `level`: The level of the user.
+        - `notification_subscription_status`: The notification subscription status of the user.
+        - `settings`: The settings of the user.
+        - `push_enabled`: Whether push is enabled for the user.
+        - `membership_status`: The membership status of the user.
+        - `influencer_info`: The influencer info of the user.
+        - `content`: The user's profile content.
+        - `follower_count`: The number of followers the user has.
+        - `role`: The role of the user.
+        - `comments_count`: The number of comments the user has on their wall.
+        - `ndc_id`: The ID of the community the user is in.
+        - `created_time`: The time the user was created.
+        - `extensions`: The extensions of the user.
+        - `stories_count`: The number of stories the user has created.
+        - `blogs_count`: The number of blogs the user has created.
+
+        **Example usage:**
+
+        >>> following = client.community.fetch_following(userId = "0000-000000-000000-0000")
+        >>> print(following[0].nickname) # Prints the nickname of the first user in the list.
+        'John Doe'
+        >>> print(following.uid) # Prints all the user IDs in the list.
+        ['0000-000000-000000-0000', '0000-000000-000000-0001', '0000-000000-000000-0002']
         """
         return UserProfileList(self.session.handler(
             method = "GET",
@@ -720,217 +1274,550 @@ class Community:
     @community
     def fetch_chat(self, chatId: str, comId: Union[str, int] = None) -> CThread:
         """
-        `fetch_chat` is the method that fetches a chat.
+        Fetches the chat thread with the specified ID in the current or specified community.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to fetch.
+        :type chatId: str
+        :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CThread` object containing information about the chat thread.
+        :rtype: CThread
 
-        - `chatId` - The chat ID to fetch.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_chat(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The function sends a GET request to the API to fetch the chat thread with the specified ID.
+
+        `CThread`:
+
+        - `data`: The raw data of the chat thread.
+        - `userAddedTopicList`: A list of topics added by the user.
+        - `uid`: The user ID of the thread creator.
+        - `hostUserId`: An alias for `uid`.
+        - `membersQuota`: The maximum number of members allowed in the chat thread.
+        - `membersSummary`: A `MemberSummary` object containing information about the chat thread's members.
+        - `threadId`: The ID of the chat thread.
+        - `chatId`: An alias for `threadId`.
+        - `keywords`: A list of keywords associated with the chat thread.
+        - `membersCount`: The number of members currently in the chat thread.
+        - `strategyInfo`: The strategy information for the chat thread.
+        - `isPinned`: Whether the chat thread is pinned.
+        - `title`: The title of the chat thread.
+        - `membershipStatus`: The membership status of the user in the chat thread.
+        - `content`: The content of the chat thread.
+        - `needHidden`: Whether the chat thread needs to be hidden.
+        - `alertOption`: The alert option for the chat thread.
+        - `lastReadTime`: The last time the chat thread was read.
+        - `type`: The type of the chat thread.
+        - `status`: The status of the chat thread.
+        - `publishToGlobal`: Whether the chat thread is published to the global chat.
+        - `modifiedTime`: The time the chat thread was last modified.
+        - `lastMessageSummary`: The summary of the last message in the chat thread.
+        - `extensions`: The extensions of the chat thread.
+
+        **Example usage:**
+
+        >>> chat_thread = client.community.fetch_chat("0000-000000-000000-0000")
+        >>> print(chat_thread.title) # Prints the title of the chat thread.
+        'My Chat Thread'
         """
         return CThread(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
+
     
     @community
     def fetch_chat_mods(self, chatId: str, comId: Union[str, int] = None, moderators: Optional[str] = "all") -> List[str]:
         """
-        `fetch_chat_mods` is the method that fetches chat moderators.
-        
-        `**Parameters**`
+        Fetches a list of moderators for a specified chat thread in the current or specified community.
 
-        - `chatId` - The chat ID to fetch moderators from.
-
-        - `moderators` - The type of moderators to fetch.
-            - `all` - Merges `co-hosts` and `host`.
-            - `co-hosts` - Co-hosts.
-            - `host` - Host.
-
-        `**Example**`
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_chat_mods(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        :param chatId: The ID of the chat to fetch the moderators for.
+        :type chatId: str
+        :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :param moderators: The type of moderators to fetch. Defaults to "all".
+            - "all": Returns all moderators of the chat.
+            - "co-hosts": Returns only the co-hosts of the chat.
+            - "host": Returns only the host of the chat.
+        :type moderators: Optional[str]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A list of moderator user IDs.
+        :rtype: List[str]
         """
-        response = self.fetch_chat(chatId=chatId, comId=comId)
+        response: CThread = self.fetch_chat(chatId=chatId, comId=comId)
 
-        mods_map = {
+        return {
             "all": list(response.extensions.coHost) + [response.hostUserId],
             "co-hosts": list(response.extensions.coHost),
             "host": [response.hostUserId]
-            }
+            }.get(moderators, "all")
 
-        try:
-            return mods_map[moderators]
-        except KeyError as e:
-            raise ValueError("Invalid value for `moderators`.") from e
+
+    @community
+    def fetch_chat_moderators(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
+        """
+        Fetches a list of all moderators for a specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat to fetch the moderators for.
+        :type chatId: str
+        :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A list of moderator user IDs.
+        :rtype: List[str]
+        """
+        return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="all")
+
+
+    @community
+    def fetch_chat_co_hosts(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
+        """
+        Fetches a list of co-hosts for a specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat to fetch the co-hosts for.
+        :type chatId: str
+        :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A list of co-host user IDs.
+        :rtype: List[str]
+        """
+        return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="co-hosts")
+
+
+    @community
+    def fetch_chat_host(self, chatId: str, comId: Union[str, int] = None) -> str:
+        """
+        Fetches the host of a specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat to fetch the host for.
+        :type chatId: str
+        :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: The user ID of the chat host.
+        :rtype: str
+        """
+        return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="host")[0]
+
 
     @community
     def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
         """
-        `fetch_chats` is the method that fetches chats.
+        Fetches a list of chat threads in the current or specified community that the user has joined.
 
-        `**Parameters**`
+        :param start: The starting point to fetch chat threads from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of chat threads to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CThreadList` object containing information about the chat threads.
+        :rtype: CThreadList
 
-        - `start` - The starting point to fetch chats from. Defaults to `0`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `size` - The amount of chats to fetch. Defaults to `25`.
-        
-        `**Example**`
+        The function sends a GET request to the API to fetch a list of chat threads that the user has joined.
 
-        ```python
-        from pymino import Bot
-            
-        bot = Bot()
-        bot.community.fetch_chats()
-        bot.run(sid=sid)
-        ```
+        `CThreadList`:
+
+        - `data`: The raw data of the chat thread list.
+        - `extensions`: The extensions of the chat threads in the list.
+        - `membersSummary`: The member summary of the chat threads in the list.
+        - `userAddedTopicList`: A list of topics added by the user in the chat threads in the list.
+        - `uid`: A list of user IDs of the thread creators in the chat threads in the list.
+        - `hostUserId`: An alias for `uid`.
+        - `membersQuota`: A list of maximum member counts allowed in the chat threads in the list.
+        - `threadId`: A list of thread IDs of the chat threads in the list.
+        - `chatId`: An alias for `threadId`.
+        - `keywords`: A list of keywords associated with the chat threads in the list.
+        - `membersCount`: A list of the number of members in the chat threads in the list.
+        - `strategyInfo`: The strategy information for the chat threads in the list.
+        - `isPinned`: A list of whether the chat threads in the list are pinned.
+        - `title`: A list of the titles of the chat threads in the list.
+        - `membershipStatus`: A list of the user's membership status in the chat threads in the list.
+        - `content`: A list of the contents of the chat threads in the list.
+        - `needHidden`: A list of whether the chat threads in the list need to be hidden.
+        - `alertOption`: A list of the alert options for the chat threads in the list.
+        - `lastReadTime`: A list of the last times the chat threads in the list were read.
+        - `type`: A list of the types of the chat threads in the list.
+        - `status`: A list of the statuses of the chat threads in the list.
+        - `publishToGlobal`: A list of whether the chat threads in the list are published to the global chat.
+        - `modifiedTime`: A list of the times the chat threads in the list were last modified.
+        - `lastMessageSummary`: A list of the summaries of the last messages in the chat threads in the list.
+
+        **Example usage:**
+
+        >>> chat_threads = client.community.fetch_chats()
+        >>> chat_thread_titles = chat_threads.title
+        METHOD 1:
+        >>> print(chat_thread_titles)
+        ['My Chat Thread', 'My Other Chat Thread']
+        METHOD 2:
+        >>> for chat_thread in chat_threads:
+        ...     print(chat_thread.title)
+        'My Chat Thread'
+        'My Other Chat Thread'
         """
         return CThreadList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=joined-me&start={start}&size={size}"
             ))
 
+
     @community
     def fetch_live_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
         """
-        `fetch_live_chats` is the method that fetches live chats.
+        Fetches a list of live chat threads in the current or specified community that are publicly visible.
 
-        `**Parameters**`
+        :param start: The starting point to fetch chat threads from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of chat threads to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CThreadList` object containing information about the live chat threads.
+        :rtype: CThreadList
 
-        - `start` - The starting point to fetch chats from. Defaults to `0`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `size` - The amount of chats to fetch. Defaults to `25`.
-        
-        `**Example**`
+        The function sends a GET request to the API to fetch a list of publicly visible live chat threads.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_live_chats()
-        bot.run(sid=sid)
-        ```
+        `CThreadList`:
+
+        - `data`: The raw data of the live chat thread list.
+        - `extensions`: The extensions of the live chat threads in the list.
+        - `membersSummary`: The member summary of the live chat threads in the list.
+        - `userAddedTopicList`: A list of topics added by the user in the live chat threads in the list.
+        - `uid`: A list of user IDs of the thread creators in the live chat threads in the list.
+        - `hostUserId`: An alias for `uid`.
+        - `membersQuota`: A list of maximum member counts allowed in the live chat threads in the list.
+        - `threadId`: A list of thread IDs of the live chat threads in the list.
+        - `chatId`: An alias for `threadId`.
+        - `keywords`: A list of keywords associated with the live chat threads in the list.
+        - `membersCount`: A list of the number of members in the live chat threads in the list.
+        - `strategyInfo`: The strategy information for the live chat threads in the list.
+        - `isPinned`: A list of whether the live chat threads in the list are pinned.
+        - `title`: A list of the titles of the live chat threads in the list.
+        - `membershipStatus`: A list of the user's membership status in the live chat threads in the list.
+        - `content`: A list of the contents of the live chat threads in the list.
+        - `needHidden`: A list of whether the live chat threads in the list need to be hidden.
+        - `alertOption`: A list of the alert options for the live chat threads in the list.
+        - `lastReadTime`: A list of the last times the live chat threads in the list were read.
+        - `type`: A list of the types of the live chat threads in the list.
+        - `status`: A list of the statuses of the live chat threads in the list.
+        - `publishToGlobal`: A list of whether the live chat threads in the list are published to the global chat.
+        - `modifiedTime`: A list of the times the live chat threads in the list were last modified.
+        - `lastMessageSummary`: A list of the summaries of the last messages in the live chat threads in the list.
+
+        **Example usage:**
+
+        >>> live_chat_threads = client.community.fetch_live_chats()
+        >>> live_chat_titles = live_chat_threads.title
+        METHOD 1:
+        >>> print(live_chat_titles)
+        ['My Live Chat Thread', 'My Other Live Chat Thread']
+        METHOD 2:
+        >>> for title in live_chat_titles:
+        ...     print(title) # Prints the title of each live chat thread.
+        'My Live Chat Thread'
+        'My Other Live Chat Thread'
         """
         return CThreadList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/live-layer/public-live-chats?start={start}&size={size}"
             ))
 
+
     @community
-    def fetch_public_chats(self, type: str = "recommended", start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
+    def fetch_public_chats(
+        self,
+        chatType: ChatTypes = ChatTypes.RECOMMENDED,
+        start: int = 0,
+        size: int = 25,
+        comId: Union[str, int] = None,
+        **kwargs
+        ) -> CThreadList:
         """
-        `fetch_public_chats` is the method that fetches public chats.
+        Fetches a list of public chat threads in the current or specified community.
 
-        `**Parameters**`
+        :param chatType: The type of public chat threads to fetch. Defaults to `ChatTypes.RECOMMENDED`.
+        :type chatType: ChatTypes
+        :param start: The starting point to fetch chat threads from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of chat threads to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CThreadList` object containing information about the public chat threads.
+        :rtype: CThreadList
 
-        - `type` - The type of chats to fetch. Defaults to `recommended`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The starting point to fetch chats from. Defaults to `0`.
+        The function sends a GET request to the API to fetch a list of public chat threads of the specified type.
 
-        - `size` - The amount of chats to fetch. Defaults to `25`.
-        
-        `**Example**`
+        `ChatTypes`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_public_chats()
-        bot.run(sid=sid)
-        ```
+        - `RECOMMENDED`: Fetches a list of recommended public chat threads.
+        - `POPULAR`: Fetches a list of popular public chat threads.
+        - `LATEST`: Fetches a list of newest public chat threads.
+
+        `CThreadList`:
+
+        - `data`: The raw data of the public chat thread list.
+        - `extensions`: The extensions of the public chat threads in the list.
+        - `membersSummary`: The member summary of the public chat threads in the list.
+        - `userAddedTopicList`: A list of topics added by the user in the public chat threads in the list.
+        - `uid`: A list of user IDs of the thread creators in the public chat threads in the list.
+        - `hostUserId`: An alias for `uid`.
+        - `membersQuota`: A list of maximum member counts allowed in the public chat threads in the list.
+        - `threadId`: A list of thread IDs of the public chat threads in the list.
+        - `chatId`: An alias for `threadId`.
+        - `keywords`: A list of keywords associated with the public chat threads in the list.
+        - `membersCount`: A list of the number of members in the public chat threads in the list.
+        - `strategyInfo`: The strategy information for the public chat threads in the list.
+        - `isPinned`: A list of whether the public chat threads in the list are pinned.
+        - `title`: A list of the titles of the public chat threads in the list.
+        - `membershipStatus`: A list of the user's membership status in the public chat threads in the list.
+        - `content`: A list of the contents of the public chat threads in the list.
+        - `needHidden`: A list of whether the public chat threads in the list need to be hidden.
+        - `alertOption`: A list of the alert options for the public chat threads in the list.
+        - `lastReadTime`: A list of the last times the public chat threads in the list were read.
+        - `type`: A list of the types of the public chat threads in the list.
+        - `status`: A list of the statuses of the public chat threads in the list.
+        - `publishToGlobal`: A list of whether the public chat threads in the list are published to the global chat.
+        - `modifiedTime`: A list of the times the public chat threads in the list were last modified
+        - `lastMessageSummary`: A list of the summaries of the last messages in the public chat threads in the list.
+
+        **Example usage:**
+
+        >>> public_chat_threads = client.community.fetch_public_chats()
+        >>> public_chat_titles = public_chat_threads.title
+        METHOD 1:
+        >>> print(public_chat_titles)
+        ['My Public Chat Thread', 'My Other Public Chat Thread']
+        METHOD 2:
+        >>> for title in public_chat_titles:
+        ...     print(title) # Prints the title of each public chat thread.
+        'My Public Chat Thread'
+        'My Other Public Chat Thread'
         """
+        if "type" in kwargs: #TODO Remove this in the near future.
+            chatType = kwargs["type"]
+            print("WARNING: The `type` parameter is deprecated. Please use `chatType` instead.")
+
         return CThreadList(self.session.handler(
             method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}"
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=public-all&filterType={chatType.value if isinstance(chatType, ChatTypes) else chatType}&start={start}&size={size}"
             ))
+
 
     @community
     def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CChatMembers:
         """
-        `fetch_chat_members` is the method that fetches chat members.
+        Fetches a list of members in the specified chat thread in the current or specified community.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to fetch the members from.
+        :type chatId: str
+        :param start: The starting point to fetch members from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of members to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CChatMembers` object containing information about the chat thread members.
+        :rtype: CChatMembers
 
-        - `chatId` - The chat ID to fetch members from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The starting point to fetch members from. Defaults to `0`.
+        The function sends a GET request to the API to fetch a list of members in the specified chat thread.
 
-        - `size` - The amount of members to fetch. Defaults to `25`.
-        
-        `**Example**`
+        `CChatMembers`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_chat_members(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `data`: The raw data of the chat thread members.
+        - `members`: A list of `UserProfile` objects representing the members.
+
+        `UserProfile`:
+
+        - `status`: The user's status.
+        - `mood_sticker`: The user's mood sticker.
+        - `wiki_count`: The number of wikis the user has created.
+        - `consecutive_check_in_days`: The number of consecutive days the user has checked in.
+        - `uid`: The user's ID.
+        - `userId`: An alias for `uid`.
+        - `modified_time`: The time the user's profile was last modified.
+        - `following_status`: The user's following status.
+        - `online_status`: The user's online status.
+        - `account_membership_status`: The user's account membership status.
+        - `is_global`: Whether the user is a global user.
+        - `avatar_frame_id`: The ID of the user's avatar frame.
+        - `fan_club_list`: The user's fan clubs.
+        - `reputation`: The user's reputation.
+        - `posts_count`: The number of posts the user has made.
+        - `follower_count`: The number of followers the user has.
+        - `nickname`: The user's nickname.
+        - `username`: An alias for `nickname`.
+        - `media_list`: The user's media list.
+        - `icon`: The user's icon.
+        - `avatar`: An alias for `icon`.
+        - `is_nickname_verified`: Whether the user's nickname is verified.
+        - `mood`: The user's mood.
+        - `level`: The user's level.
+        - `pushEnabled`: Whether the user has push notifications enabled.
+        - `membership_status`: The user's membership status in the community.
+        - `content`: The user's profile content.
+        - `following_count`: The number of users the user is following.
+        - `role`: The user's role in the community.
+        - `comments_count`: The number of comments the user has made.
+        - `ndcId`: The ID of the community the user belongs to.
+        - `comId`: An alias for `ndcId`.
+        - `created_time`: The time the user's profile was created.
+        - `visit_privacy`: The user's visit privacy.
+        - `stories_count`: The number of stories the user has created.
+        - `blogs_count`: The number of blogs the user has created.
+
+        **Example usage:**
+
+        >>> chat_members = client.community.fetch_chat_members("0000-000000-000000-0000")
+        >>> chat_member_usernames = chat_members.members.usernames
+        METHOD 1:
+        >>> print(chat_member_usernames)
+        ['My Username', 'My Other Username']
+        METHOD 2:
+        >>> for username in chat_member_usernames:
+        ...     print(username) # Prints the usernames of each chat member.
+        'My Username'
+        'My Other Username'
         """
         return CChatMembers(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
             ))
 
+
     @community
     def fetch_messages(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CMessages:
         """
-        `fetch_messages` is the method that fetches messages.
+        Fetches a list of messages in a chat thread with the specified `chatId`.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to fetch the messages from.
+        :type chatId: str
+        :param start: The starting point to fetch messages from. Defaults to `0`.
+        :type start: int
+        :param size: The amount of messages to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CMessages` object containing information about the chat thread's messages.
+        :rtype: CMessages
 
-        - `chatId` - The chat ID to fetch messages from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The starting point to fetch messages from. Defaults to `0`.
+        The function sends a GET request to the API to fetch a list of messages in the specified chat thread.
 
-        - `size` - The amount of messages to fetch. Defaults to `25`.
-        
-        `**Example**`
+        `CMessages`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_messages(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `includedInSummary`: A list of booleans indicating whether each message is included in the summary.
+        - `uid`: A list of user IDs of the authors of each message.
+        - `userId`: An alias for `uid`.
+        - `author`: A `CMessageAuthorList` object containing information about the authors of each message.
+        - `isHidden`: A list of booleans indicating whether each message is hidden.
+        - `messageId`: A list of message IDs of each message.
+        - `mediaType`: A list of media types of each message.
+        - `content`: A list of contents of each message.
+        - `clientRefId`: A list of client reference IDs of each message.
+        - `threadId`: A list of thread IDs of each message.
+        - `chatId`: An alias for `threadId`.
+        - `createdTime`: A list of creation times of each message.
+        - `extensions`: A list of extensions of each message.
+        - `type`: A list of types of each message.
+        - `mediaValue`: A list of media values of each message.
+
+        **Example usage:**
+
+        >>> messages = client.community.fetch_messages(chatId="0000-00000-000000-0000")
+        >>> message_content = messages.content
+        METHOD 1:
+        >>> print(message_content)
+        ['Hello, World!', 'How are you?', "I'm doing well, thanks!"]
+        METHOD 2:
+        >>> for message in message_content:
+        ...     print(message) # Prints the content of each message in the chat thread.
+        'Hello, World!'
+        'How are you?'
+        'I'm doing well, thanks!'
         """
         return CMessages(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message?start={start}&size={size}&type=default"
-            ))
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message?start={start}&size={size}&type=default"
+        ))
+
 
     @community
     def fetch_blogs(self, size: int = 25, comId: Union[str, int] = None) -> CBlogList:
         """
-        `fetch_blogs` is the method that fetches blogs.
+        Fetches a list of blogs from the community with the specified `comId`.
 
-        `**Parameters**`
+        :param size: The number of blogs to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the blogs from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `CBlogList` object containing information about the blogs.
+        :rtype: CBlogList
 
-        - `size` - The amount of blogs to fetch. Defaults to `25`.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_blogs()
-        bot.run(sid=sid)
-        ```
+        The function sends a GET request to the API to fetch a list of blogs from the specified community.
+
+        `CBlogList`:
+
+        - `author`: A `UserProfileList` object containing information about the authors of each blog.
+        - `globalVotesCount`: A list of global vote counts of each blog.
+        - `globalVotedValue`: A list of global vote values of each blog.
+        - `votedValue`: A list of vote values of each blog.
+        - `keywords`: A list of keywords of each blog.
+        - `mediaList`: A list of media objects of each blog.
+        - `style`: A list of styles of each blog.
+        - `totalQuizPlayCount`: A list of total quiz play counts of each blog.
+        - `title`: A list of titles of each blog.
+        - `tipInfo`: A list of tip information of each blog.
+        - `contentRating`: A list of content ratings of each blog.
+        - `content`: A list of contents of each blog.
+        - `needHidden`: A list of hidden status of each blog.
+        - `guestVotesCount`: A list of guest vote counts of each blog.
+        - `type`: A list of types of each blog.
+        - `status`: A list of statuses of each blog.
+        - `globalCommentsCount`: A list of global comment counts of each blog.
+        - `modifiedTime`: A list of modification times of each blog.
+        - `widgetDisplayInterval`: A list of widget display intervals of each blog.
+        - `totalPollVoteCount`: A list of total poll vote counts of each blog.
+        - `blogId`: A list of blog IDs of each blog.
+        - `viewCount`: A list of view counts of each blog.
+        - `language`: A list of languages of each blog.
+        - `extensions`: A list of extensions of each blog.
+        - `votesCount`: A list of vote counts of each blog.
+        - `ndcId`: A list of NDC IDs of each blog.
+        - `createdTime`: A list of creation times of each blog.
+        - `endTime`: A list of end times of each blog.
+        - `commentsCount`: A list of comment counts of each blog.
+
+        **Example usage:**
+
+        >>> blogs = client.community.fetch_blogs(size=10)
+        EXAMPLE 1:
+        >>> print(blogs.content)
+        ['My first blog post', 'The importance of exercise', 'How to learn a new language', ...]
+        EXAMPLE 2:
+        >>> for blog in blogs.content:
+        ...     print(blog.title) # Prints the title of each blog in the list.
+        'My first blog post'
+        'The importance of exercise'
+        'How to learn a new language'
+        ...
         """
         return CBlogList(self.session.handler(
             method = "GET",
@@ -940,23 +1827,65 @@ class Community:
     @community
     def fetch_featured_blogs(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> FeaturedBlogs:
         """
-        `fetch_featured_blogs` is the method that fetches featured blogs.
+        Fetches a list of featured blog posts.
 
-        `**Parameters**`
+        :param start: The starting index of the list. Defaults to `0`.
+        :type start: int
+        :param size: The number of blog posts to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the featured blog posts from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: A `FeaturedBlogs` object containing information about the featured blog posts.
+        :rtype: FeaturedBlogs
 
-        - `start` - The starting point to fetch blogs from. Defaults to `0`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `size` - The amount of blogs to fetch. Defaults to `25`.
-        
-        `**Example**`
+        The function sends a GET request to the API to fetch a list of featured blog posts in the specified community.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.run(sid=sid)
-        bot.community.fetch_featured_blogs()
-        ```
+        `FeaturedBlogs`:
+
+        - `ref_object_type`: A list of reference object types of each featured blog post.
+        - `ref_object_id`: A list of reference object IDs of each featured blog post.
+        - `expired_time`: A list of expiration times of each featured blog post.
+        - `featured_type`: A list of featured types of each featured blog post.
+        - `created_time`: A list of creation times of each featured blog post.
+        - `ref_object`: A list of reference objects of each featured blog post.
+        - `global_votes_count`: A list of global vote counts of each featured blog post.
+        - `global_voted_count`: A list of global voted counts of each featured blog post.
+        - `voted_value`: A list of voted values of each featured blog post.
+        - `keywords`: A list of keywords of each featured blog post.
+        - `strategy_info`: A list of strategy information of each featured blog post.
+        - `media_list`: A list of media lists of each featured blog post.
+        - `style`: A list of styles of each featured blog post.
+        - `total_quiz_play_count`: A list of total quiz play counts of each featured blog post.
+        - `title`: A list of titles of each featured blog post.
+        - `tip_info`: A list of tip information of each featured blog post.
+        - `content`: A list of contents of each featured blog post.
+        - `content_rating`: A list of content ratings of each featured blog post.
+        - `need_hidden`: A list of boolean values indicating whether each featured blog post needs to be hidden.
+        - `guest_votes_count`: A list of guest vote counts of each featured blog post.
+        - `global_comments_count`: A list of global comment counts of each featured blog post.
+        - `modified_time`: A list of modification times of each featured blog post.
+        - `widget_display_interval`: A list of widget display intervals of each featured blog post.
+        - `total_poll_vote_count`: A list of total poll vote counts of each featured blog post.
+        - `blogId`: A list of blog IDs of each featured blog post.
+        - `view_count`: A list of view counts of each featured blog post.
+        - `author`: A `UserProfileList` object containing information about the authors of each featured blog post.
+
+        **Example usage:**
+
+        >>> featured_blogs = client.community.fetch_featured_blogs(start=0, size=10)
+        EXAMPLE 1:
+        >>> print(featured_blogs.content)
+        ['My first blog post', 'The importance of exercise', 'How to learn a new language', ...]
+        EXAMPLE 2:
+        >>> for blog in featured_blogs.content:
+        ...     print(blog.title)
+        'My first blog post'
+        'The importance of exercise'
+        'How to learn a new language'
+        ...
         """
         return FeaturedBlogs(self.session.handler(
             method = "GET",
@@ -964,97 +1893,209 @@ class Community:
             ))
 
     @community
-    def fetch_leaderboard(self, leaderboard: int = 1, start: int = 0, size: int = 20, comId: Union[str, int] = None) -> UserProfileList:
+    def fetch_leaderboard(
+        self,
+        leaderboardType: LeaderboardTypes = LeaderboardTypes.HALL_OF_FAME,
+        start: int = 0,
+        size: int = 20,
+        comId: Union[str, int] = None
+        ) -> UserProfileList:
         """
-        `fetch_leaderboard` is the method that fetches leaderboard.
+        Fetches the leaderboard for the current community, based on the specified `leaderboardType`.
 
-        `**Parameters**`
+        :param leaderboardType: The type of leaderboard to fetch. Defaults to `LeaderboardTypes.HALL_OF_FAME`.
+        :type leaderboardType: LeaderboardTypes
+        :param start: The starting index of the leaderboard to fetch. Defaults to `0`.
+        :type start: int
+        :param size: The number of users to fetch from the leaderboard. Defaults to `20`.
+        :type size: int
+        :param comId: The ID of the community to fetch the leaderboard from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfileList` object containing information about the users in the leaderboard.
+        :rtype: UserProfileList
+        :raises NotLoggedIn: If the user is not logged in.
 
-        - `leaderboard` - The leaderboard to fetch. Defaults to `1`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The starting point to fetch users from. Defaults to `0`.
+        The function sends a GET request to the API to fetch the leaderboard for the specified community.
 
-        - `size` - The amount of users to fetch. Defaults to `20`.
-        
-        `**Example**`
+        `UserProfileList`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_leaderboard()
-        bot.run(sid=sid)
-        ```
+        - `status`: A list of status of each user in the leaderboard.
+        - `mood_sticker`: A list of mood stickers of each user in the leaderboard.
+        - `wiki_count`: A list of the wiki count of each user in the leaderboard.
+        - `consecutive_check_in_days`: A list of the consecutive check-in days of each user in the leaderboard.
+        - `uid`: A list of the user IDs of each user in the leaderboard.
+        - `userId`: An alias for `uid`.
+        - `modified_time`: A list of the last modified time of each user in the leaderboard.
+        - `following_status`: A list of the following status of each user in the leaderboard.
+        - `online_status`: A list of the online status of each user in the leaderboard.
+        - `account_membership_status`: A list of the account membership status of each user in the leaderboard.
+        - `is_global`: A list of booleans indicating whether each user in the leaderboard is global.
+        - `avatar_frame_id`: A list of the avatar frame IDs of each user in the leaderboard.
+        - `fan_club_list`: A list of fan club lists of each user in the leaderboard.
+        - `reputation`: A list of the reputation of each user in the leaderboard.
+        - `posts_count`: A list of the number of posts of each user in the leaderboard.
+        - `follower_count`: A list of the number of followers of each user in the leaderboard.
+        - `nickname`: A list of the nicknames of each user in the leaderboard.
+        - `username`: An alias for `nickname`.
+        - `media_list`: A list of media lists of each user in the leaderboard.
+        - `icon`: A list of icons of each user in the leaderboard.
+        - `avatar`: An alias for `icon`.
+        - `is_nickname_verified`: A list of booleans indicating whether each user in the leaderboard has a verified nickname.
+        - `mood`: A list of moods of each user in the leaderboard.
+        - `level`: A list of the levels of each user in the leaderboard.
+        - `pushEnabled`: A list of booleans indicating whether push notifications are enabled for each user
+        - `membership_status`: A list of the membership status of each user in the leaderboard.
+        - `influencer_info`: A list of influencer information of each user in the leaderboard.
+        - `content`: A list of contents of each user in the leaderboard.
+        - `following_count`: A list of the number of users each user in the leaderboard is following.
+        - `role`: A list of the roles of each user in the leaderboard.
+        - `comments_count`: A list of the number of comments of each user in the leaderboard.
+        - `ndcId`: A list of the NDC IDs of each user in the leaderboard.
+        - `comId`: An alias for `ndcId`.
+        - `created_time`: A list of the creation times of each user in the leaderboard.
+        - `extensions`: A list of extensions of each user in the leaderboard.
+        - `visit_privacy`: A list of the visit privacy of each user in the leaderboard.
+        - `stories_count`: A list of the number of stories of each user in the leaderboard.
+        - `blogs_count`: A list of the number of blogs of each user in the leaderboard.
+
+        **Example usage:**
+
+        >>> leaderboard = client.community.fetch_leaderboard(leaderboardType=LeaderboardTypes.HALL_OF_FAME, start=0, size=10)
+        EXAMPLE 1:
+        >>> print(leaderboard.content) # Print a list of hall of fame users's bio content.
+        ['Been on this app since day 1', 'Top of the leaderboard!', ...]
+        EXAMPLE 2:
+        >>> for user in leaderboard.nickname:
+        ...     print(user)
+        'John Doe'
+        'Jane Doe'
+        ...
         """
         return UserProfileList(self.session.handler(
             method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/leaderboard?rankingType={leaderboard}&start={start}&size={size}"
+            url = f"/x{self.community_id if comId is None else comId}/s/community/leaderboard?rankingType={leaderboardType.value if isinstance(leaderboardType, LeaderboardTypes) else leaderboardType}&start={start}&size={size}"
             ))
 
     @community
-    def fetch_comments(self, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CCommentList:
+    def fetch_comments(
+        self,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        start: int = 0,
+        size: int = 25,
+        comId: Union[str, int] = None) -> CCommentList:
         """
-        `fetch_comments` is the method that fetches comments.
+        Fetches the comments for the specified user, blog, or wiki.
 
-        `**Parameters**`
+        :param userId: The ID of the user whose comments to fetch. Defaults to `None`.
+        :type userId: Optional[str]
+        :param blogId: The ID of the blog whose comments to fetch. Defaults to `None`.
+        :type blogId: Optional[str]
+        :param wikiId: The ID of the wiki whose comments to fetch. Defaults to `None`.
+        :type wikiId: Optional[str]
+        :param start: The starting index of the comments to fetch. Defaults to `0`.
+        :type start: int
+        :param size: The number of comments to fetch. Defaults to `25`.
+        :type size: int
+        :param comId: The ID of the community to fetch the comments from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CCommentList` object containing the comments for the specified user, blog, or wiki.
+        :rtype: CCommentList
+        :raises NoDataProvided: If none of `userId`, `blogId`, or `wikiId` is provided.
 
-        - `userId` - The user ID to fetch comments from. Defaults to `None`.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `blogId` - The blog ID to fetch comments from. Defaults to `None`.
+        The function sends a GET request to the API to fetch the comments for the specified user, blog, or wiki.
 
-        - `wikiId` - The wiki ID to fetch comments from. Defaults to `None`.
+        `CCommentList`:
 
-        - `start` - The starting point to fetch comments from. Defaults to `0`.
+        - `modifiedTime`: A list of the last modified time of each comment.
+        - `ndcId`: A list of the NDC IDs of each comment.
+        - `votedValue`: A list of the voted value of each comment.
+        - `parentType`: A list of the parent types of each comment.
+        - `commentId`: A list of the IDs of each comment.
+        - `parentNdcId`: A list of the parent NDC IDs of each comment.
+        - `mediaList`: A list of media lists of each comment.
+        - `votesSum`: A list of the votes sum of each comment.
+        - `content`: A list of the contents of each comment.
+        - `parentId`: A list of the parent IDs of each comment.
+        - `createdTime`: A list of the creation times of each comment.
+        - `subcommentsCount`: A list of the number of subcomments of each comment.
+        - `type`: A list of the types of each comment.
 
-        - `size` - The amount of comments to fetch. Defaults to `25`.
-        
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_comments(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        To fetch the comments for a user with ID "0000-0000-0000-0000":
+
+        >>> comments = client.community.fetch_comments(userId="0000-0000-0000-0000")
+        EXAMPLE 1:
+        >>> print(comments.content) # Print a list of the contents of the comments.
+        ['This is a comment!', 'This is another comment!', ...]
+        EXAMPLE 2:
+        >>> for comment in comments.content:
+        ...     print(comment)
+        'This is a comment!'
+        'This is another comment!'
+        ...
         """
-        
         if any([userId, blogId, wikiId]):
-            base_endpoint = "/x{}/s/{}/comment?sort=newest&start={}&size={}"
-            endpoint_mapping = {
+            for key, value in {
                 "userId": "user-profile/{}",
                 "blogId": "blog/{}",
                 "wikiId": "item/{}"
-            }
-            for key, value in endpoint_mapping.items():
+            }.items():
                 if locals()[key]:
-                    return CCommentList(self.session.handler(
-                        method = "GET",
-                        url = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), start, size)
-                        ))
-                
+                    return CCommentList(
+                        self.session.handler(
+                            method="GET",
+                            url=f"/x{self.community_id if comId is None else comId}/s/{value.format(locals()[key])}/comment?sort=newest&start={start}&size={size}",
+                        )
+                    )
+
         raise NoDataProvided
+
 
     @community
     def set_cohost(self, chatId: str, userIds: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
         """
-        `set_cohost` is the method that sets co-host.
+        Sets the specified user(s) as co-host(s) for the chat with the given `chatId`.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to set the co-host(s) for.
+        :type chatId: str
+        :param userIds: The ID(s) of the user(s) to set as co-host(s). Can be a single user ID or a list of user IDs.
+        :type userIds: Union[str, list]
+        :param comId: The ID of the community where the chat exists. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the success or failure of the request.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to set co-host.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userIds` - The user ID to set co-host.
-        
-        `**Example**`
+        The function sends a POST request to the API to set the specified user(s) as co-host(s) for the chat with the given `chatId`.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.set_cohost(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", userIds = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        The response contains the following attributes:
+
+        - `data`: The raw data of the response.
+        - `message`: A string message indicating the status of the response.
+        - `statuscode`: An integer status code indicating the success or failure of the request.
+        - `duration`: The duration of the response.
+        - `timestamp`: The timestamp of the response.
+        - `mediaValue`: The media value of the response.
+
+        **Example usage:**
+
+        To set a user with ID "0000-0000-0000-0000" as a co-host for a chat with ID "0101-0101-0101-0101":
+
+        >>> response = client.community.set_cohost(chatId="0101-0101-0101-0101", userIds="0000-0000-0000-0000")
+        ... if response.message == "OK":
+        ...    print("Successfully set user as co-host!")
+        ... else:
+        ...    print("Failed to set user as co-host.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -1065,47 +2106,79 @@ class Community:
     @community
     def remove_cohost(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `remove_cohost` is the method that removes co-host.
+        Removes a co-host from the specified chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to remove the co-host from.
+        :type chatId: str
+        :param userId: The ID of the user to remove as a co-host.
+        :type userId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object indicating the success or failure of the request.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to remove co-host.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to remove co-host.
-        
-        `**Example**`
+        The function sends a DELETE request to the API to remove the specified user as a co-host of the chat.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.remove_cohost(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `data`: The raw response data from the API.
+        - `message`: A message indicating the success or failure of the request.
+        - `statuscode`: The HTTP status code of the response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        - `mediaValue`: The media value of the API response.
+
+        **Example usage:**
+
+        To remove a co-host with ID "0000-0000-0000-0000" from a chat with ID "0101-0101-0101-0101":
+
+        >>> response = client.community.remove_cohost(chatId="0101-0101-0101-0101", userId="0000-0000-0000-0000")
+        ... if response.message == "OK":
+        ...     print("Successfully removed co-host!")
+        ... else:
+        ...     print("Failed to remove co-host.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/co-host/{userId}"
             ))
 
+
     @community
     def follow(self, userId: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
         """
-        `follow` is the method that follows user.
+        Follows the specified user or users.
 
-        `**Parameters**`
+        :param userId: The ID or IDs of the user or users to follow. Can be a string or a list of strings.
+        :type userId: Union[str, list]
+        :param comId: The ID of the community to follow the user or users in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to follow.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.follow(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The function sends a POST request to the API to follow the specified user or users.
+
+        `ApiResponse`:
+
+        - `message`: The message returned by the API.
+        - `statuscode`: The status code returned by the API.
+        - `duration`: The duration of the API call.
+        - `timestamp`: The timestamp of the API call.
+        - `mediaValue`: The media value returned by the API.
+
+        **Example usage:**
+
+        To follow a user with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.follow(userId="0000-0000-0000-0000")
+        ... if response.message == "OK":
+        ...     print("Successfully followed user!")
+        ... else:
+        ...     print("Failed to follow user.")
         """
         return ApiResponse(
             self.session.handler(
@@ -1121,21 +2194,36 @@ class Community:
     @community
     def unfollow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `unfollow` is the method that unfollows user.
-
-        `**Parameters**`
-
-        - `userId` - The user ID to unfollow.
-            
-        `**Example**`
-
-        ```python
-        from pymino import Bot
+        Unfollows the specified user.
         
-        bot = Bot()
-        bot.community.unfollow(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        :param userId: The ID of the user to unfollow.
+        :type userId: str
+        :param comId: The ID of the community to unfollow the user in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request.
+        :rtype: ApiResponse
+        
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        
+        The function sends a DELETE request to the API to unfollow the specified user.
+        
+        `ApiResponse`:
+        
+        - `message`: The message returned by the API.
+        - `statuscode`: The status code returned by the API.
+        - `duration`: The duration of the API call.
+        - `timestamp`: The timestamp of the API call.
+        - `mediaValue`: The media value returned by the API.
+        
+        **Example usage:**
+        
+        To unfollow a user with ID "0000-0000-0000-0000":
+        
+        >>> response = client.community.unfollow(userId="0000-0000-0000-0000")
+        ... if response.message == "OK":
+        ...     print("Successfully unfollowed user.")
+        ... else:
+        ...     print("Failed to unfollow user.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
@@ -1145,72 +2233,69 @@ class Community:
     @community
     def block(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `block` is the method that blocks user.
+        Blocks a user from the current community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to block.
+        :type userId: str
+        :param comId: The ID of the community to block the user from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object representing the response of the API request.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to block.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.block(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The function sends a POST request to the API to block the specified user from the current community.
+
+        **Example usage:**
+
+        To block a user with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.block(userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Successfully blocked user.")
+        ... else:
+        ...     print("Failed to block user.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
             ))
 
+
     @community
     def unblock(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `unblock` is the method that unblocks user.
-
-        `**Parameters**`
-
-        - `userId` - The user ID to unblock.
+        Unblocks a user from the current community.
         
-        `**Example**`
-
-        ```python
-        from pymino import Bot
+        :param userId: The ID of the user to unblock.
+        :type userId: str
+        :param comId: The ID of the community to unblock the user from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object representing the response of the API request.
+        :rtype: ApiResponse
         
-        bot = Bot()
-        bot.community.unblock(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        
+        The function sends a DELETE request to the API to unblock the specified user from the current community.
+        
+        **Example usage:**
+        
+        To unblock a user with ID "0000-0000-0000-0000":
+        
+        >>> response = client.community.unblock(userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Successfully unblocked user.")
+        ... else:
+        ...     print("Failed to unblock user.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
             url = f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
             ))
 
+
     @community
-    def post_blog(self, title: str, content: str, comId: Union[str, int] = None) -> CBlog:
-        """
-        `post_blog` is the method that posts blog.
-
-        `**Parameters**`
-
-        - `title` - The title of the blog.
-
-        - `content` - The content of the blog.
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.post_blog(title = "title", content = "content")
-        bot.run(sid=sid)
-        ```
-        """
+    def post_blog(self, title: str, content: str, comId: Union[str, int] = None) -> CBlog: #TODO: ADD DOCSTRING
         return CBlog(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/blog",
@@ -1219,95 +2304,137 @@ class Community:
                 "title": title,
                 "timestamp": int(time() * 1000)
                 }))
-        
+
+
     @community
     def delete_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_blog` is the method that deletes blog.
+        Deletes the specified blog.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog to delete.
+        :type blogId: str
+        :param comId: The ID of the community to delete the blog from. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the result of the deletion.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to delete.
-            
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_blog(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The function sends a DELETE request to the API to delete the specified blog.
+
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the blog was successfully deleted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        - `mediaValue`: The media value of the deleted blog.
+
+        **Example usage:**
+
+        To delete a blog with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.delete_blog(blogId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Blog deleted successfully!")
+        ... else:
+        ...     print("Blog deletion failed.")
         """
         return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
             ))
 
+
     @community
-    def post_wiki(self, title: str, content: str, image: str, comId: Union[str, int] = None) -> ApiResponse: #NOTE: DOESN'T WORK
+    def post_wiki(self, title: str, content: str, fansOnly: bool=False, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `post_wiki` is the method that posts wiki.
+        Posts a new wiki article in the specified community.
 
-        `**Parameters**`
+        :param title: The title of the wiki article.
+        :type title: str
+        :param content: The content of the wiki article.
+        :type content: str
+        :param fansOnly: Whether the wiki article should be for fans only. Must be either `True` or `False`.
+        :type fansOnly: bool
+        :param comId: The ID of the community to post the wiki article in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object representing the response from the server.
+        :rtype: ApiResponse
 
-        - `title` - The title of the wiki.
-        - `content` - The content of the wiki.
-        - `image` - The image of the wiki. [Optional]
-        - `value` - Value rating for the wiki. [Optional]
-        - `type` - Type rating for the wiki. [Optional]
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        `**Example**`
+        The function sends a POST request to the API to post a new wiki article with the specified title, content, and fans-only setting.
 
-        ```python
-        from pymino import Bot
+        The response from the server is returned as an `ApiResponse` object.
         
-        bot = Bot()
-        bot.community.post_wiki(title = "title", content = "content")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the blog was successfully deleted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        - `mediaValue`: The media value of the deleted blog.
+
+        **Example usage:**
+
+        To post a new wiki article with the title "My First Wiki Article" and the content "This is my first wiki article.":
+
+        >>> response = client.community.post_wiki(title="My First Wiki Article", content="This is my first wiki article.")
+        ... if response.statuscode == 0:
+        ...     print("Wiki article successfully posted!")
+        ... else:
+        ...     print("Wiki article could not be posted.")
         """
-        image = self.__handle_media__(image, media_value=True)
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/item",
             data = {
-            "extensions": {
-                "fansOnly": False,
-		        "props": []
-	        },
-	        "address": None,
+            "extensions": {"fansOnly": fansOnly},
             "content": content,
-            "icon": image,
-            "keywords": "",
-            "label": title,
             "latitude": 0,
             "longitude": 0,
-            "mediaList": [
-                [100, image, None]
-            ],
+            "title": title,
+            "type": 0,
+            "contentLanguage": "en",
             "eventSource": "GlobalComposeMenu",
-            "timestamp": int(time() * 1000)
+            "timestamp": int(time() * 1000),
             }))
+
 
     @community
     def delete_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_wiki` is the method that deletes wiki.
+        Deletes a wiki item with the given ID.
 
-        `**Parameters**`
+        :param wikiId: The ID of the wiki item to delete.
+        :type wikiId: str
+        :param comId: The ID of the community where the wiki item is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `wikiId` - The wiki ID to delete.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_wiki(wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The function sends a DELETE request to the API to delete the specified wiki item.
+
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the blog was successfully deleted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        - `mediaValue`: The media value of the deleted blog.
+
+        **Example usage:**
+
+        To delete a wiki item with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.delete_wiki(wikiId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Wiki item deleted successfully!")
+        ... else:
+        ...     print("Failed to delete wiki item.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
@@ -1315,42 +2442,60 @@ class Community:
             ))
 
     @community
-    def delete_comment(self, commentId: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_comment(
+        self,
+        commentId: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        comId: Union[str, int] = None
+        ) -> ApiResponse:
         """
-        `delete_comment` is the method that deletes comment.
+        Deletes the comment with the given ID.
 
-        `**Parameters**`
+        :param commentId: The ID of the comment to delete.
+        :type commentId: str
+        :param userId: The ID of the user who posted the comment (if applicable). Defaults to `None`.
+        :type userId: Optional[str]
+        :param blogId: The ID of the blog where the comment is located (if applicable). Defaults to `None`.
+        :type blogId: Optional[str]
+        :param wikiId: The ID of the wiki where the comment is located (if applicable). Defaults to `None`.
+        :type wikiId: Optional[str]
+        :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `commentId` - The comment ID to delete.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to delete comment. [Optional]
+        If any of the optional parameters (`userId`, `blogId`, `wikiId`) is provided, the function sends a DELETE request to the API to delete the comment at the specified location. Otherwise, the comment with the specified ID is deleted from the current community.
 
-        - `blogId` - The blog ID to delete comment. [Optional]
+        `ApiResponse`:
 
-        - `wikiId` - The wiki ID to delete comment. [Optional]
-        
-        `**Example**`
+        - `message`: A message indicating whether the comment was successfully deleted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        - `mediaValue`: The media value of the deleted comment.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To delete a comment with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.delete_comment(commentId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment deleted successfully!")
+        ... else:
+        ...     print("Failed to delete comment.")
         """
         if any([userId, blogId, wikiId]):
-            base_endpoint = "/x{}/s/{}/comment/{}"
-            endpoint_mapping = {
-                "userId": "/user-profile/{}",
-                "blogId": "/blog/{}",
-                "wikiId": "/item/{}"
-            }
+            endpoint={
+                "userId": f"/x3/s/user-profile/{userId}/comment/{commentId}" if userId is not None else None,
+                "blogId": f"/x3/s/blog/{blogId}/comment/{commentId}" if blogId is not None else None,
+                "wikiId": f"/x3/s/item/{wikiId}/comment/{commentId}" if wikiId is not None else None,
+                }
+            endpoint = endpoint[next(key for key, value in endpoint.items() if value is not None)]
 
-            for key, value in endpoint_mapping.items():
-                if locals()[key]:
-                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), commentId)
-                    break
         else:
             endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}"
 
@@ -1359,101 +2504,158 @@ class Community:
             url = endpoint
             ))
     
+
     @community
     def delete_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_wiki_comment` is the method that deletes wiki comment.
+        Deletes a comment on a wiki item with the given comment ID and wiki ID.
 
-        `**Parameters**`
+        :param commentId: The ID of the comment to delete.
+        :type commentId: str
+        :param wikiId: The ID of the wiki item where the comment is located.
+        :type wikiId: str
+        :param comId: The ID of the community where the wiki item is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `commentId` - The comment ID to delete.
+        The function calls the `delete_comment` method with `wikiId` and `comId` parameters specified.
 
-        - `wikiId` - The wiki ID to delete comment.
-        
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_wiki_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        To delete a comment with ID "0000-0000-0000-0000" on a wiki item with ID "1111-1111-1111-1111":
+
+        >>> response = client.community.delete_wiki_comment(commentId="0000-0000-0000-0000", wikiId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Comment deleted successfully!")
+        ... else:
+        ...     print("Failed to delete comment.")
         """
         return self.delete_comment(commentId = commentId, wikiId = wikiId, comId = comId)
 
-    @community
+
     def delete_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_profile_comment` is the method that deletes profile comment.
+        Deletes a comment on a user's profile with the given comment ID and user ID.
 
-        `**Parameters**`
+        :param commentId: The ID of the comment to delete.
+        :type commentId: str
+        :param userId: The ID of the user whose profile the comment is on.
+        :type userId: str
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `commentId` - The comment ID to delete.
+        The function calls the `delete_comment` method with `userId` and `comId` parameters specified.
 
-        - `userId` - The user ID to delete comment.
-        
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_profile_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        To delete a comment with ID "0000-0000-0000-0000" on a user's profile with ID "1111-1111-1111-1111":
+
+        >>> response = client.community.delete_profile_comment(commentId="0000-0000-0000-0000", userId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Comment deleted successfully!")
+        ... else:
+        ...     print("Failed to delete comment.")
         """
         return self.delete_comment(commentId, userId=userId, comId=comId)
-    
+
+
     @community
     def delete_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_blog_comment` is the method that deletes blog comment.
+        Deletes a comment from a blog post in the current or specified community.
 
-        `**Parameters**`
+        :param commentId: The ID of the comment to delete.
+        :type commentId: str
+        :param blogId: The ID of the blog post where the comment is located.
+        :type blogId: str
+        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `commentId` - The comment ID to delete.
+        This function sends a DELETE request to the API to delete a comment from a blog post in the specified community.
 
-        - `blogId` - The blog ID to delete comment.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_blog_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the comment was successfully deleted.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (float): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+        - `mediaValue` (Any): The media value of the deleted comment. Note: the data type of this field may vary depending on the context of the comment.
+
+        **Example usage:**
+
+        To delete a comment with ID "0000-0000-0000-0000" from a blog post with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.delete_blog_comment(commentId="0000-0000-0000-0000", blogId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Comment deleted successfully!")
+        ... else:
+        ...     print("Failed to delete comment.")
         """
         return self.delete_comment(commentId, blogId=blogId, comId=comId)
-    
+
+
     @community
-    def comment(self, content: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    def comment(
+        self,
+        content: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        image: Optional[str] = None,
+        comId: Union[str, int] = None
+        ) -> CComment:
         """
-        `comment` is the method that comments.
+        Creates a comment in the current or specified community, at a given location if provided.
 
-        `**Parameters**`
+        :param content: The text content of the comment.
+        :type content: str
+        :param userId: The ID of the user profile where the comment should be posted, if applicable. Defaults to `None`.
+        :type userId: Optional[str]
+        :param blogId: The ID of the blog where the comment should be posted, if applicable. Defaults to `None`.
+        :type blogId: Optional[str]
+        :param wikiId: The ID of the wiki where the comment should be posted, if applicable. Defaults to `None`.
+        :type wikiId: Optional[str]
+        :param image: The image to be attached to the comment, if any. Defaults to `None`.
+        :type image: Optional[str]
+        :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CComment` object containing information about the newly created comment.
+        :rtype: CComment
 
-        - `content` - The content of the comment.
+        This function sends a POST request to the API to create a comment in the specified location or in the current community.
 
-        - `userId` - The user ID to comment. [Optional]
+        `CComment`:
 
-        - `blogId` - The blog ID to comment. [Optional]
+        The `CComment` object represents a comment, and has the following attributes:
 
-        - `wikiId` - The wiki ID to comment. [Optional]
+        - `modifiedTime` (str or None): The time the comment was last modified, or None if not modified.
+        - `ndcId` (int or None): The ndc ID of the comment, or None if not available.
+        - `votedValue` (int or None): The vote value of the comment, or None if not available.
+        - `parentType` (int or None): The parent type of the comment, or None if not available.
+        - `commentId` (str or None): The ID of the comment, or None if not available.
+        - `parentNdcId` (int or None): The ndc ID of the comment's parent, or None if not available.
+        - `mediaList` (None): The media list of the comment, or None if not available.
+        - `votesSum` (int or None): The sum of the votes of the comment, or None if not available.
+        - `author` (UserProfile): A `UserProfile` object representing the author of the comment.
+        - `extensions` (CCommentExtensions): A `CCommentExtensions` object representing the extensions of the comment.
+        - `content` (str or None): The text content of the comment, or None if not available.
+        - `parentId` (str or None): The ID of the comment's parent, or None if not available.
+        - `createdTime` (str or None): The time the comment was created, or None if not available.
+        - `subcommentsCount` (int or None): The count of the subcomments of the comment, or None if not available.
+        - `type` (int or None): The type of the comment, or None if not available.
 
-        - `image` - The image of the comment. [Optional]
-        
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.comment(content = "content")
-        bot.run(sid=sid)
-        ```
+        To post a comment with text "Hello world" on a user profile with ID "0000-0000-0000-0000":
+
+        >>> comment = client.community.comment(content="Hello world", userId="0000-0000-0000-0000")
+        ... print(comment.content)
+        Hello world
         """
         data = {"timestamp": int(time() * 1000), "content": content}
 
@@ -1479,106 +2681,140 @@ class Community:
             url = endpoint,
             data = data
             ))
-    
+
+
     @community
-    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
-        `comment_on_blog` is the method that comments on blog.
+        Creates a comment in the current or specified community, on a blog post with the given ID.
 
-        `**Parameters**`
+        :param content: The text content of the comment.
+        :type content: str
+        :param blogId: The ID of the blog where the comment should be posted.
+        :type blogId: str
+        :param image: The image to be attached to the comment, if any. Defaults to `None`.
+        :type image: Optional[str]
+        :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CComment` object containing information about the newly created comment.
+        :rtype: CComment
 
-        - `content` - The content of the comment.
+        This function sends a POST request to the API to create a comment in the specified location or in the current community.
 
-        - `blogId` - The blog ID to comment.
+        **Example usage:**
 
-        - `image` - The image of the comment. [Optional]
-        
-        `**Example**`
+        To post a comment with text "Hello world" on a blog post with ID "0000-0000-0000-0000":
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.comment_on_blog(content = "content", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> comment = client.community.comment_on_blog(content="Hello world", blogId="0000-0000-0000-0000")
+        ... print(comment.content)
+        Hello world
         """
         return self.comment(content = content, blogId = blogId, image = image, comId = comId)
-    
+
+
     @community
-    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
-        `comment_on_wiki` is the method that comments on wiki.
-
-        `**Parameters**`
-
-        - `content` - The content of the comment.
-
-        - `wikiId` - The wiki ID to comment.
-
-        - `image` - The image of the comment. [Optional]
+        Creates a comment in the current or specified community, on a wiki page with the given ID.
         
-        `**Example**`
-
-        ```python
-        from pymino import Bot
+        :param content: The text content of the comment.
+        :type content: str
+        :param wikiId: The ID of the wiki page where the comment should be posted.
+        :type wikiId: str
+        :param image: The image to be attached to the comment, if any. Defaults to `None`.
+        :type image: Optional[str]
+        :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CComment` object containing information about the newly created comment.
+        :rtype: CComment
         
-        bot = Bot()
-        bot.community.comment_on_wiki(content = "content", wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        This function sends a POST request to the API to create a comment in the specified location or in the current community.
+        
+        **Example usage:**
+        
+        To post a comment with text "Hello world" on a wiki page with ID "0000-0000-0000-0000":
+
+        >>> comment = client.community.comment_on_wiki(content="Hello world", wikiId="0000-0000-0000-0000")
+        ... print(comment.content)
+        Hello world
         """
         return self.comment(content=content, wikiId=wikiId, image=image, comId=comId)
-    
+
+
     @community
-    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
-        `comment_on_profile` is the method that comments on profile.
-
-        `**Parameters**`
-
-        - `content` - The content of the comment.
-
-        - `userId` - The user ID to comment.
-
-        - `image` - The image of the comment. [Optional]
+        Creates a comment in the current or specified community, on a user profile with the given ID.
         
-        `**Example**`
-
-        ```python
-        from pymino import Bot
+        :param content: The text content of the comment.
+        :type content: str
+        :param userId: The ID of the user profile where the comment should be posted.
+        :type userId: str
+        :param image: The image to be attached to the comment, if any. Defaults to `None`.
+        :type image: Optional[str]
+        :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CComment` object containing information about the newly created comment.
+        :rtype: CComment
         
-        bot = Bot()
-        bot.community.comment_on_profile(content = "content", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        This function sends a POST request to the API to create a comment in the specified location or in the current community.
+        
+        **Example usage:**
+        
+        To post a comment with text "Hello world" on a user profile with ID "0000-0000-0000-0000":
+
+        >>> comment = client.community.comment_on_profile(content="Hello world", userId="0000-0000-0000-0000")
+        ... print(comment.content)
+        Hello world
         """
         return self.comment(content = content, userId = userId, image = image, comId = comId)
-            
+
+   
     @community
-    def like_comment(self, commentId: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def like_comment(
+        self,
+        commentId: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        comId: Union[str, int] = None
+    ) -> ApiResponse:
         """
-        `like_comment` is the method that likes a comment.
+        Likes the comment with the given ID.
 
-        `**Parameters**`
+        :param commentId: The ID of the comment to like.
+        :type commentId: str
+        :param userId: The ID of the user who posted the comment (if applicable). Defaults to `None`.
+        :type userId: Optional[str]
+        :param blogId: The ID of the blog where the comment is located (if applicable). Defaults to `None`.
+        :type blogId: Optional[str]
+        :param wikiId: The ID of the wiki where the comment is located (if applicable). Defaults to `None`.
+        :type wikiId: Optional[str]
+        :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `commentId` - The comment ID to like.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to like comment. [Optional]
+        If any of the optional parameters (`userId`, `blogId`, `wikiId`) is provided, the function sends a POST request to the API to like the comment at the specified location. Otherwise, the comment with the specified ID is liked from the current community.
 
-        - `blogId` - The blog ID to like comment. [Optional]
+        `ApiResponse`:
 
-        - `wikiId` - The wiki ID to like comment. [Optional]
-        
-        `**Example**`
+        - `message`: A message indicating whether the comment was successfully liked.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
-            
-        bot = Bot()
-        bot.community.like_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To like a comment with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.like_comment(commentId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment liked successfully!")
+        ... else:
+        ...     print("Failed to like comment.")
         """
         if any([userId, blogId, wikiId]):
             base_endpoint = "/x{}/s/{}/comment/{}/vote"
@@ -1604,100 +2840,159 @@ class Community:
             "eventSource": "CommentDetailView" if userId is None else "UserProfileView"
             }
             ))
-    
+
+
     @community
     def like_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `like_wiki_comment` is the method that likes a wiki comment.
+        Likes the comment with the given ID on a wiki page with the given ID.
+        
+        :param commentId: The ID of the comment to like.
+        :type commentId: str
+        :param wikiId: The ID of the wiki page where the comment is located.
+        :type wikiId: str
+        :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+        
+        This function sends a POST request to the API to like the comment at the specified location.
+        
+        `ApiResponse`:
+        
+        - `message`: A message indicating whether the comment was successfully liked.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        
+        **Example usage:**
+        
+        To like a comment with ID "0000-0000-0000-0000" on a wiki page with ID "0000-0000-0000-0000":
 
-        `**Parameters**`
-
-        - `commentId` - The comment ID to like.
-
-        - `wikiId` - The wiki ID to like comment.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-            
-        bot = Bot()
-        bot.community.like_wiki_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.like_wiki_comment(commentId="0000-0000-0000-0000", wikiId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment liked successfully!")
+        ... else:
+        ...     print("Failed to like comment.")
         """
         return self.like_comment(commentId = commentId, wikiId = wikiId, comId = comId)
-    
+
+
     @community
     def like_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `like_blog_comment` is the method that likes a blog comment.
+        Likes the comment with the given ID on a blog page with the given ID.
+        
+        :param commentId: The ID of the comment to like.
+        :type commentId: str
+        :param blogId: The ID of the blog page where the comment is located.
+        :type blogId: str
+        :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+        
+        This function sends a POST request to the API to like the comment at the specified location.
+        
+        `ApiResponse`:
+        
+        - `message`: A message indicating whether the comment was successfully liked.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        
+        **Example usage:**
+        
+        To like a comment with ID "0000-0000-0000-0000" on a blog page with ID "0000-0000-0000-0000":
 
-        `**Parameters**`
-
-        - `commentId` - The comment ID to like.
-
-        - `blogId` - The blog ID to like comment.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-            
-        bot = Bot()
-        bot.community.like_blog_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.like_blog_comment(commentId="0000-0000-0000-0000", blogId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment liked successfully!")
+        ... else:
+        ...     print("Failed to like comment.")
         """
         return self.like_comment(commentId = commentId, blogId = blogId, comId = comId)
+
 
     @community
     def like_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `like_profile_comment` is the method that likes a profile comment.
+        Likes the comment with the given ID on a user profile page with the given ID.
+        
+        :param commentId: The ID of the comment to like.
+        :type commentId: str
+        :param userId: The ID of the user profile page where the comment is located.
+        :type userId: str
+        :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+        
+        This function sends a POST request to the API to like the comment at the specified location.
+        
+        `ApiResponse`:
+        
+        - `message`: A message indicating whether the comment was successfully liked.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        
+        **Example usage:**
+        
+        To like a comment with ID "0000-0000-0000-0000" on a user profile page with ID "0000-0000-0000-0000":
 
-        `**Parameters**`
-
-        - `commentId` - The comment ID to like.
-
-        - `userId` - The user ID to like comment.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-            
-        bot = Bot()
-        bot.community.like_profile_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.like_profile_comment(commentId="0000-0000-0000-0000", userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment liked successfully!")
+        ... else:
+        ...     print("Failed to like comment.")
         """
         return self.like_comment(commentId = commentId, userId = userId, comId = comId)
 
+
     @community
-    def unlike_comment(self, commentId: str, userId: Optional[str] = None, blogId: Optional[str] = None, wikiId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def unlike_comment(
+        self,
+        commentId: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        comId: Union[str, int] = None
+        ) -> ApiResponse:
         """
-        `unlike_comment` is the method that unlikes a comment.
+        Removes a like from a comment.
 
-        `**Parameters**`
+        :param commentId: The ID of the comment to remove the like from.
+        :type commentId: str
+        :param userId: The ID of the user who liked the comment. If provided, the vote will be removed from the user profile page. Defaults to `None`.
+        :type userId: Optional[str]
+        :param blogId: The ID of the blog where the comment was made. If provided, the vote will be removed from the blog page. Defaults to `None`.
+        :type blogId: Optional[str]
+        :param wikiId: The ID of the wiki where the comment was made. If provided, the vote will be removed from the wiki page. Defaults to `None`.
+        :type wikiId: Optional[str]
+        :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `commentId` - The comment ID to unlike.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to unlike comment. [Optional]
+        `ApiResponse`:
 
-        - `blogId` - The blog ID to unlike comment. [Optional]
+        - `message`: A message indicating whether the like was successfully removed from the comment.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        - `wikiId` - The wiki ID to unlike comment. [Optional]
-        
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.unlike_comment(commentId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        To remove a like from a comment with ID "123456":
+
+        >>> response = client.community.unlike_comment(commentId="123456")
+        ... if response.statuscode == 0:
+        ...     print("Like removed from comment successfully!")
+        ... else:
+        ...     print("Failed to remove like from comment.")
         """
         if any([userId, blogId, wikiId]):
             base_endpoint = "/x{}/s/{}/comment/{}/vote"
@@ -1719,26 +3014,39 @@ class Community:
             url = endpoint
             ))
 
+
     @community
     def like_blog(self, blogId: str, userId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `like_blog` is the method that likes a blog.
+        Likes a blog post.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog post to like.
+        :type blogId: str
+        :param userId: The ID of the user who liked the post. If provided, the like will be added to the user profile page. Defaults to `None`.
+        :type userId: Optional[str]
+        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to like.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to like blog. [Optional]
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.like_blog(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the like was successfully added to the blog post.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To like a blog post with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.like_blog(blogId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Blog post liked successfully!")
+        ... else:
+        ...     print("Failed to like blog post.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -1749,79 +3057,119 @@ class Community:
                 "eventSource": "UserProfileView" if userId is None else "PostDetailView"
                 }))
 
+
     @community
     def unlike_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `unlike_blog` is the method that unlikes a blog.
+        Removes a like from a blog post.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog post to remove the like from.
+        :type blogId: str
+        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to unlike.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.unlike_blog(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the like was successfully removed from the blog post.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To remove a like from a blog post with ID "abcdef":
+
+        >>> response = client.community.unlike_blog(blogId="abcdef")
+        ... if response.statuscode == 0:
+        ...     print("Like removed from blog post successfully!")
+        ... else:
+        ...     print("Failed to remove like from blog post.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
             url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote"
             ))
 
+
     @community
     def upvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `upvote_comment` is the method that upvotes a comment.
+        Upvotes a comment on a blog post.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog post that contains the comment.
+        :type blogId: str
+        :param commentId: The ID of the comment to upvote.
+        :type commentId: str
+        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to upvote comment.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `commentId` - The comment ID to upvote.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.upvote_comment(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a", commentId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the upvote was successfully added to the comment.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To upvote a comment with ID "0000-0000-0000-0000" on a blog post with ID "1111-1111-1111-1111":
+
+        >>> response = client.community.upvote_comment(blogId="1111-1111-1111-1111", commentId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment upvoted successfully!")
+        ... else:
+        ...     print("Failed to upvote comment.")
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
             data = {
                 "value": 1,
                 "eventSource": "PostDetailView",
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def downvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `downvote_comment` is the method that downvotes a comment.
+        Downvotes a comment on a blog post.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog post that contains the comment.
+        :type blogId: str
+        :param commentId: The ID of the comment to downvote.
+        :type commentId: str
+        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to downvote comment.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `commentId` - The comment ID to downvote.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.downvote_comment(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a", commentId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the downvote was successfully added to the comment.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To downvote a comment with ID "0000-0000-0000-0000" on a blog post with ID "1111-1111-1111-1111":
+
+        >>> response = client.community.downvote_comment(blogId="1111-1111-1111-1111", commentId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Comment downvoted successfully!")
+        ... else:
+        ...     print("Failed to downvote comment.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
@@ -1831,123 +3179,185 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def fetch_blog(self, blogId: str, comId: Union[str, int] = None) -> CBlog:
         """
-        `fetch_blog` is the method that fetches a blog's information.
+        Fetches information about a blog.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog to fetch.
+        :type blogId: str
+        :param comId: The ID of the community where the blog is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CBlog` object containing information about the fetched blog.
 
-        - `blogId` - The blog ID to fetch.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_blog(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `CBlog`:
+
+        A `CBlog` object contains the following attributes:
+
+        - `globalVotesCount`: The total number of votes the blog has received.
+        - `globalVotedValue`: The total value of votes the blog has received.
+        - `votedValue`: The value of the user's vote, if the user has voted.
+        - `keywords`: The keywords associated with the blog.
+        - `mediaList`: The media associated with the blog.
+        - `style`: The styling of the blog.
+        - `totalQuizPlayCount`: The total number of times quizzes associated with the blog have been played.
+        - `title`: The title of the blog.
+        - `tipInfo`: Information about tips associated with the blog.
+        - `contentRating`: The content rating of the blog.
+        - `content`: The content of the blog.
+        - `needHidden`: Whether the blog is hidden.
+        - `guestVotesCount`: The total number of guest votes the blog has received.
+        - `type`: The type of the blog.
+        - `status`: The status of the blog.
+        - `globalCommentsCount`: The total number of comments the blog has received.
+        - `modifiedTime`: The time the blog was last modified.
+        - `widgetDisplayInterval`: The widget display interval of the blog.
+        - `totalPollVoteCount`: The total number of poll votes the blog has received.
+        - `blogId`: The ID of the blog.
+        - `viewCount`: The total number of views the blog has received.
+        - `language`: The language of the blog.
+        - `author`: The author of the blog, represented as a `UserProfile` object.
+        - `extensions`: Any extensions associated with the blog.
+        - `votesCount`: The total number of votes the blog has received.
+        - `ndcId`: The ID of the community where the blog is located.
+        - `createdTime`: The time the blog was created.
+        - `endTime`: The time the blog ends.
+        - `commentsCount`: The total number of comments the blog has received.
+
+        **Example usage:**
+
+        To fetch information about a blog with ID "1111-2222-3333-4444":
+
+        >>> blog = client.community.fetch_blog(blogId="1111-2222-3333-4444")
+        ... print(f"Blog title: {blog.title}")
+        ... print(f"Blog author: {blog.author.nickname}")
         """
         return CBlog(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"))
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
+            ))
+
 
     @community
     def fetch_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add Wiki class
         """
-        `fetch_wiki` is the method that fetches a wiki's information.
+        Fetches information about a wiki.
 
-        `**Parameters**`
+        :param wikiId: The ID of the wiki to fetch.
+        :type wikiId: str
+        :param comId: The ID of the community where the wiki is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status and the fetched wiki.
 
-        - `wikiId` - The wiki ID to fetch.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_wiki(wikiId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `data`: A dictionary containing the information about the fetched wiki.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To fetch information about a wiki with ID "1111-2222-3333-4444":
+
+        >>> response = client.community.fetch_wiki(wikiId="1111-2222-3333-4444")
+        ... if response.statuscode == 0:
+        ...     print("Wiki fetched successfully!")
+        ... else:
+        ...     print("Failed to fetch wiki.")
         """
         return ApiResponse(self.session.handler(
             method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"))
 
+
     @community
     def fetch_quiz(self, quizId: str, start: int = 0, size: int = 10, comId: Union[str, int] = None) -> QuizRankingList:
         """
-        `fetch_quiz` is the method that fetches a quiz's information.
-        
-        `**Parameters**`
-        - `quizId` - The quiz ID to fetch.
-        - `start` - The start index of the ranking list.
-        - `size` - The size of the ranking list.
-        - `comId` - The community ID to use.
-        
-        `**Example**`
-        
-        ```python
-        from pymino import Bot
+        Fetches the ranking list for a quiz.
 
-        bot = Bot()
-        bot.community.fetch_quiz(quizId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        
-        ```
+        :param quizId: The ID of the quiz to fetch the ranking list for.
+        :type quizId: str
+        :param start: The start index of the ranking list (default 0).
+        :type start: int
+        :param size: The size of the ranking list to fetch (default 10).
+        :type size: int
+        :param comId: The ID of the community where the quiz is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `QuizRankingList` object containing information about the ranking list.
+        :rtype: QuizRankingList
+
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+
+        `QuizRankingList`:
+
+        - `highest_mode`: A list of the highest mode of the quiz.
+        - `modified_time`: A list of the last time the quiz was modified.
+        - `is_finished`: A list of whether the quiz is finished or not.
+        - `hell_is_finished`: A list of whether the quiz is finished in hell mode or not.
+        - `highest_score`: A list of the highest score of the quiz.
+        - `beat_rate`: A list of the beat rate of the quiz.
+        - `last_beat_rate`: A list of the last beat rate of the quiz.
+        - `total_times`: A list of the total times the quiz has been played.
+        - `latest_score`: A list of the latest score of the quiz.
+        - `author`: A list of the author of the quiz.
+        - `latest_mode`: A list of the latest mode of the quiz.
+        - `created_time`: A list of the time the quiz was created.
+
+        **Example usage:**
+
+        To fetch the ranking list for a quiz with ID "1234-5678-9012" with start index 0 and size 10:
+
+        >>> quiz_ranking_list = client.community.fetch_quiz(quizId="1234-5678-9012", start=0, size=10)
+        ... highest_scores = quiz_ranking_list.highest_score
+        ... beat_rates = quiz_ranking_list.beat_rate
+        ... print(highest_scores)
+        ... print(beat_rates)
         """
         return QuizRankingList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}"
             ))
     
-    @community
-    def fetch_user(self, userId: str, comId: Union[str, int] = None) -> UserProfile:
-        """
-        `fetch_user` is the method that fetches user's profile.
-
-        `**Parameters**`
-
-        - `userId` - The user ID to fetch.
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_user(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
-        """
-        return UserProfile(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}?action=visit"
-            ))
 
     @community
     def reply_wall(self, userId: str, commentId: str, message: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `reply_wall` is the method that replies to a comment on user's wall.
+        Replies to a comment on a user's wall.
 
-        `**Parameters**`
+        :param userId: The ID of the user whose wall to comment on.
+        :type userId: str
+        :param commentId: The ID of the comment to reply to.
+        :type commentId: str
+        :param message: The message to post as a reply.
+        :type message: str
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to reply.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `commentId` - The comment ID to reply.
+        `ApiResponse`:
 
-        - `message` - The message to reply.
-        
-        `**Example**`
+        - `message`: A message indicating whether the reply was successfully posted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.reply_wall(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", commentId = "5f4d2e0e0a0a0a0a0a0a0a0a", message = "Hello!")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To reply to a comment with ID "1111-2222-3333-4444" on user "0000-0000-0000-0000"'s wall with message "Thanks for sharing!":
+
+        >>> response = client.community.reply_wall(userId="0000-0000-0000-0000", commentId="1111-2222-3333-4444", message="Thanks for sharing!")
+        ... if response.statuscode == 0:
+        ...     print("Reply posted successfully!")
+        ... else:
+        ...     print("Failed to post reply.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/comment",
@@ -1960,26 +3370,47 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def vote_poll(self, blogId: str, optionId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `vote_poll` is the method that votes on a poll.
+        Votes for a poll option in the current or specified community.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog containing the poll.
+        :type blogId: str
+        :param optionId: The ID of the poll option to vote for.
+        :type optionId: str
+        :param comId: The ID of the community where the blog is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to vote.
+        This function sends a POST request to the API to vote for a poll option in the specified blog. 
 
-        - `optionId` - The option ID to vote.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.vote_poll(blogId = "5f4d2e0e0a0a0a0a0a0a0a0a", optionId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the vote was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To vote for poll option with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.vote_poll(blogId="2222-2222-2222-2222", optionId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Voted successfully!")
+        ... else:
+        ...     print("Failed to vote.")
+
+        To vote for poll option with ID "3333-3333-3333-3333" in a community with ID "123":
+
+        >>> response = client.community.vote_poll(blogId="4444-4444-4444-4444", optionId="3333-3333-3333-3333", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Voted successfully!")
+        ... else:
+        ...     print("Failed to vote.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/poll/option/{optionId}/vote",
@@ -1989,31 +3420,12 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
-    def repost(self, content: str = None, blogId: str = None, wikiId: str = None, comId: Union[str, int] = None) -> CBlog:
-        """
-        `repost` is the method that reposts a blog or wiki.
-
-        `**Parameters**`
-
-        - `content` - The content to repost.
-
-        - `blogId` - The blog ID to repost.
-
-        - `wikiId` - The wiki ID to repost.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.repost(content = "Great blog!", blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
-        """
+    def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None, comId: Union[str, int] = None) -> CBlog:
         return CBlog(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog",
             data = {
                 "content": content,
                 "refObjectId": blogId if blogId is not None else wikiId,
@@ -2022,144 +3434,217 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def ban(self, userId: str, reason: str, banType: int = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `ban` is the method that bans a user.
+        Bans a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to ban.
+        :type userId: str
+        :param reason: The reason for banning the user.
+        :type reason: str
+        :param banType: The type of ban to apply. Optional.
+        :type banType: int
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to ban.
+        This function sends a POST request to the API to ban a user in the specified community. 
 
-        - `reason` - The reason to ban.
+        `ApiResponse`:
 
-        - `banType` - The ban type to ban.
-        
-        `**Example**`
+        - `message` (str): A message indicating whether the ban was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.ban(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", reason = "Bot!")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To ban a user with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.ban(userId="1111-1111-1111-1111", reason="This user has violated community guidelines.")
+        ... if response.statuscode == 0:
+        ...     print("User banned successfully!")
+        ... else:
+        ...     print("Failed to ban user.")
+
+        To ban a user with ID "2222-2222-2222-2222" in a community with ID "123" and apply a ban type:
+
+        >>> response = client.community.ban(userId="2222-2222-2222-2222", reason="This user has been reported for spamming.", banType=2, comId=123)
+        ... if response.statuscode == 0:
+        ...     print("User banned successfully!")
+        ... else:
+        ...     print("Failed to ban user.")
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/ban",
-            data = {
-                "reasonType": banType,
-                "note": {
-                    "content": reason
-                },
-                "timestamp": int(time() * 1000)
-                }))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/ban",
+            data = {"reasonType": banType, "note": {"content": reason}, "timestamp": int(time() * 1000)
+            }))
+
 
     @community
     def unban(self, userId: str, reason: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `unban` is the method that unbans a user.
+        Unbans a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to unban.
+        :type userId: str
+        :param reason: The reason for unbanning the user.
+        :type reason: str
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to unban.
+        This function sends a POST request to the API to unban a user in the specified community. 
 
-        - `reason` - The reason to unban.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.unban(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", reason = "Misclick!")
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the unban was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To unban a user with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.unban(userId="1111-1111-1111-1111", reason="This user has been unbanned.")
+        ... if response.statuscode == 0:
+        ...     print("User unbanned successfully!")
+        ... else:
+        ...     print("Failed to unban user.")
+
+        To unban a user with ID "2222-2222-2222-2222" in a community with ID "123":
+
+        >>> response = client.community.unban(userId="2222-2222-2222-2222", reason="This user has been unbanned.", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("User unbanned successfully!")
+        ... else:
+        ...     print("Failed to unban user.")
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/unban",
-            data = {
-                "note": {
-                    "content": reason
-                },
-                "timestamp": int(time() * 1000)
-                }))
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/unban",
+            data = {"note": {"content": reason}, "timestamp": int(time() * 1000)
+            }))
+
 
     @community
-    def strike(self, userId: str, amount: int = 5, title: str = None, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def strike(
+        self,
+        userId: str,
+        amountOfTime: int = 5,
+        title: str = None,
+        reason: str = None,
+        comId: Union[str, int] = None,
+        **kwargs
+        ) -> ApiResponse:
         """
-        `strike` is the method that strikes a user.
+        Issues a strike against a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to issue a strike to.
+        :type userId: str
+        :param amountOfTime: The duration of the strike in hours. Can be 1, 2, 3, 4, or 5. Default is 5.
+        :type amountOfTime: int
+        :param title: An optional title for the strike.
+        :type title: str
+        :param reason: An optional reason for issuing the strike.
+        :type reason: str
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to strike.
+        This function sends a POST request to the API to issue a strike against a user in the specified community. 
 
-        - `amount` -The time of the strike in hours
+        `ApiResponse`:
 
-            `1` - 1 hour
-            `2` - 3 hours
-            `3` - 6 hours
-            `4` - 12 hours
-            `5` - 24 hours
+        - `message` (str): A message indicating whether the strike was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        - `title` - Title of the strike.
+        **Example usage:**
 
-        - `reason` - The reason to strike.
-        
-        `amount` - The time of the strike in hours.
-        - 1 hour (1)
-        - 3 hours (2)
-        - 6 hours (3)
-        - 12 hours(4)
-        - 24 hours (default) (5)
+        To issue a 5-hour strike against a user with ID "1111-1111-1111-1111" in the current community:
 
-        `**Example**`
+        >>> response = client.community.strike(userId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Strike issued successfully!")
+        ... else:
+        ...     print("Failed to issue strike.")
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.strike(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", amount=1, title = "Bot!", reason = "Bot!")
-        bot.run(sid=sid)
-        ```
+        To issue a 2-hour strike against a user with ID "2222-2222-2222-2222" in a community with ID "123" with a title and reason:
+
+        >>> response = client.community.strike(userId="2222-2222-2222-2222", amountOfTime=2, title="Second Strike", reason="This is a 2-hour strike.", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Strike issued successfully!")
+        ... else:
+        ...     print("Failed to issue strike.")
         """
+        if "amount" in kwargs: #TODO: Remove this in the near future.
+            amountOfTime = kwargs["amount"]
+            print("Warning: The 'amount' parameter is deprecated. Please use 'amountOfTime' instead.")
+
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/notice",
             data = {
                 "uid": userId,
                 "title": title,
                 "content": reason,
-                "attachedObject": {
-                    "objectId": userId,
-                    "objectType": 0
-                },
+                "attachedObject": {"objectId": userId,"objectType": 0},
                 "penaltyType": 1,
-                "penaltyValue": [3600, 10800, 21600, 43200, 86400][amount - 1 if amount in range(1, 6) else 86400],
+                "penaltyValue": [3600, 10800, 21600, 43200, 86400][amountOfTime - 1 if amountOfTime in range(1, 6) else 86400],
                 "adminOpNote": {},
                 "noticeType": 4,
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def warn(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `warn` is the method that warns a user.
+        Issues a warning to a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to issue a warning to.
+        :type userId: str
+        :param reason: An optional reason for issuing the warning.
+        :type reason: str
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to warn.
+        This function sends a POST request to the API to issue a warning to a user in the specified community. 
 
-        - `reason` - The reason to warn.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.warn(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", reason = "Violating community guidelines!")
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the warning was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To issue a warning to a user with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.warn(userId="1111-1111-1111-1111", reason="This is a warning.")
+        ... if response.statuscode == 0:
+        ...     print("Warning issued successfully!")
+        ... else:
+        ...     print("Failed to issue warning.")
+
+        To issue a warning to a user with ID "2222-2222-2222-2222" in a community with ID "123" with a reason:
+
+        >>> response = client.community.warn(userId="2222-2222-2222-2222", reason="This is a warning.", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Warning issued successfully!")
+        ... else:
+        ...     print("Failed to issue warning.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/notice",
@@ -2167,80 +3652,127 @@ class Community:
                 "uid": userId,
                 "title": "Custom",
                 "content": reason,
-                "attachedObject": {
-                    "objectId": userId,
-                    "objectType": 0
-                },
+                "attachedObject": {"objectId": userId,"objectType": 0},
                 "penaltyType": 0,
                 "adminOpNote": {},
                 "noticeType": 7,
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def edit_titles(self, userId: str, titles: list, colors: list, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `edit_titles` is the method that edits a user's titles.
+        Edits the titles of a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to edit the titles of.
+        :type userId: str
+        :param titles: A list of titles to set for the user.
+        :type titles: list
+        :param colors: A list of colors to set for the titles. The length of this list must match the length of the `titles` list.
+        :type colors: list
+        :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to edit titles.
+        This function sends a POST request to the API to edit the titles of a user in the specified community. 
 
-        - `titles` - The titles to edit.
+        `ApiResponse`:
 
-        - `colors` - The colors to edit.
-        
-        `**Example**`
+        - `message` (str): A message indicating whether the edit was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.edit_titles(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", titles=["Bot", "Developer"], colors=["#ff0000", "#00ff00"])
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To edit the titles of a user with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.edit_titles(userId="1111-1111-1111-1111", titles=["Title 1", "Title 2"], colors=["#ff0000", "#00ff00"])
+        ... if response.statuscode == 0:
+        ...     print("Titles edited successfully!")
+        ... else:
+        ...     print("Failed to edit titles.")
+
+        To edit the titles of a user with ID "2222-2222-2222-2222" in a community with ID "123" with two titles and colors:
+
+        >>> response = client.community.edit_titles(userId="2222-2222-2222-2222", titles=["Title 1", "Title 2"], colors=["#ff0000", "#00ff00"], comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Titles edited successfully!")
+        ... else:
+        ...     print("Failed to edit titles.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
             data = {
                 "adminOpName": 207,
-                "adminOpValue": {
-                    "titles": [{"title": title, "color": color} for title, color in zip(titles, colors)]
-                },
+                "adminOpValue": {"titles": [{"title": title, "color": color} for title, color in zip(titles, colors)]},
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
-    def fetch_mod_history(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, size: int = 25, comId: Union[str, int] = None) -> ApiResponse:
+    def fetch_mod_history(
+        self,
+        userId: str = None,
+        blogId: str = None,
+        wikiId: str = None,
+        quizId: str = None,
+        fileId: str = None,
+        size: int = 25,
+        comId: Union[str, int] = None
+        ) -> ApiResponse:
         """
-        `fetch_mod_history` is the method that fetches a user's moderation history.
+        Fetches moderation history for a user, blog, wiki, quiz, or file in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch moderation history for. If not provided, the history of the specified object will be returned.
+        :type userId: str
+        :param blogId: The ID of the blog to fetch moderation history for.
+        :type blogId: str
+        :param wikiId: The ID of the wiki to fetch moderation history for.
+        :type wikiId: str
+        :param quizId: The ID of the quiz to fetch moderation history for.
+        :type quizId: str
+        :param fileId: The ID of the file to fetch moderation history for.
+        :type fileId: str
+        :param size: The number of moderation events to return. Default is 25.
+        :type size: int
+        :param comId: The ID of the community where the object is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing moderation history for the specified object.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to fetch moderation history.
+        This function sends a GET request to the API to fetch moderation history for a user, blog, wiki, quiz, or file in the specified community.
 
-        - `blogId` - The blog ID to fetch moderation history.
+        `ApiResponse`:
 
-        - `wikiId` - The wiki ID to fetch moderation history.
+        - `message` (str): A message indicating whether the moderation history was fetched successfully.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        - `quizId` - The quiz ID to fetch moderation history.
+        **Example usage:**
 
-        - `fileId` - The file ID to fetch moderation history.
+        To fetch the moderation history of a user with ID "1111-1111-1111-1111" in the current community:
 
-        - `size` - The size of the moderation history.
-        
-        `**Example**`
+        >>> response = client.community.fetch_mod_history(userId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print(response.json())
+        ... else:
+        ...     print("Failed to fetch moderation history.")
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_mod_history(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        To fetch the moderation history of a blog with ID "2222-2222-2222-2222" in a community with ID "123":
+
+        >>> response = client.community.fetch_mod_history(blogId="2222-2222-2222-2222", comId=123)
+        ... if response.statuscode == 0:
+        ...     print(response.json())
+        ... else:
+        ...     print("Failed to fetch moderation history.")
         """
         return ApiResponse(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/admin/operation",
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/admin/operation",
             params = {
                 "objectId": blogId if blogId is not None else wikiId if wikiId is not None else quizId if quizId is not None else fileId if fileId is not None else userId,
                 "objectType": 1 if blogId is not None else 2 if wikiId is not None else 3 if quizId is not None else 109 if fileId is not None else 0,
@@ -2254,38 +3786,19 @@ class Community:
         nickname: str = None,
         content: str = None,
         icon: Union[str, BytesIO] = None,
-        background_color: str = None,
-        background_image: Union[str, BytesIO] = None,
+        backgroundColor: str = None,
+        backgroundImage: Union[str, BytesIO] = None,
         cover_image: Union[str, BytesIO] = None,
-        comId: Union[str, int] = None
+        comId: Union[str, int] = None,
+        **kwargs
         ) -> UserProfile:
-        """
-        `edit_profile` is the method that edits a user's profile.
+        if "background_color" in kwargs: #TODO: Remove in the near future.
+            backgroundColor = kwargs["background_color"]
+            print("background_color is deprecated, please use backgroundColor instead.")
+        if "background_image" in kwargs: #TODO: Remove in the near future.
+            backgroundImage = kwargs["background_image"]
+            print("background_image is deprecated, please use backgroundImage instead.")
 
-        `**Parameters**`
-
-        - `nickname` - The nickname to edit.
-
-        - `content` - The content to edit.
-
-        - `icon` - The icon to edit.
-
-        - `background_color` - The background color to change to. [Example: `#ffffff`]
-
-        - `background_image` - The background image to change to.
-
-        - `cover_image` - The cover image to change to.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-
-        bot = Bot()
-        bot.community.edit_profile(nickname = "Bot", content = "I am a bot!")
-        bot.run(sid=sid)
-        ```
-        """
         data: dict = {"timestamp": int(time() * 1000), "extensions": {}}
 
         [data.update({key: value}) for key, value in {
@@ -2295,11 +3808,11 @@ class Community:
             "mediaList": [[100, self.__handle_media__(media=cover_image, media_value=True), None, None, None, None]] if cover_image is not None else None
             }.items() if value is not None]
 
-        if background_color:
-            data["extensions"]["style"] = {"backgroundColor": background_color}
+        if backgroundColor:
+            data["extensions"]["style"] = {"backgroundColor": backgroundColor}
 
-        if background_image:
-            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.__handle_media__(media=background_image, media_value=True), None, None, None, None]]}
+        if backgroundImage:
+            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None, None, None, None]]}
 
         return UserProfile(
             self.session.handler(
@@ -2311,25 +3824,64 @@ class Community:
     @community
     def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5, comId: Union[str, int] = None) -> CBlogList:
         """
-        `fetch_user_blogs` is the method that fetches a user's blogs.
+        Fetches a list of blogs created by a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch blogs for.
+        :type userId: str
+        :param start: The starting index of the blogs to fetch (default is 0).
+        :type start: int
+        :param size: The number of blogs to fetch (default is 5).
+        :type size: int
+        :param comId: The ID of the community where the blogs were created. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CBlogList` object containing information about the fetched blogs.
+        :rtype: CBlogList
 
-        - `userId` - The user ID to fetch blogs.
+        This function sends a GET request to the API to fetch a list of blogs created by a user in the specified community.
 
-        - `start` - The start of the blogs.
+        `CBlogList`:
 
-        - `size` - The size of the blogs.
-        
-        `**Example**`
+        - `data` (list): A list of blogs created by the specified user.
+        - `author` (UserProfileList): A list of `UserProfile` objects representing the authors of the fetched blogs.
+        - `globalVotesCount` (list): A list of global vote counts for the fetched blogs.
+        - `globalVotedValue` (list): A list of global vote values for the fetched blogs.
+        - `votedValue` (list): A list of vote values for the fetched blogs.
+        - `keywords` (list): A list of keywords associated with the fetched blogs.
+        - `mediaList` (list): A list of media items associated with the fetched blogs.
+        - `style` (list): A list of style information for the fetched blogs.
+        - `totalQuizPlayCount` (list): A list of total quiz play counts for the fetched blogs.
+        - `title` (list): A list of titles for the fetched blogs.
+        - `tipInfo` (list): A list of tip information for the fetched blogs.
+        - `contentRating` (list): A list of content ratings for the fetched blogs.
+        - `content` (list): A list of content for the fetched blogs.
+        - `needHidden` (list): A list of flags indicating whether the fetched blogs need to be hidden.
+        - `guestVotesCount` (list): A list of guest vote counts for the fetched blogs.
+        - `type` (list): A list of types for the fetched blogs.
+        - `status` (list): A list of statuses for the fetched blogs.
+        - `globalCommentsCount` (list): A list of global comment counts for the fetched blogs.
+        - `modifiedTime` (list): A list of modification times for the fetched blogs.
+        - `widgetDisplayInterval` (list): A list of widget display intervals for the fetched blogs.
+        - `totalPollVoteCount` (list): A list of total poll vote counts for the fetched blogs.
+        - `blogId` (list): A list of IDs for the fetched blogs.
+        - `viewCount` (list): A list of view counts for the fetched blogs.
+        - `language` (list): A list of languages for the fetched blogs.
+        - `extensions` (list): A list of extensions for the fetched blogs.
+        - `votesCount` (list): A list of vote counts for the fetched blogs.
+        - `ndcId` (list): A list of NDC IDs for the fetched blogs.
+        - `createdTime` (list): A list of creation times for the fetched blogs.
+        - `commentsCount` (list): A list of comment counts for the fetched blogs.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_user_blogs(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To fetch the first 5 blogs created by a user in the current community:
+
+        >>> blogs = client.fetch_user_blogs(userId="0000-000000-000000-0000")
+        ... for blog in blogs.content:
+        ...     print(blog)
+        "Wow this is a blog!"
+        "This is another blog!"
+        "This is a third blog!"
+        ...
         """
         return CBlogList(self.session.handler(
             method = "GET",
@@ -2339,26 +3891,45 @@ class Community:
     @community
     def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add WikiList
         """
-        `fetch_user_wikis` is the method that fetches a user's wikis.
+        Fetches wikis created by a user based on the specified parameters.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch wikis for.
+        :type userId: str
+        :param start: The index of the first item to fetch. Default is 0.
+        :type start: int
+        :param size: The number of items to fetch. Default is 25.
+        :type size: int
+        :param comId: The ID of the community where the wikis were created. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing a list of wikis created by the specified user.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to fetch wikis.
+        This function sends a GET request to the API to fetch a list of wikis created by a user in the specified community.
 
-        - `start` - The start of the wikis.
+        `ApiResponse`:
 
-        - `size` - The size of the wikis.
+        - `data` (dict): Raw JSON data.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
+        To fetch a list of wikis created by a user with ID "1111-1111-1111-1111" in the current community:
 
-        bot = Bot()
-        bot.community.fetch_user_wikis(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.fetch_user_wikis(userId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print(response.json())
+        ... else:
+        ...     print("Failed to fetch user wikis.")
 
+        To fetch a list of wikis created by a user with ID "2222-2222-2222-2222" in a community with ID "123":
+
+        >>> response = client.community.fetch_user_wikis(userId="2222-2222-2222-2222", comId=123)
+        ... if response.statuscode == 0:
+        ...     print(response.json())
+        ... else:
+        ...     print("Failed to fetch user wikis.")
         """
         return ApiResponse(self.session.handler(
             method = "GET",
@@ -2368,21 +3939,41 @@ class Community:
     @community
     def fetch_user_check_ins(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `fetch_user_check_ins` is the method that fetches a user's check-ins.
+        Fetches a list of check-ins made by a user in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to fetch check-ins for.
+        :type userId: str
+        :param comId: The ID of the community where the check-ins were made. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing a list of check-ins made by the specified user.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to fetch check-ins.
-        
-        `**Example**`
+        This function sends a GET request to the API to fetch a list of check-ins made by a user in the specified community.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.fetch_user_check_ins(userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `data` (list): A list of check-ins made by the specified user.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To fetch a list of check-ins made by a user with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.fetch_user_check_ins(userId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print(response.data)
+        ... else:
+        ...     print("Failed to fetch user check-ins.")
+
+        To fetch a list of check-ins made by a user with ID "2222-2222-2222-2222" in a community with ID "123":
+
+        >>> response = client.community.fetch_user_check_ins(userId="2222-2222-2222-2222", comId=123)
+        ... if response.statuscode == 0:
+        ...     print(response.data)
+        ... else:
+        ...     print("Failed to fetch user check-ins.")
         """
         return ApiResponse(self.session.handler(
             method = "GET",
@@ -2391,31 +3982,6 @@ class Community:
             
     @community
     def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str] = None, comId: Union[str, int] = None) -> CMessage:
-        """
-        `send_embed` is the method that sends an embed to a chat.
-
-        `**Parameters**`
-
-        - `chatId` - The chat ID to send the embed to.
-
-        - `title` - The title of the embed.
-
-        - `content` - The content of the embed.
-
-        - `image` - The image of the embed.
-
-        - `link` - The link of the embed. [Optional]
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_embed(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", title = "Hello World!", content = "This is an embed!")
-        bot.run(sid=sid)
-        ```
-        """
         return CMessage(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content = "[c]",
@@ -2428,27 +3994,6 @@ class Community:
 
     @community
     def send_link_snippet(self, chatId: str, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None, comId: Union[str, int] = None) -> CMessage:
-        """
-        `send_link_snippet` is the method that sends a link snippet to a chat.
-
-        `**Parameters**`
-
-        - `chatId` - The chat ID to send the link snippet to.
-
-        - `content` - The message of the link snippet.
-
-        - `image` - The image of the link snippet.
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_link_snippet(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", content = "Hello World!", image = "https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
-        bot.run(sid=sid)
-        ```
-        """
         if mentioned is None:
             mentioned = []
 
@@ -2476,25 +4021,6 @@ class Community:
 
     @community
     def send_message(self, chatId: str, content: str, comId: Union[str, int] = None) -> CMessage:
-        """
-        `send_message` is the method that sends a message to a chat.
-
-        `**Parameters**`
-
-        - `chatId` - The chat ID to send the message to.
-
-        - `content` - The message to send.
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_message(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", content = "Hello World!")
-        bot.run(sid=sid)
-        ```
-        """
         return CMessage(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content).json()
@@ -2502,24 +4028,6 @@ class Community:
 
     @community
     def send_image(self, chatId: str, image: BinaryIO = None, comId: Union[str, int] = None) -> CMessage:
-        """
-        `send_image` is the method that sends an image to a chat.
-
-        `**Parameters**`
-
-        - `chatId` - The chat ID to send the image to.
-        - `image` - The image to send.
-        - `comId` - The community ID to send the image to. [Optional]
-
-        `**Example**`
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.run(sid=sid)
-        bot.community.send_image(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", image = "https://i.imgur.com/5f4d2e0e0a0a0a0a0a0a0a0a.png")
-        ```
-        """
         return CMessage(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(
@@ -2535,25 +4043,30 @@ class Community:
                 ))
 
     @community
-    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None, comId: Union[str, int] = None) -> CMessage: #NOTE: Not sure how long the audio can be.
+    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None, comId: Union[str, int] = None) -> CMessage:
         """
-        `send_audio` is the method that sends an audio to a chat.
+        Sends an audio file to a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to send the audio file to.
+        :type chatId: str
+        :param audio: The path to the audio file or a file-like object containing the audio data.
+        :type audio: Union[str, BinaryIO]
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `CMessage` object representing the newly sent message.
 
-        - `chatId` - The chat ID to send the audio to.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `audio` - The audio to send.
-        
-        `**Example**`
+        **Example usage:**
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_audio(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", audio = "output.mp3")
-        bot.run(sid=sid)
-        ```
+        To send an audio file located at "/path/to/audio.aac" to a chat with ID "1111-2222-3333-4444":
+
+        EXAMPLE 1:
+        >>> response = client.send_audio(chatId="1111-2222-3333-4444", audio="/path/to/audio.aac")
+        ...
+        EXAMPLE 2:
+        >>> response = client.send_audio(chatId="1111-2222-3333-4444", audio="https://example.com/audio.aac")
+        ... 
         """
         return CMessage(self.session.handler(
             method = "POST",
@@ -2563,32 +4076,44 @@ class Community:
                 mediaType=110,
                 mediaUploadValue=self.encode_media(
                     self.__handle_media__(
-                    media=audio,
-                    content_type="audio/aac",
-                    media_value=False
-                    ))
-            ).json()))
+                        media=audio,
+                        content_type="audio/aac",
+                        media_value=False
+            ))).json()))
 
     @community
     def send_sticker(self, chatId: str, stickerId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `send_sticker` is the method that sends a sticker to a chat.
+        Sends a sticker to a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to send the sticker to.
+        :type chatId: str
+        :param stickerId: The ID of the sticker to send.
+        :type stickerId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to send the sticker to.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `stickerId` - The sticker ID to send.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_sticker(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", stickerId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the sticker was successfully sent.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+        - `messageId`: The ID of the newly sent message.
+
+        **Example usage:**
+
+        To send a sticker with ID "0000-0000-0000-0000" to a chat with ID "1111-2222-3333-4444":
+
+        >>> response = client.community.send_sticker(chatId="1111-2222-3333-4444", stickerId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Sticker sent successfully!")
+        ... else:
+        ...     print("Failed to send sticker.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -2601,6 +4126,7 @@ class Community:
                 ))
     
     def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
+        """Handles media files."""
         response = None
         
         try:
@@ -2622,9 +4148,11 @@ class Community:
         return media
 
     def encode_media(self, file: bytes) -> str:
+        """Encodes a media file to base64."""
         return b64encode(file).decode()
 
     def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
+        """Uploads a media file to the server."""
         return ApiResponse(self.session.handler(
             method = "POST",
             url = "/g/s/media/upload",
@@ -2635,21 +4163,33 @@ class Community:
     @community
     def join_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `join_chat` is the method that joins a chat.
+        Joins a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to join.
+        :type chatId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to join.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.join_chat(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the user successfully joined the chat.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To join a chat with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.join_chat(chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Joined chat successfully!")
+        ... else:
+        ...     print("Failed to join chat.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -2659,20 +4199,33 @@ class Community:
     @community
     def leave_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `leave_chat` is the method that leaves a chat.
+        Leaves a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to leave.
+        :type chatId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to leave.
-        
-        `**Example**`
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.leave_chat(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the user successfully left the chat.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To leave a chat with ID "0000-0000-0000-0000" in the current community:
+
+        >>> response = client.community.leave_chat(chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Left chat successfully!")
+        ... else:
+        ...     print("Failed to leave chat.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
@@ -2682,28 +4235,37 @@ class Community:
     @community
     def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `kick` is the method that kicks a user from a chat.
+        Kicks a user from a chat.
 
-        `**Parameters**`
+        :param userId: The ID of the user to kick from the chat.
+        :type userId: str
+        :param chatId: The ID of the chat to kick the user from.
+        :type chatId: str
+        :param allowRejoin: A boolean indicating whether the user should be allowed to rejoin the chat. Defaults to `True`.
+        :type allowRejoin: bool
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to kick.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `chatId` - The chat ID to kick the user from.
+        `ApiResponse`:
 
-        - `allowRejoin` - Whether or not the user can rejoin the chat. [Optional]
+        - `message`: A message indicating whether the user was successfully kicked from the chat.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-            `allowRejoin` defaults to `True`.
+        **Example usage:**
 
-        
-        `**Example**`
+        To kick a user with ID "0000-0000-0000-0000" from a chat with ID "0000-0000-0000-0000":
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.kick(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", allowRejoin=True)
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.kick(userId="0000-0000-0000-0000", chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("User kicked successfully!")
+        ... else:
+        ...     print("Failed to kick user.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
@@ -2713,21 +4275,33 @@ class Community:
     @community
     def delete_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_chat` is the method that deletes a chat.
+        Deletes a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to delete.
+        :type chatId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to delete.
-        
-        `**Example**`
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_chat(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the chat was successfully deleted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To delete a chat with ID "abcdef":
+
+        >>> response = client.community.delete_chat(chatId="abcdef")
+        ... if response.statuscode == 0:
+        ...     print("Chat deleted successfully!")
+        ... else:
+        ...     print("Failed to delete chat.")
         """
         return ApiResponse(self.session.handler(
             method = "DELETE",
@@ -2737,27 +4311,39 @@ class Community:
     @community
     def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `delete_message` is the method that deletes a message from a chat.
+        Deletes a message in a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat that contains the message.
+        :type chatId: str
+        :param messageId: The ID of the message to delete.
+        :type messageId: str
+        :param asStaff: If `True`, the message is deleted as a staff member. Defaults to `False`.
+        :type asStaff: bool
+        :param reason: The reason for deleting the message, if being deleted as a staff member. Defaults to `None`.
+        :type reason: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to delete the message from.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `messageId` - The message ID to delete.
+        `ApiResponse`:
 
-        - `asStaff` - Whether or not to delete the message as staff. [Optional]
+        - `message`: A message indicating whether the message was successfully deleted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        - `reason` - The reason for deleting the message. [Optional]
+        **Example usage:**
 
-        `**Example**`
+        To delete a message with ID `0000-0000-0000-0000` in a chat with ID `0000-0000-0000-0000`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.delete_message(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", messageId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.delete_message(chatId="0000-0000-0000-0000", messageId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Message deleted successfully!")
+        ... else:
+        ...     print("Failed to delete message.")
         """
         return ApiResponse(
             self.session.handler(
@@ -2776,23 +4362,35 @@ class Community:
     @community
     def transfer_host(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `transfer_host` is the method that transfers the host of a chat.
+        Requests to transfer chat organizer privileges to another user.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat where the transfer request will be made.
+        :type chatId: str
+        :param userId: The ID of the user to transfer organizer privileges to.
+        :type userId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to transfer the host of.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to transfer the host to.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.transfer_host(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the transfer request was successfully made.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To request to transfer chat organizer privileges to another user, use the following code:
+
+        >>> response = client.community.transfer_host(chatId="0000-0000-0000-0000", userId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Transfer request made successfully!")
+        ... else:
+        ...     print("Failed to make transfer request.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer",
@@ -2804,23 +4402,35 @@ class Community:
     @community
     def accept_host(self, chatId: str, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `accept_host` is the method that accepts the host of a chat.
+        Accepts a request to transfer chat organizer privileges to the current user.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat where the transfer request was made.
+        :type chatId: str
+        :param requestId: The ID of the transfer request to accept.
+        :type requestId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to accept the host of.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `requestId` - The request ID to accept the host of.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.accept_host(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", requestId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the transfer request was successfully accepted.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To accept a request to transfer chat organizer privileges to the current user, use the following code:
+
+        >>> response = client.community.accept_host(chatId="0000-0000-0000-0000", requestId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Transfer request accepted successfully!")
+        ... else:
+        ...     print("Failed to accept transfer request.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -2829,26 +4439,38 @@ class Community:
 
     @community
     def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
-        """"
-        `subscribe` is the method that subscribes to a user.
+        """
+        Subscribes to an influencer's content.
 
-        `**Parameters**`
+        :param userId: The ID of the influencer to subscribe to.
+        :type userId: str
+        :param autoRenew: Whether the subscription should auto-renew. Defaults to `False`.
+        :type autoRenew: bool
+        :param transactionId: A unique ID for the transaction. If not provided, a random UUID is used. Defaults to `None`.
+        :type transactionId: str
+        :param comId: The ID of the community where the subscription will be made. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to subscribe to.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `autoRenew` - Whether or not to auto renew the subscription. [Optional]
+        `ApiResponse`:
 
-        - `transactionId` - The transaction ID to use. [Optional]
-        
-        `**Example**`
+        - `message`: A message indicating whether the subscription was successfully made.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.subscribe(userId = "5f4d2e0e0a0a0a0a0a0a0a0a", autoRenew=False, transactionId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To subscribe to an influencer with ID "123456":
+
+        >>> response = client.community.subscribe(userId="123456", autoRenew=True)
+        ... if response.statuscode == 0:
+        ...     print("Subscription created successfully!")
+        ... else:
+        ...     print("Failed to create subscription.")
         """
         if not transactionId: transactionId = str(uuid4())
         return ApiResponse(self.session.handler(
@@ -2864,23 +4486,35 @@ class Community:
     @community
     def thank_props(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `thank_props` is the method that thanks a user for props.
+        Sends a thank-you message to a user who has been tipped in a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat where the user was tipped.
+        :type chatId: str
+        :param userId: The ID of the user to send the thank-you message to.
+        :type userId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to thank the user for props in.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userId` - The user ID to thank for props.
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.thank_props(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", userId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        - `message`: A message indicating whether the thank-you message was successfully sent.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To send a thank-you message to user "0000-0000-0000-0000" who was tipped in chat "1111-1111-1111-1111":
+
+        >>> response = client.community.thank_props(chatId="1111-1111-1111-1111", userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Thank-you message sent successfully!")
+        ... else:
+        ...     print("Failed to send thank-you message.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -2897,26 +4531,42 @@ class Community:
         comId: Union[str, int] = None
         ) -> ApiResponse:
         """
-        `send_active` is the method that sends the active time of the user.
+        Sends data about user activity to the server.
 
-        `**Parameters**`
+        :param tz: The timezone offset in seconds from UTC. Defaults to the local timezone.
+        :type tz: int
+        :param start: The start time of a user activity session, in Unix timestamp format (seconds since 1970-01-01 UTC). Required if `timers` is not provided. Defaults to `None`.
+        :type start: int
+        :param end: The end time of a user activity session, in Unix timestamp format (seconds since 1970-01-01 UTC). Required if `timers` is not provided. Defaults to `None`.
+        :type end: int
+        :param timers: A list of user activity sessions, each represented as a dictionary with `start` and `end` keys. Required if `start` and `end` are not provided. Defaults to `None`.
+        :type timers: list
+        :param comId: The ID of the community where the user activity data will be sent. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises MissingTimers: If `start` and `end` are not provided and `timers` is not provided or empty.
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `tz` - The timezone of the active time. 
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `start` - The start time of the active time. [Optional]
+        `ApiResponse`:
 
-        - `end` - The end time of the active time. [Optional]
+        - `message`: A message indicating whether the user activity data was successfully sent.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        - `timers` - The timers of the active time. [Optional]
-        
-        `**Example**`
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_active(timezone=-300, timers=[{"start": time() * 1000, "end": time() * 1000}]])
-        bot.run(sid=sid)
-        ```
+        **Example usage:**
+
+        To send 5 minutes of user activity data:
+
+        >>> start_time = int(time())
+        >>> end_time = int(time()) + 300
+        >>> response = client.community.send_active(start=start_time, end=end_time)
+        ... if response.statuscode == 0:
+        ...     print("User activity data sent successfully!")
+        ... else:
+        ...     print("Failed to send user activity data.")
         """
         if not any([start and end, timers]): raise MissingTimers
         
@@ -2937,116 +4587,117 @@ class Community:
             ))
 
     @community
-    def send_coins(self, coins: int, blogId: str = None, chatId: str = None, wikiId: str = None, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def send_coins(
+        self,
+        coins: int,
+        blogId: str = None,
+        chatId: str = None,
+        wikiId: str = None,
+        transactionId: str = None,
+        comId: Union[str, int] = None
+        ) -> ApiResponse:
         """
-        `send_coins` is the method that sends coins to a user.
+        Sends coins to a blog, chat, or wiki item.
 
-        `**Parameters**`
+        :param coins: The amount of coins to send. Must be a positive integer.
+        :type coins: int
+        :param blogId: The ID of the blog post to send coins to. If provided, `chatId` and `wikiId` must be `None`. Defaults to `None`.
+        :type blogId: str
+        :param chatId: The ID of the chat to send coins to. If provided, `blogId` and `wikiId` must be `None`. Defaults to `None`.
+        :type chatId: str
+        :param wikiId: The ID of the wiki item to send coins to. If provided, `blogId` and `chatId` must be `None`. Defaults to `None`.
+        :type wikiId: str
+        :param transactionId: A unique ID for the transaction. If not provided, a random UUID is used. Defaults to `None`.
+        :type transactionId: str
+        :param comId: The ID of the community where the coins will be sent. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `coins` - The amount of coins to send.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `blogId` - The blog ID to send the coins to. [Optional]
+        `ApiResponse`:
 
-        - `chatId` - The chat ID to send the coins to. [Optional]
+        - `message`: A message indicating whether the coins were successfully sent.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        - `wikiId` - The wiki ID to send the coins to. [Optional]
+        **Example usage:**
 
-        - `transactionId` - The transaction ID to use. [Optional]
-        
-        `**Example**`
+        To send 100 coins to a chat with ID "0000-0000-0000-0000":
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_coins(coins=100, blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.send_coins(coins=100, chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Coins sent successfully!")
+        ... else:
+        ...     print("Failed to send coins.")
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url= f'/x{self.community_id if comId is None else comId}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
-            data = {
+            method="POST", url=f'/x{self.community_id if comId is None else comId}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
+            data={
                 "coins": coins,
                 "tippingContext": {"transactionId": transactionId or (str(uuid4()))},
                 "timestamp": int(time() * 1000)
-                }
-            ))
-    
+            }
+        ))
+
+
     @community
     def send_chat_props(self, coins: int, chatId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
-        """
-        `send_coins_to_chat` is the method that sends coins to a chat.
-
-        `**Parameters**`
-
-        - `coins` - The amount of coins to send.
-
-        - `chatId` - The chat ID to send the coins to.
-
-        - `transactionId` - The transaction ID to use. [Optional]
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_coins_to_chat(coins=100, chatId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
-        """
+        """Refer to `send_coins` for documentation."""
         return self.send_coins(coins=coins, chatId=chatId, transactionId=transactionId, comId=comId)
-    
+
+
     @community
     def send_blog_props(self, coins: int, blogId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
-        """
-        `send_coins_to_blog` is the method that sends coins to a blog.
-
-        `**Parameters**`
-
-        - `coins` - The amount of coins to send.
-
-        - `blogId` - The blog ID to send the coins to.
-
-        - `transactionId` - The transaction ID to use. [Optional]
-        
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.send_coins_to_blog(coins=100, blogId = "5f4d2e0e0a0a0a0a0a0a0a0a")
-        bot.run(sid=sid)
-        ```
-        """
+        """Refer to `send_coins` for documentation."""
         return self.send_coins(coins=coins, blogId=blogId, transactionId=transactionId, comId=comId)
 
+
     @community
-    def start_chat(self, userIds: list, title: str = None, message: str = None, content: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def start_chat(
+        self,
+        userIds: Union[str, List[str]],
+        title: Optional[str] = None,
+        message: Optional[str] = None,
+        content: Optional[str] = None,
+        comId: Optional[Union[str, int]] = None
+    ) -> ApiResponse:
         """
-        `start_chat` is the method that starts a chat with a user.
+        Creates a new chat with the given users.
 
-        `**Parameters**`
+        :param userIds: A single user ID or a list of user IDs to invite to the chat.
+        :type userIds: Union[str, List[str]]
+        :param title: The title of the chat. Defaults to `None`.
+        :type title: Optional[str]
+        :param message: The message to send to the users when inviting them to the chat. Defaults to `None`.
+        :type message: Optional[str]
+        :param content: The content of the chat. Defaults to `None`.
+        :type content: Optional[str]
+        :param comId: The ID of the community where the chat will be created. If not provided, the current community ID is used.
+        :type comId: Optional[Union[str, int]]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userIds` - The user IDs to start the chat with.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `title` - The title of the chat. [Optional]
+        `ApiResponse`:
 
-        - `message` - The message to send in the chat. [Optional]
+        - `message`: A message indicating whether the chat was successfully created.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
 
-        - `content` - The chat description. [Optional]
+        **Example usage:**
 
-        
-        `**Example**`
+        To create a new chat with users "0000-0000-0000-0000" and "1111-1111-1111-1111":
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.start_chat(userIds=["5f4d2e0e0a0a0a0a0a0a0a0a"], title = "Hello", message = "Hello World!", content = "Hello World!")
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.start_chat(userIds=["0000-0000-0000-0000", "1111-1111-1111-1111"], title="New chat", message="Join my chat!", content="Hello, world!")
+        ... if response.statuscode == 0:
+        ...     print("Chat created successfully!")
+        ... else:
+        ...     print("Failed to create chat.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
@@ -3061,25 +4712,39 @@ class Community:
             }))
 
     @community
-    def invite_chat(self, chatId: str, userIds: list, comId: Union[str, int] = None) -> ApiResponse:
+    def invite_chat(self, chatId: str, userIds: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
         """
-        `invite_chat` is the method that invites a user to a chat.
+        Invites one or more users to join a chat.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat to invite users to.
+        :type chatId: str
+        :param userIds: The ID(s) of the user(s) to invite to the chat. Can be a string or a list of strings.
+        :type userIds: Union[str, List[str]]
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to invite the user to.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `userIds` - The user IDs to invite to the chat.
-        
-        `**Example**`
+        Sends a POST request to the API to invite the specified user(s) to join the chat with the given ID.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.invite_chat(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", userIds=["5f4d2e0e0a0a0a0a0a0a0a0a"])
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `message`: A message indicating whether the invitation was successfully sent.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To invite "0101-0101-0101-0101" to join a chat with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.invite_chat(chatId="0000-0000-0000-0000", userIds="0101-0101-0101-0101")
+        ... if response.statuscode == 0:
+        ...     print("Invitation sent successfully!")
+        ... else:
+        ...     print("Failed to send invitation.")
         """
         return ApiResponse(self.session.handler(
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/invite",
@@ -3088,78 +4753,139 @@ class Community:
             "timestamp": int(time() * 1000)
             }))
 
+
     @community
     def set_view_only(self, chatId: str, viewOnly: bool = True, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `view_only` is the method that makes a chat view only.
+        Set the view-only mode for a chat thread.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to modify.
+        :type chatId: str
+        :param viewOnly: Whether to enable or disable view-only mode. Defaults to `True`.
+        :type viewOnly: bool
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to make view only.
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        - `viewOnly` - Whether the chat should be view only or not. [Optional] `[Default: True]`
-        
-        `**Example**`
+        If `viewOnly` is `True`, the function sends a POST request to the API to enable view-only mode for the chat thread with the specified ID. Otherwise, view-only mode is disabled.
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.view_only(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", viewOnly=True)
-        bot.run(sid=sid)
-        ```
+        `ApiResponse`:
+
+        - `message`: A message indicating whether view-only mode was successfully enabled or disabled.
+        - `statuscode`: The status code of the API response.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API request.
+
+        **Example usage:**
+
+        To enable view-only mode for a chat thread with ID "0000-0000-0000-0000":
+
+        >>> response = client.community.set_view_only(chatId="0000-0000-0000-0000", viewOnly=True)
+        ... if response.statuscode == 0:
+        ...     print("View-only mode enabled successfully!")
+        ... else:
+        ...     print("Failed to enable view-only mode.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/disable"
             ))
 
+
     @community
-    def set_members_can_invite(self, chatId: str, canInvite: bool = True, comId: Union[str, int] = None) -> ApiResponse:
+    def set_members_can_invite(self, chatId: str, canInvite: bool = True, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
         """
-        `members_can_invite` is the method that makes a chat members can invite.
+        Sets whether members of a chat thread in the current or specified community can invite other members.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to set the members can invite status for.
+        :type chatId: str
+        :param canInvite: Whether members of the chat thread can invite other members. Defaults to True.
+        :type canInvite: bool
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to make members can invite.
+        This function sends a POST request to the API to enable or disable the ability for members of a chat thread to invite other members in the specified community.
 
-        - `canInvite` - Whether the chat should be members can invite or not. [Optional] `[Default: True]`
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.members_can_invite(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", canInvite=True)
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the setting was successfully changed.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To allow members of a chat thread with ID "1111-1111-1111-1111" to invite other members in the current community:
+
+        >>> response = client.community.set_members_can_invite(chatId="1111-1111-1111-1111", canInvite=True)
+        ... if response.statuscode == 0:
+        ...     print("Members can invite status set successfully!")
+        ... else:
+        ...     print("Failed to set members can invite status.")
+
+        To disable the ability for members of a chat thread with ID "2222-2222-2222-2222" to invite other members in a community with ID "3333":
+
+        >>> response = client.community.set_members_can_invite(chatId="2222-2222-2222-2222", canInvite=False, comId=3333)
+        ... if response.statuscode == 0:
+        ...     print("Members can invite status disabled successfully!")
+        ... else:
+        ...     print("Failed to disable members can invite status.")
         """
+        if "can_invite" in kwargs: #TODO: Remove in the near future.
+            canInvite = kwargs["can_invite"]
+            print("The 'can_invite' parameter is deprecated. Please use 'canInvite' instead.")
+
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/enable" if canInvite else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/disable"
             ))
 
+
     @community
     def change_chat_background(self, chatId: str, backgroundImage: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `change_chat_background` is the method that changes the background of a chat.
+        Changes the background image of a chat thread in the current or specified community.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to change the background image for.
+        :type chatId: str
+        :param backgroundImage: The URL or file path of the image to set as the background image of the chat thread. If None, the background image will be cleared.
+        :type backgroundImage: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to change the background of.
+        This function sends a POST request to the API to change the background image of a chat thread in the specified community. If no `backgroundImage` is provided, the background image will be cleared.
 
-        - `backgroundImage` - The background image to change the chat background to. [Optional]
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.change_chat_background(chatId = "5f4d2e0e0a0a0a0a0a0a0a0a", backgroundImage = "https://i.imgur.com/0QZ0QZ0.png")
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the background image was successfully changed.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To change the background image of a chat thread with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.change_chat_background(chatId="1111-1111-1111-1111", backgroundImage="https://example.com/background.jpg")
+        ... if response.statuscode == 0:
+        ...     print("Chat background changed successfully!")
+        ... else:
+        ...     print("Failed to change chat background.")
+
+        To clear the background image of a chat thread with ID "2222-2222-2222-2222" in a community with ID "123":
+
+        >>> response = client.community.change_chat_background(chatId="2222-2222-2222-2222", backgroundImage=None, comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Chat background cleared successfully!")
+        ... else:
+        ...     print("Failed to clear chat background.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -3168,29 +4894,55 @@ class Community:
             "media": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None]],
             "timestamp": int(time() * 1000)
             }))
-        
+
+
     @community
     def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `solve_quiz` is the method that solves a quiz.
+        Submits answers to a quiz in the current or specified community.
 
-        `**Parameters**`
+        :param quizId: The ID of the quiz to solve.
+        :type quizId: str
+        :param quizAnswers: A dictionary or list of dictionaries containing the quiz answers. Each dictionary should have the keys "questionId" (str) and "answer" (str).
+        :type quizAnswers: Union[dict, list]
+        :param hellMode: Whether to solve the quiz in hell mode. Defaults to False.
+        :type hellMode: bool
+        :param comId: The ID of the community where the quiz is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `quizId` - The quiz ID to solve.
+        This function sends a POST request to the API to submit answers to a quiz in the specified community. The quiz answers should be provided as a dictionary or list of dictionaries with the keys "questionId" (str) and "answer" (str).
 
-        - `quizAnswers` - The quiz answers to solve the quiz with.
+        If `hellMode` is True, the quiz will be solved in hell mode.
 
-        - `hellMode` - Whether the quiz should be solved in hell mode or not. [Optional] `[Default: False]`
-        
-        `**Example**`
+        `ApiResponse`:
 
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        bot.community.solve_quiz(quizId = "5f4d2e0e0a0a0a0a0a0a0a0a", quizAnswers={"5f4d2e0e0a0a0a0a0a0a0a0a": "5f4d2e0e0a0a0a0a0a0a0a0a"}, hellMode=False)
-        bot.run(sid=sid)
-        ```
+        - `message` (str): A message indicating whether the quiz was successfully solved.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+        - `mediaValue` (dict): The result of the quiz, including the user's score, rank, and prizes.
+
+        **Example usage:**
+
+        To solve a quiz with ID "1111-1111-1111-1111" in the current community:
+
+        >>> answers = [{"questionId": "q1", "answer": "a1"}, {"questionId": "q2", "answer": "a2"}]
+        >>> response = client.community.solve_quiz(quizId="1111-1111-1111-1111", quizAnswers=answers)
+        ... if response.statuscode == 0:
+        ...     print("Quiz solved successfully!")
+        ... else:
+        ...     print("Failed to solve quiz.")
+
+        To solve a quiz with ID "2222-2222-2222-2222" in a community with ID "1234" in hell mode:
+
+        >>> answers = {"questionId": "q1", "answer": "a1"}
+        >>> response = client.community.solve_quiz(quizId="2222-2222-2222-2222", quizAnswers=answers, hellMode=True, comId=1234)
+        ... if response.statuscode == 0:
+        ...     print("Quiz solved successfully!")
+        ... else:
+        ...     print("Failed to solve quiz.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -3201,38 +4953,9 @@ class Community:
             "timestamp": int(time() * 1000)
             }))
 
+
     @community
     def set_channel(self, chatId: str, comId: Union[str, int] = None) -> None:
-        """
-        `set_channel` is the method that sets the channel of a chat.
-
-        `**Parameters**`
-
-        - `chatId` - The chat ID to set the channel of.
-
-        `**Example**`
-
-        ```python
-        from pymino import Bot
-
-        bot = Bot()
-
-        @bot.command("play")
-        def play(ctx: Context, message: str):
-            bot.community.set_channel(chatId=ctx.chatId)
-            sleep(1)
-            if bot.channel == None:
-                return ctx.reply("Start a voice call first!")
-            else:
-                # This is just an example, you can do whatever you want here.
-                rtc.joinChannel(
-                    bot.channel.channelKey,
-                    bot.channel.channelName,
-                    None,
-                    bot.channel.channelUid
-                    )
-        
-        """
         for i in range(2):
             self.bot.send_websocket_message({
                 "o": {
@@ -3246,27 +4969,6 @@ class Community:
 
     @community
     def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
-        """
-        `start_vc` is the method that starts a voice call in a chat.
-        
-        `**Parameters**`
-        
-        - `chatId` - The chat ID to start the voice call in.
-        
-        `**Example**`
-        
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        
-        @bot.command("start")
-        def start(ctx: Context):
-            bot.community.start_vc(chatId=ctx.chatId)
-            
-        bot.run(sid=sid)
-        ```
-        """
         for i in range(2):
             self.bot.send_websocket_message({
                 "o": {
@@ -3279,29 +4981,9 @@ class Community:
                 "t": 112 if i == 0 else 108
             })
 
+
     @community
     def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
-        """
-        `stop_vc` is the method that stops a voice call in a chat.
-        
-        `**Parameters**`
-        
-        - `chatId` - The chat ID to stop the voice call in.
-        
-        `**Example**`
-        
-        ```python
-        from pymino import Bot
-        
-        bot = Bot()
-        
-        @bot.command("stop")
-        def stop(ctx: Context):
-            bot.community.stop_vc(chatId=ctx.chatId)
-            
-        bot.run(sid=sid)
-        ```
-        """
         self.bot.send_websocket_message({
             "o": {
                 "ndcId": self.community_id if comId is None else comId,
@@ -3312,30 +4994,47 @@ class Community:
             "t": 112
         })
 
+
     @community
     def disable_chat(self, chatId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `disable_chat` is the method that disables a chat.
+        Disables a chat thread in the current or specified community.
 
-        `**Parameters**`
+        :param chatId: The ID of the chat thread to disable.
+        :type chatId: str
+        :param reason: An optional reason for disabling the chat thread.
+        :type reason: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `chatId` - The chat ID to disable.
+        This function sends a POST request to the API to disable a chat thread in the specified community. If a reason is provided, the reason is included in the request data.
 
-        - `reason` - The reason for disabling the chat. [Optional]
+        `ApiResponse`:
 
-        `**Example**`
+        - `message` (str): A message indicating whether the chat thread was successfully disabled.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
+        **Example usage:**
 
-        bot = Bot()
+        To disable a chat thread with ID "1111-1111-1111-1111" in the current community:
 
-        @bot.command("disable")
-        def disable(ctx: Context, message: str):
-            bot.community.disable_chat(chatId=ctx.chatId, reason=message)
-        
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.disable_chat(chatId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Chat thread disabled successfully!")
+        ... else:
+        ...     print("Failed to disable chat thread.")
+
+        To disable a chat thread with ID "2222-2222-2222-2222" in a community with ID "1234" and provide a reason:
+
+        >>> response = client.community.disable_chat(chatId="2222-2222-2222-2222", reason="This chat thread violates community guidelines.", comId=1234)
+        ... if response.statuscode == 0:
+        ...     print("Chat thread disabled successfully!")
+        ... else:
+        ...     print("Failed to disable chat thread.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -3350,31 +5049,48 @@ class Community:
             "adminOpValue": 9,
             "timestamp": int(time() * 1000)
             }))
-            
+
+
     @community
     def disable_blog(self, blogId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `disable_blog` is the method that disables a blog.
+        Disables a blog in the current or specified community.
 
-        `**Parameters**`
+        :param blogId: The ID of the blog to disable.
+        :type blogId: str
+        :param reason: An optional reason for disabling the blog.
+        :type reason: str
+        :param comId: The ID of the community where the blog is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `blogId` - The blog ID to disable.
+        This function sends a POST request to the API to disable a blog in the specified community. If a reason is provided, the reason is included in the request data.
 
-        - `reason` - The reason for disabling the blog. [Optional]
+        `ApiResponse`:
 
-        `**Example**`
+        - `message` (str): A message indicating whether the blog was successfully disabled.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
+        **Example usage:**
 
-        bot = Bot()
+        To disable a blog with ID "1111-1111-1111-1111" in the current community:
 
-        @bot.command("disable")
-        def disable(ctx: Context, message: str):
-            bot.community.disable_blog(blogId=ctx.blogId, reason=message)
-        
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.disable_blog(blogId="1111-1111-1111-1111")
+        ... if response.statuscode == 0:
+        ...     print("Blog disabled successfully!")
+        ... else:
+        ...     print("Failed to disable blog.")
+
+        To disable a blog with ID "2222-2222-2222-2222" in a community with ID "123" and provide a reason:
+
+        >>> response = client.community.disable_blog(blogId="2222-2222-2222-2222", reason="This blog violates community guidelines.", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Blog disabled successfully!")
+        ... else:
+        ...     print("Failed to disable blog.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
@@ -3389,31 +5105,48 @@ class Community:
             "adminOpValue": 9,
             "timestamp": int(time() * 1000)
             }))
-    
+
+
     @community
     def hide_user(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
-        `hide_user` is the method that hides a user.
+        Hides a user profile in the current or specified community.
 
-        `**Parameters**`
+        :param userId: The ID of the user to hide.
+        :type userId: str
+        :param reason: An optional reason for hiding the user.
+        :type reason: str
+        :param comId: The ID of the community where the user profile is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
 
-        - `userId` - The user ID to hide.
+        This function sends a POST request to the API to hide a user profile in the specified community. If a reason is provided, the reason is included in the request data.
 
-        - `reason` - The reason for hiding the user. [Optional]
+        `ApiResponse`:
 
-        `**Example**`
+        - `message` (str): A message indicating whether the user was successfully hidden.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
 
-        ```python
-        from pymino import Bot
+        **Example usage:**
 
-        bot = Bot()
+        To hide a user with ID "0000-0000-0000-0000" in the current community:
 
-        @bot.command("hide")
-        def hide(ctx: Context, message: str):
-            bot.community.hide_user(userId=ctx.userId, reason=message)
-        
-        bot.run(sid=sid)
-        ```
+        >>> response = client.community.hide_user(userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("User hidden successfully!")
+        ... else:
+        ...     print("Failed to hide user.")
+
+        To hide a user with ID "1111-1111-1111-1111" in a community with ID "123" and provide a reason:
+
+        >>> response = client.community.hide_user(userId="1111-1111-1111-1111", reason="This user violated community guidelines.", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("User hidden successfully!")
+        ... else:
+        ...     print("Failed to hide user.")
         """
         return ApiResponse(self.session.handler(
             method = "POST",
