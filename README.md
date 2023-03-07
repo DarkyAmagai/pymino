@@ -34,13 +34,6 @@
 <div>
   <h2 align="center">Client Class Usage</h2>
 
-  <style>
-    pre {
-      margin: 0 auto;
-      text-align: left;
-    }
-  </style>
-
   <pre><code class="language-python">
 >>> from pymino import Client
 
@@ -75,13 +68,6 @@
 
 <div>
   <h2 align="center">Bot Class Usage</h2>
-
-  <style>
-    pre {
-      margin: 0 auto;
-      text-align: left;
-    }
-  </style>
 
   <pre><code class="language-python">
 >>> from pymino import Bot
