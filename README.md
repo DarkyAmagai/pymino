@@ -31,99 +31,118 @@
   <p>For more detailed documentation and usage examples, check out the project's <a href="https://pymino.info/index.html">official documentation</a>.</p>
 </div>
 
-<div align="center">
-  <h2>Client Class Usage</h2>
+<div>
+  <h2 align="center">Client Class Usage</h2>
 
-  <pre><code class="language-python">from pymino import Client
+  <style>
+    pre {
+      margin: 0 auto;
+      text-align: left;
+    }
+  </style>
 
-# Initialize the client
-client = Client() # You can set proxies and device_id here
+  <pre><code class="language-python">
+>>> from pymino import Client
 
-# You need to login to utilize most functions.
-client.login("email", "password") or client.login("sid")
-print(f"Logged in as {client.profile.username}")
+>>> # Initialize the client
+>>> client = Client() # You can set proxies and device_id here
 
-# We can either set community_id by link or by comId.
-client.fetch_community_id(community_link="https://aminoapps.com/c/OnePiece")
-# Or
-client.set_community_id(community_id=123)
+>>> # You need to login to utilize most functions.
+>>> client.login("email", "password") or client.login("sid")
+>>> print(f"Logged in as {client.profile.username}")
 
-# To access community functions we utilize the community property.
-client.community.send_message(
-    chatId=000000-0000-0000-000000,
-    content="Hello world!"
-)
-# This will utilize the community id we set earlier.
-# We can also set the community id in the function call itself.
-client.community.send_message(
-    chatId=000000-0000-0000-000000,
-    content="Hello world!",
-    comId=123
-)</code></pre>
+>>> # We can either set community_id by link or by comId.
+>>> client.fetch_community_id(community_link="https://aminoapps.com/c/OnePiece")
+>>> # Or
+>>> client.set_community_id(community_id=123)
+
+>>> # To access community functions we utilize the community property.
+>>> client.community.send_message(
+...     chatId=000000-0000-0000-000000,
+...     content="Hello world!"
+... )
+>>> # This will utilize the community id we set earlier.
+>>> # We can also set the community id in the function call itself.
+>>> client.community.send_message(
+...     chatId=000000-0000-0000-000000,
+...     content="Hello world!",
+...     comId=123
+... )
+  </code></pre>
 </div>
 
 
-<div align="center">
-  <h2>Bot Class Usage</h2>
 
-  <pre><code class="language-python">from pymino import Bot
-from pymino.ext import *
+<div>
+  <h2 align="center">Bot Class Usage</h2>
 
-# Initialize the bot
-bot = Bot(
-    command_prefix="!",
-    community_id=00000000,
-) # You can set proxies and device_id here
+  <style>
+    pre {
+      margin: 0 auto;
+      text-align: left;
+    }
+  </style>
 
-# The on_ready event is called when the bot has logged in.
-@bot.on_ready()
-def ready():
-    print(f"{bot.profile.username} has logged in!")
+  <pre><code class="language-python">
+>>> from pymino import Bot
+>>> from pymino.ext import *
 
-# The on_text_message event is called when a message is received.
-@bot.on_text_message()
-def message(ctx: Context):
-    print(f"{ctx.author.username}: {ctx.message.content}")
-    if ctx.message.content.startswith("hi"):
-        ctx.reply("Hello!")
+>>> # Initialize the bot
+>>> bot = Bot(
+...     command_prefix="!",
+...     community_id=00000000,
+... ) # You can set proxies and device_id here
 
-# The on_member_join event is called when a member joins a chat.
-@bot.on_member_join()
-def join(ctx: Context):
-    ctx.reply(f"Welcome to the chat, {ctx.author.username}!")
+>>> # The on_ready event is called when the bot has logged in.
+>>> @bot.on_ready()
+... def ready():
+...     print(f"{bot.profile.username} has logged in!")
 
-# The on_member_leave event is called when a member leaves a chat.
-@bot.on_member_leave()
-def leave(ctx: Context):
-    ctx.reply(f"Goodbye!")
+>>> # The on_text_message event is called when a message is received.
+>>> @bot.on_text_message()
+... def message(ctx: Context):
+...     print(f"{ctx.author.username}: {ctx.message.content}")
+...     if ctx.message.content.startswith("hi"):
+...         ctx.reply("Hello!")
 
-# This is how you create a command.
-@bot.command(
-    command_name="ping", # Set the name of the command.
-    command_description="This will reply with Pong!", # Set the description of the command.
-    command_aliases=["p"], # Set the aliases of the command. This will allow !p to be used as !ping.
-    cooldown=0 # Set the cooldown of the command. This will prevent the command from being used for <cooldown> seconds.
-)
-def ping(ctx: Context): # The context is passed to the function.
-    ctx.reply("Pong!") # This will reply to the message with "Pong!"
+>>> # The on_member_join event is called when a member joins a chat.
+>>> @bot.on_member_join()
+... def join(ctx: Context):
+...     ctx.reply(f"Welcome to the chat, {ctx.author.username}!")
 
-@bot.command("say")
-def say(ctx: Context, message: str): # message will be the content message after the command.
-    ctx.reply(message) # This will reply to the message with the message argument.
+>>> # The on_member_leave event is called when a member leaves a chat.
+>>> @bot.on_member_leave()
+... def leave(ctx: Context):
+...     ctx.reply(f"Goodbye!")
 
-@bot.task(interval=10) # This will run any task every 10 seconds.
-def task(): # This will not use community functions.
-    print("This is a task! It will run every 10 seconds!")
+>>> # This is how you create a command.
+>>> @bot.command(
+...     name="ping", # Set the name of the command.
+...     description="This will reply with Pong!", # Set the description of the command.
+...     aliases=["p"], # Set the aliases of the command. This will allow !p to be used as !ping.
+...     cooldown=0 # Set the cooldown of the command. This will prevent the command from being used for <cooldown> seconds.
+... )
+... def ping(ctx: Context): # The context is passed to the function.
+...     ctx.reply("Pong!") # This will reply to the message with "Pong!"
 
-@bot.task(interval=30)
-def task(community: Community):
-    [...] # Do something in the community
-    community.send_message(chatId, "Hello world!")
-    print("This is a community task! It will run every 30 seconds.")
+>>> @bot.command("say")
+... def say(ctx: Context, message: str): # message will be the content message after the command.
+...     ctx.reply(message) # This will reply to the message with the message argument.
 
-@bot.on_error()
-def error(error: Exception): # This will be called when an error occurs.
-    print(f"An error has occurred: {error}")
+>>> @bot.task(interval=10) # This will run any task every 10 seconds.
+... def task(): # This will not use community functions.
+...     print("This is a task! It will run every 10 seconds!")
 
-bot.run("email", "password") or bot.run("sid") # You can login with email and password or sid.</code></pre>
+>>> @bot.task(interval=30)
+... def task(community: Community):
+...     [...] # Do something in the community
+...     community.send_message(chatId, "Hello world!")
+...     print("This is a community task! It will run every 30 seconds.")
+
+>>> @bot.on_error()
+... def error(error: Exception): # This will be called when an error occurs.
+...     print(f"An error has occurred: {error}")
+
+>>> bot.run("email", "password") or bot.run("sid") # You can login with email and password or sid.
+  </code></pre>
 </div>
