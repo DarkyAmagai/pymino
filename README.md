@@ -31,9 +31,10 @@
   <p>For more detailed documentation and usage examples, check out the project's <a href="https://pymino.info/index.html">official documentation</a>.</p>
 </div>
 
-<h2>Client Class Usage</h2>
+<div align="center">
+  <h2>Client Class Usage</h2>
 
-<pre><code class="language-python">from pymino import Client
+  <pre><code class="language-python">from pymino import Client
 
 # Initialize the client
 client = Client() # You can set proxies and device_id here
@@ -59,11 +60,13 @@ client.community.send_message(
     content="Hello world!",
     comId=123
 )</code></pre>
+</div>
 
 
-<h2>Bot Class Usage</h2>
+<div align="center">
+  <h2>Bot Class Usage</h2>
 
-<pre><code class="language-python">from pymino import Bot
+  <pre><code class="language-python">from pymino import Bot
 from pymino.ext import *
 
 # Initialize the bot
@@ -123,3 +126,4 @@ def error(error: Exception): # This will be called when an error occurs.
     print(f"An error has occurred: {error}")
 
 bot.run("email", "password") or bot.run("sid") # You can login with email and password or sid.</code></pre>
+</div>
