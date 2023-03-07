@@ -5,8 +5,8 @@ from random import randint
 from diskcache import Cache
 from base64 import b64encode
 from time import time, timezone
+from typing import BinaryIO, Callable, List, Optional, Union, TypeVar, Any
 
-from typing import BinaryIO, Callable, List, Optional, Union
 
 from .entities.enums import *
 from .entities.threads import CThread, CThreadList
@@ -26,6 +26,7 @@ from .entities.general import (
     InvitationId, LinkInfo, NotificationList, QuizRankingList
     )
 
+F = TypeVar("F", bound=Callable[..., Any])
 
 class Community:
     """
@@ -120,7 +121,7 @@ class Community:
         if self.userId is None: return
 
 
-    def community(func: Callable) -> Callable:
+    def community(func: F) -> F:
         """
         A decorator that ensures the user is logged in and a community ID is present before running the decorated function.
 
@@ -144,12 +145,13 @@ class Community:
         >>> def my_function(self, comId: str):
         >>>     # Function code
         """
-        def community_func(*args, **kwargs):
+        def community_func(*args, **kwargs) -> Any:
             if not args[0].userId:
                 raise NotLoggedIn("You are not logged in. Please login before using this function.")
             if not any([args[0].community_id, kwargs.get("comId")]):
                 raise MissingCommunityId("Please provide a community id to the bot before running it or add it to the function call.")
             return func(*args, **kwargs)
+        community_func.__annotations__ = func.__annotations__
         return community_func
 
 
