@@ -304,7 +304,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def reset_password(self, email: str, new_password: str, code: str, deviceId: str = device_id()) -> ResetPassword:
+    def reset_password(self, email: str, newPassword: str, code: str, deviceId: str = device_id()) -> ResetPassword:
         """
         `**reset_password**` - Resets the password.
 
@@ -312,7 +312,7 @@ class Account:
 
         - `email` - The email of the account.
 
-        - `new_password` - The new password of the account.
+        - `newPassword` - The new password of the account.
 
         - `code` - The code sent to the email.
         
@@ -323,14 +323,14 @@ class Account:
         
         bot = Bot()
         bot.run(email=email, password=password)
-        response = bot.reset_password(email=email, new_password=new_password, code=code)
+        response = bot.reset_password(email=email, newPassword=newPassword, code=code)
         print(response)
         ```
         """
         return ResetPassword(self.session.handler(
             method = "POST", url="/g/s/auth/reset-password",
             data={
-                "updateSecret": f"0 {new_password}",
+                "updateSecret": f"0 {newPassword}",
                 "emailValidationContext": {
                     "data": {"code": code},
                     "type": 1,

@@ -1,7 +1,7 @@
 from time import time
 from diskcache import Cache
 from colorama import Fore, Style
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, TypeVar, Union
 
 from .ext.entities.handlers import *
 from .ext.entities.userprofile import UserProfile
@@ -16,7 +16,9 @@ from .ext.entities.general import (
     ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet
     )
 
-class Client():
+F = TypeVar("F", bound=Callable[..., Any])
+
+class Client:
     """
     `Client` - This is the main client.
 
@@ -120,53 +122,217 @@ class Client():
 
     """
     def __init__(self, **kwargs):
-        for key, value in kwargs.items(): setattr(self, key, value)
-        self.debug:             bool = check_debugger()
-        self.is_authenticated:  bool = False
-        self.userId:            str = None
-        self.sid:               str = None
-        self.cache:             Cache = Cache("cache")
-        self.community_id:      Optional[str] = kwargs.get("comId") or kwargs.get("community_id")
-        self.device_id:         Optional[str] = kwargs.get("device_id") or generate_device_id()
-        self.request:           RequestHandler = RequestHandler(
-                                self,
-                                proxy=kwargs.get("proxy")
-                                )
-        self.account:           Account = Account(
-                                session=self.request
-                                )
-        self.community:         Community = Community(
-                                bot = self,
-                                session=self.request,
-                                community_id=self.community_id
-                                )
+        self._debug: bool = check_debugger()
+        self._is_authenticated: bool = False
+        self._userId: str = None
+        self._sid: str = None
+        self.cache: Cache = Cache("cache")
+        self.community_id: Optional[str] = kwargs.get("comId", kwargs.get("community_id"))
+        self.device_id: Optional[str] = kwargs.get("device_id") or generate_device_id()
+        self.request: RequestHandler = RequestHandler(
+            self,
+            proxy=kwargs.get("proxy")
+        )
+        self.account: Account = Account(
+            session=self.request
+        )
+        self.community: Community = Community(
+            bot=self,
+            session=self.request,
+            community_id=self.community_id
+        )
 
-    def authenticated(func: Callable):
-        def wrapper(*args, **kwargs):
-            if not args[0].is_authenticated: raise LoginRequired
+
+    @property
+    def debug(self) -> bool:
+        """
+        Whether or not debug mode is enabled.
+
+        :return: True if debug mode is enabled, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not debug mode is enabled. Debug mode can be used to enable additional logging and
+        debug information during development.
+
+        **Note:** This property only returns the debug mode state and cannot be used to set the debug mode state. To set the
+        debug mode state, use the `self._debug` attribute directly.
+        """
+        return self._debug
+    
+
+    @debug.setter
+    def debug(self, value: bool) -> None:
+        """
+        Sets the debug mode state.
+
+        :param value: True to enable debug mode, False to disable it.
+        :type value: bool
+        :return: None
+
+        This setter sets the debug mode state. Debug mode can be used to enable additional logging and debug information
+        during development.
+
+        **Note:** This setter only sets the debug mode state and cannot be used to retrieve the debug mode state. To retrieve
+        the debug mode state, use the `self.debug` property.
+        """
+        self._debug = value
+
+
+    @property
+    def is_authenticated(self) -> bool:
+        """
+        Whether or not the client is authenticated.
+
+        :return: True if the client is authenticated, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not the client is authenticated. The client is authenticated after logging in to
+        Amino and receiving a valid session ID.
+
+        **Note:** This property only returns the authentication state and cannot be used to set the authentication state. To
+        set the authentication state, use the `self._is_authenticated` attribute directly.
+        """
+        return self._is_authenticated
+    
+
+    @is_authenticated.setter
+    def is_authenticated(self, value: bool) -> None:
+        """
+        Sets the authentication state of the client.
+
+        :param value: True to authenticate the client, False to deauthenticate it.
+        :type value: bool
+        :return: None
+
+        This setter sets the authentication state of the client. The client is authenticated after logging in to Amino and
+        receiving a valid session ID.
+
+        **Note:** This setter only sets the authentication state and cannot be used to retrieve the authentication state. To
+        retrieve the authentication state, use the `self.is_authenticated` property.
+        """
+        self._is_authenticated = value
+
+
+    @property
+    def userId(self) -> str:
+        """
+        The ID of the user associated with the client.
+
+        :return: The ID of the user.
+        :rtype: str
+
+        This property returns the ID of the user associated with the client. The user ID is set when the client logs in to
+        Amino, and can be used to make API calls related to the user, such as retrieving the user's profile or posts.
+
+        **Note:** This property only returns the user ID and cannot be used to set the user ID. To set the user ID, use the
+        `self._userId` attribute directly.
+        """
+        return self._userId
+
+
+    @userId.setter
+    def userId(self, value: str) -> None:
+        """
+        Sets the ID of the user associated with the client.
+
+        :param value: The ID of the user to set.
+        :type value: str
+        :return: None
+
+        This setter sets the ID of the user associated with the client. The user ID is used to make API calls related to the
+        user, such as retrieving the user's profile or posts.
+
+        **Note:** This setter only sets the user ID and cannot be used to retrieve the user ID. To retrieve the user ID, use
+        the `self.userId` property.
+        """
+        self._userId = value
+
+        
+    @property
+    def sid(self) -> str:
+        """
+        The session ID of the client.
+
+        :return: The session ID.
+        :rtype: str
+
+        This property returns the session ID of the client. The session ID is set when the client logs in to Amino, and is
+        used to make authenticated API calls, such as posting messages or retrieving user information.
+
+        **Note:** This property only returns the session ID and cannot be used to set the session ID. To set the session ID,
+        use the `self._sid` attribute directly.
+        """
+        return self._sid
+
+
+    @sid.setter
+    def sid(self, value: str) -> None:
+        """
+        Sets the session ID of the client.
+
+        :param value: The session ID to set.
+        :type value: str
+        :return: None
+
+        This setter sets the session ID of the client. The session ID is used to make authenticated API calls, such as
+        posting messages or retrieving user information.
+
+        **Note:** This setter only sets the session ID and cannot be used to retrieve the session ID. To retrieve the session
+        ID, use the `self.sid` property.
+        """
+        self._sid = value
+
+
+    def authenticated(func: F) -> F:
+        """
+        A decorator that ensures the user is authenticated before running the decorated function.
+
+        :param func: The function to be decorated.
+        :type func: Callable
+        :raises LoginRequired: If the user is not authenticated.
+        :return: The result of calling the decorated function.
+        :rtype: Any
+
+        **Example usage:**
+
+        >>> client = Client()
+        >>> client.login(email="example@example.com", password="password")
+
+        >>> @authenticated
+        >>> def my_function(self):
+        >>>     # Function code
+        """
+        def wrapper(*args, **kwargs) -> Any:
+            if not args[0].is_authenticated:
+                raise LoginRequired("You must be authenticated to use this function.")
             return func(*args, **kwargs)
         return wrapper
-    
+
+
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
-        `fetch_community_id` - fetches the community id from a community link.
+        Fetches the community ID associated with the provided community link.
 
-        `**Parameters**`
-        - `community_link` - The community link to fetch the community id from.
-        - `set_community_id` - Whether or not to set the community id. Defaults to `True`.
+        :param community_link: The community link for which to fetch the ID.
+        :type community_link: str
+        :param set_community_id: Whether or not to set the fetched community ID on the client instance. Defaults to True.
+        :type set_community_id: Optional[bool]
+        :return: The community ID associated with the provided community link.
+        :rtype: int
 
-        `**Returns**`
-        - `int` - The community id.
+        The function first checks if the community ID for the provided community link is already present in the cache.
+        If not, it fetches the community ID from the server using the provided community link. It then stores the community
+        ID in the cache for future use.
 
-        `**Example**`
-        ```python
-        from pymino import Client
+        If the `set_community_id` parameter is set to True, the function also sets the community ID on the client instance
+        for future API calls.
 
-        client = Client()
+        If the provided community link is not found on the server, the function raises a CommunityNotFound exception.
 
-        client.fetch_community_id("https://aminoapps.com/c/CommunityName")
-        ```
+        **Note:** The community ID is required for making API calls related to a specific community, such as posting or
+        retrieving posts. It is recommended to use this function if you do not already know the community ID.
         """
+
         KEY = str((community_link, "comId"))
         if not self.cache.get(KEY):
             self.cache.set(KEY, CCommunity(self.request.handler(
@@ -180,21 +346,26 @@ class Client():
 
         return community_id
 
+
     def set_community_id(self, community_id: Union[str, int]) -> int:
         """
-        `set_community_id` - sets the community id.
+        Sets the community ID on the client instance and the Community object.
 
-        `**Parameters**`
-        - `community_id` - The community id to set.
+        :param community_id: The community ID to set.
+        :type community_id: Union[str, int]
+        :return: The community ID that was set.
+        :rtype: int
 
-        `**Example**`
-        ```python
-        from pymino import Client
+        The function first checks if the provided community ID is not None and not already an integer. If it is a string,
+        it converts it to an integer.
 
-        client = Client()
+        If the community ID cannot be verified, the function raises a VerifyCommunityIdIsCorrect exception.
 
-        client.set_community_id(123456789)
-        ```
+        The function then sets the community ID on the client instance and the Community object for future API calls.
+
+        **Note:** The community ID is required for making API calls related to a specific community, such as posting or
+        retrieving posts. It is recommended to use the `fetch_community_id` function if you do not already know the
+        community ID.
         """
         try:
             if community_id is not None and not isinstance(community_id, int):
@@ -206,18 +377,21 @@ class Client():
         self.community.community_id = community_id
 
         return community_id
-    
+
+
     def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
-        `authenticate` - authenticates the bot.
+        Authenticates the bot with the provided email and password.
 
-        [This is used internally.]
-
-        `**Parameters**`
-        - `email` - The email to use to login.
-        - `password` - The password to use to login.
-        - `device_id` - The device id to use to login.
-
+        :param email: The email to use to log in.
+        :type email: str
+        :param password: The password to use to log in.
+        :type password: str
+        :param device_id: The device id to use to log in. Defaults to None.
+        :type device_id: Optional[str]
+        :return: A dictionary representing the server response.
+        :rtype: dict
+        :raises: `APIError` if the API response code is not 200.
         """
         return ApiResponse(self.request.handler(
             method="POST",
@@ -238,6 +412,63 @@ class Client():
                 }
             )).json()
 
+
+    def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
+        """
+        Authenticates the user with the provided email and password.
+
+        :param email: The email address associated with the account.
+        :type email: str
+        :param password: The password for the account.
+        :type password: str
+        :param device_id: The device ID associated with the account. Defaults to None.
+        :type device_id: Optional[str]
+        :param use_cache: Whether or not to use cached login credentials. Defaults to True.
+        :type use_cache: bool
+        :return: A dictionary containing the login response from the server.
+        :rtype: dict
+        
+        The function first checks if cached login credentials are available for the provided email. If so, it uses the cached
+        session ID and device ID to fetch the account details from the server. If the server returns an exception, it falls
+        back to authenticating with the provided email and password, and the device ID from the cache.
+
+        If no cached credentials are available, the function authenticates with the provided email and password, and the
+        provided or default device ID.
+
+        Finally, the function sets the email and password on the request object for future API calls.
+
+        **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
+        """
+        if use_cache and cache_exists(email=email):
+            cached = fetch_cache(email=email)
+
+            self.sid: str = cached[0]
+            self.request.sid: str = cached[0]
+            self.userId: str = parse_auid(cached[0])
+
+            try:
+                response: dict = self.fetch_account()
+            except Exception:
+                response: dict = self.authenticate(
+                    email=email,
+                    password=password,
+                    device_id=cached[1]
+                    )
+
+        else:
+            self.sid = None
+            response: dict = self.authenticate(
+                email=email,
+                password=password,
+                device_id=device_id
+                )
+
+        for key, value in {"email": email, "password": password}.items():
+            setattr(self.request, key, value)            
+
+        return response
+
+
     def login(
         self,
         email: Optional[str] = None,
@@ -245,68 +476,52 @@ class Client():
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
         use_cache: bool = True
-    ) -> None:
+        ) -> None:
         """
-        `login` - logs in to the client.
+        Logs in to the client using the provided credentials.
 
-        `**Parameters**`
-        - `email` - The email to use to login. Defaults to `None`.
-        - `password` - The password to use to login. Defaults to `None`.
-        - `sid` - The sid to use to login. Defaults to `None`.
-        - `device_id` - The device id to use to login. Defaults to `None`.
+        :param email: The email address associated with the account. Defaults to None.
+        :type email: Optional[str]
+        :param password: The password for the account. Defaults to None.
+        :type password: Optional[str]
+        :param sid: The session ID for the account. Defaults to None.
+        :type sid: Optional[str]
+        :param device_id: The device ID associated with the account. Defaults to None.
+        :type device_id: Optional[str]
+        :param use_cache: Whether or not to use cached login credentials. Defaults to True.
+        :type use_cache: bool
+        :raises MissingEmailPasswordOrSid: If no email, password or sid is provided.
+        :raises LoginFailed: If login failed.
+        :return: None
+        :rtype: None
 
-        `**Example**`
-        ```python
-        from pymino import Client
+        **Example usage:**
 
-        client = Client()
-
-        client.run(email="email", password="password")
-        ```
+        >>> client = Client()
+        >>> client.login(email="example@example.com", password="password")
         """
-        if email and password:
-            if use_cache and cache_exists(email=email):
-                cached = fetch_cache(email=email)
-
-                self.sid: str = cached[0]
-                self.request.sid: str = cached[0]
-                self.userId: str = parse_auid(cached[0])
-
-                try:
-                    response: dict = self.fetch_account()
-                except Exception:
-                    response: dict = self.authenticate(
-                        email=email,
-                        password=password,
-                        device_id=cached[1]
-                        )
-
-            else:
-                self.sid = None
-                response: dict = self.authenticate(
-                    email=email,
-                    password=password,
-                    device_id=device_id
-                    )
-
-            for key, value in {"email": email, "password": password}.items():
-                setattr(self.request, key, value)            
-
-        elif sid:
-            self.sid: str = sid
-            self.request.sid: str = sid
-            self.userId: str = parse_auid(sid)
-            response: dict = self.fetch_account()
-
-        else:
+        if not sid and not email and not password:
             raise MissingEmailPasswordOrSid
+
+        if sid:
+            self.sid = sid
+            self.request.sid = sid
+            self.userId = parse_auid(sid)
+            response = self.fetch_account()
+        else:
+            response = self._login_handler(
+                email=email,
+                password=password,
+                device_id=device_id,
+                use_cache=use_cache
+                )
 
         if not response:
             raise LoginFailed
-        
-        else:
-            return self.__run__(response)
-        
+
+        return self._run(response)
+
+
     def run(
         self,
         email: Optional[str] = None,
@@ -316,26 +531,55 @@ class Client():
         use_cache: bool = True
     ) -> None:
         """
-        `run` - runs the client.
+        Logs in to the client and starts running it. 
 
-        `**Parameters**`
-        - `email` - The email to use to login. Defaults to `None`.
-        - `password` - The password to use to login. Defaults to `None`.
-        - `sid` - The sid to use to login. Defaults to `None`.
-        - `device_id` - The device id to use to login. Defaults to `None`.
+        If authentication is successful, the bot will be logged in and the client will be ready to use.
 
-        `**Example**`
-        ```python
-        from pymino import Client
+        :param email: The email to use to log in. Defaults to None.
+        :type email: str, optional
+        :param password: The password to use to log in. Defaults to None.
+        :type password: str, optional
+        :param sid: The sid to use to log in. Defaults to None.
+        :type sid: str, optional
+        :param device_id: The device id to use to log in. Defaults to None.
+        :type device_id: str, optional
+        :param use_cache: Whether to use the cache to retrieve the sid. Defaults to True.
+        :type use_cache: bool, optional
+        :raises MissingEmailPasswordOrSid: If email, password, or sid is missing.
+        :raises LoginFailed: If authentication failed.
+        :return: None.
+        :rtype: None
 
-        client = Client()
+        **Example usage:**
 
-        client.run(email="email", password="password")
-        ```
+        >>> client = Client()
+        >>> client.run(email="example@example.com", password="password")
         """
         return self.login(email=email, password=password, sid=sid, device_id=device_id, use_cache=use_cache)
 
-    def __run__(self, response: dict) -> dict:
+
+    def _run(self, response: dict) -> dict:
+        """
+        Processes the response from a successful login attempt and sets up the authenticated client.
+
+        :param response: The response from the login attempt.
+        :type response: dict
+        :return: The response from the login attempt.
+        :rtype: dict
+
+        This method is called internally by the `login` and `run` methods after a successful login attempt.
+        It sets up the authenticated client by parsing the response, initializing some client properties,
+        and caching the login credentials if applicable.
+
+        If the `debug` property of the client instance is `True`, this method prints a message to the console
+        confirming that the client is now authenticated.
+
+        **Example usage:**
+
+        >>> client = Client()
+        >>> response = client.authenticate(email="example@example.com", password="password")
+        >>> client.__run__(response)
+        """
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
@@ -358,24 +602,24 @@ class Client():
 
         return response
 
+
     @authenticated
     def disconnect_google(self, password: str) -> dict:
         """
-        `disconnect_google` - Disconnects the google account from the client account.
+        Disconnects the user's Google account from their account on Amino.
 
-        `**Parameters**`
-        - `password` - The password of the amino account.
+        :param password: The user's account password.
+        :type password: str
+        :return: A dictionary containing the server response.
+        :rtype: dict
 
-        `**Example**`
+        If the client is authenticated, the function sends a POST request to the server to disconnect the user's Google
+        account. The request includes the client's device ID, the user's account password, and other required parameters.
 
-        ```python
-        from pymino import Client
+        The function returns a dictionary containing the server response.
 
-        client = Client()
-
-        client.disconnect_google(password="sUp3rS3cr3tP4ssw0rd")
-        
-        ```
+        **Note:** This function can be used to disconnect the user's Google account from their Amino account, for example if
+        the user wants to use a different Google account or does not want to use Google to sign in anymore.
         """
         return self.request.handler(
             method="POST",
@@ -387,45 +631,54 @@ class Client():
                 "timestamp": int(time() * 1000),
                 }
             )
-            
+
+
     @authenticated
     def logout(self) -> None:
         """
-        `logout` - Log out of the client.
+        Logs out the user by clearing the session ID and user ID on the client instance.
 
-        `**Example**`
-        ```python
-        from pymino import Client
+        :return: None
+        :rtype: None
+        :raises LoginRequired: If the authentication fails.
 
-        client = Client()
+        This function first checks if the client is authenticated by checking for a valid session ID. If the client is not
+        authenticated, the function raises a `LoginRequired` exception.
 
-        client.logout()
-        ```
+        If the client is authenticated, the function clears the session ID and user ID on the client instance, as well as
+        other related attributes. This effectively logs out the user.
+
+        The function returns None.
+
+        **Note:** After calling this function, the client will no longer be authenticated and will need to log in again to
+        make authenticated API calls.
         """
         for key in ["sid", "userId", "community.userId", "request.sid", "request.userId", "is_authenticated"]:
             setattr(self, key, None)
         return None
 
+
     @authenticated
     def join_community(self, community_id: int) -> ApiResponse:
         """
-        `join_community` - Joins a community.
+        Joins the user to a community with the provided community ID.
 
-        `**Parameters**``
-        - `community_id` - The community id to join.
+        :param community_id: The ID of the community to join.
+        :type community_id: int
+        :return: An ApiResponse object containing the server response.
+        :rtype: ApiResponse
+        :raises LoginRequired: If the user is not logged in.
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This function first checks if the client is logged in by checking for a valid session ID. If not, it raises a
+        LoginRequired exception.
 
-        client = Client()
+        If the client is logged in, the function sends a POST request to the server to join the specified community.
+        The request includes the client's session ID and the ID of the community to join.
 
-        client.join_community(community_id=1)
-        ```
+        The function returns an ApiResponse object containing the server response.
 
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
-
+        **Note:** This function can be used to join the user to a community with the provided community ID. Once joined,
+        the user can make API calls related to the community, such as posting or retrieving posts.
         """
         return ApiResponse(self.request.handler(
             method="POST",
@@ -435,22 +688,24 @@ class Client():
     @authenticated
     def leave_community(self, community_id: int) -> ApiResponse:
         """
-        `leave_community` - Leaves a community.
+        Leaves the user from a community with the provided community ID.
 
-        `**Parameters**``
-        - `community_id` - The community id to leave.
+        :param community_id: The ID of the community to leave.
+        :type community_id: int
+        :return: An ApiResponse object containing the server response.
+        :rtype: ApiResponse
+        :raises LoginRequired: If the user is not logged in.
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This function first checks if the client is logged in by checking for a valid session ID. If not, it raises a
+        LoginRequired exception.
 
-        client = Client()
+        If the client is logged in, the function sends a POST request to the server to leave the specified community.
+        The request includes the client's session ID and the ID of the community to leave.
 
-        client.leave_community(community_id=1)
-        ```
+        The function returns an ApiResponse object containing the server response.
 
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        **Note:** This function can be used to leave the user from a community with the provided community ID. Once left,
+        the user will no longer have access to the community and will not be able to make API calls related to the community.
         """
         return ApiResponse(self.request.handler(
             method="POST",
@@ -459,47 +714,47 @@ class Client():
 
     def fetch_user(self, userId: str) -> UserProfile:
         """
-        `fetch_user` - Fetches a user profile.
+        Fetches the user profile of the user with the provided user ID.
 
-        `**Parameters**``
-        - `userId` - The user id to fetch.
+        :param userId: The ID of the user whose profile to fetch.
+        :type userId: str
+        :return: A UserProfile object representing the user profile.
+        :rtype: UserProfile
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This function sends a GET request to the server to fetch the user profile of the user with the provided user ID.
+        The request includes the ID of the user to fetch.
 
-        client = Client()
+        The function returns a UserProfile object representing the user profile. The UserProfile object contains attributes
+        such as the user's ID, nickname, avatar URL, and other profile information.
 
-        client.fetch_user(userId="userId")
-        ```
-
-        `**Returns**``
-        - `UserProfile` - The user profile object.
-
+        **Note:** This function can be used to fetch the user profile of a user on Amino. The user profile can be used to
+        display information about the user or to make API calls related to the user, such as retrieving the user's posts or
+        other information.
         """
         return UserProfile(self.request.handler(
             method="GET",
             url=f"/g/s/user-profile/{userId}"
             ))
 
+
     def fetch_community(self, community_id: int) -> CCommunity:
         """
-        `fetch_community` - Fetches a community.
+        Fetches the community information for the community with the provided community ID.
 
-        `**Parameters**``
-        - `community_id` - The community id to fetch.
+        :param community_id: The ID of the community to fetch.
+        :type community_id: int
+        :return: A CCommunity object representing the community information.
+        :rtype: CCommunity
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This function sends a GET request to the server to fetch the community information for the community with the
+        provided community ID. The request includes the ID of the community to fetch.
 
-        client = Client()
+        The function returns a CCommunity object representing the community information. The CCommunity object contains
+        attributes such as the members count, the community's layout, and other community information.
 
-        client.fetch_community(community_id=1)
-        ```
-
-        `**Returns**``
-        - `CCommunity` - The community object.
+        **Note:** This function can be used to fetch the community information for a community on Amino. The community
+        information can be used to display information about the community such as the community's name, description, and
+        other information.
         """
         return CCommunity(self.request.handler(
             method="GET",
@@ -509,22 +764,16 @@ class Client():
     @authenticated
     def joined_communities(self) -> CCommunityList:
         """
-        `joined_communities` - Fetches the communities the client has joined.
+        Retrieves the list of communities that the authenticated user has joined.
 
-        `**Parameters**``
-        - `None`
+        :return: The list of communities.
+        :rtype: CCommunityList
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method returns the list of communities that the authenticated user has joined. The list includes information
+        such as the community ID, name, description, and theme.
 
-        client = Client()
-
-        client.joined_communities()
-        ```
-
-        `**Returns**``
-        - `CCommunityList` - The community list object.
+        **Note:** This method requires authentication. If the client is not authenticated, a `LoginRequired` exception will
+        be raised.
         """
         return CCommunityList(self.request.handler(
             method="GET",
@@ -534,22 +783,18 @@ class Client():
     @authenticated
     def join_chat(self, chatId: str) -> ApiResponse:
         """
-        `join_chat` - Joins a chat.
+        Joins the authenticated user to a chat thread.
 
-        `**Parameters**``
-        - `chatId` - The chat id to join.
+        :param chatId: The ID of the chat thread to join.
+        :type chatId: str
+        :return: The API response.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method joins the authenticated user to a chat thread. The user must be a member of the community that the chat
+        thread belongs to in order to join the thread.
 
-        client = Client()
-
-        client.join_chat(chatId=1)
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        **Note:** This method requires authentication. If the client is not authenticated, a `LoginRequired` exception will
+        be raised.
         """
         return ApiResponse(self.request.handler(
             method="POST",
@@ -559,22 +804,18 @@ class Client():
     @authenticated
     def leave_chat(self, chatId: str) -> ApiResponse:
         """
-        `leave_chat` - Leaves a chat.
+        Removes the authenticated user from a chat thread.
 
-        `**Parameters**``
-        - `chatId` - The chat id to leave.
+        :param chatId: The ID of the chat thread to leave.
+        :type chatId: str
+        :return: The API response.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method removes the authenticated user from a chat thread. The user must be a member of the chat thread in order
+        to leave it.
 
-        client = Client()
-
-        client.leave_chat(chatId=1)
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        **Note:** This method requires authentication. If the client is not authenticated, a `LoginRequired` exception will
+        be raised.
         """
         return ApiResponse(self.request.handler(
             method="DELETE",
@@ -583,286 +824,252 @@ class Client():
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
-        `register` - Registers an account.
+        Registers a new account with the provided email, password, username, and verification code.
 
-        `**Parameters**``
-        - `email` - The email of the account.
-        - `password` - The password of the account.
-        - `username` - The username of the account.
-        - `verificationCode` - The verification code of the account.
+        :param email: The email address to register the account with.
+        :type email: str
+        :param password: The password to use for the account.
+        :type password: str
+        :param username: The username to use for the account.
+        :type username: str
+        :param verificationCode: The verification code sent to the email address for account activation.
+        :type verificationCode: str
+        :return: An `Authenticate` object containing the authenticated user's session ID, user ID, and community user ID.
+        :rtype: Authenticate
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.register(email="email", password="password", username="username", verificationCode="verificationCode")
-        ```
-
-        `**Returns**``
-        - `Authenticate` - The authenticate object.
+        This method registers a new account with the provided email, password, username, and verification code. The
+        verification code is sent to the email address for account activation. The method returns an `Authenticate` object
+        containing the authenticated user's session ID and user ID.
         """
         return self.account.register(email=email, password=password, username=username, verificationCode=verificationCode)
 
     @authenticated
     def delete_request(self, email: str, password: str) -> ApiResponse:
         """
-        `delete_request` - Deletes an account.
+        Sends a request to delete the authenticated user's account.
 
-        `**Parameters**``
-        - `email` - The email of the account.
-        - `password` - The password of the account.
+        :param email: The email address associated with the account.
+        :type email: str
+        :param password: The password for the account.
+        :type password: str
+        :return: An `ApiResponse` object containing the server's response to the delete request.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.delete_request(email="email", password="password")
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        This method sends a request to delete the authenticated user's account. The email and password parameters are used to
+        authenticate the request. The method returns an `ApiResponse` object containing the server's response to the delete
+        request.
         """
         return self.account.delete_request(email=email, password=password)
 
     @authenticated
     def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
         """
-        `delete_request_cancel` - Cancels a delete request.
+        Cancels a previously requested account deletion for the authenticated user.
 
-        `**Parameters**``
-        - `email` - The email of the account.
-        - `password` - The password of the account.
+        :param email: The email address associated with the account.
+        :type email: str
+        :param password: The password for the account.
+        :type password: str
+        :return: An `ApiResponse` object containing the server's response to the delete request cancellation request.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.delete_request_cancel(email="email", password="password")
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        This method cancels a previously requested account deletion for the authenticated user. The email and password
+        parameters are used to authenticate the request. The method returns an `ApiResponse` object containing the server's
+        response to the delete request cancellation request.
         """
         return self.account.delete_request_cancel(email=email, password=password)
 
     def check_device(self, device_id: str) -> ApiResponse:
         """
-        `check_device` - Checks if a device id is valid.
+        Checks if the given device ID is valid.
 
-        `**Parameters**``
-        - `device_id` - The device id to check.
+        :param device_id: The ID of the device to check.
+        :type device_id: str
+        :return: An `ApiResponse` object containing the server's response to the device check request.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method checks if the device ID is valid. The device ID is
+        passed as a string argument. The method calls the `check_device` method of the `account` object with the
+        `deviceId` parameter set to the given device ID. The result is an `ApiResponse` object that contains the server's
+        response to the device check request.
 
-        client = Client()
-
-        client.check_device(device_id="device_id")
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        The method returns the `ApiResponse` object obtained from calling the `check_device` method of the `account`
+        object. The response will return a `0` status code if the device ID is valid.
         """
         return self.account.check_device(deviceId=device_id)
 
+    @authenticated
     def fetch_account(self) -> dict:
         """
-        `fetch_account` - fetches the account of the bot to verify the sid is valid.
+        Fetches the account information for the authenticated user.
 
-        [This is used internally.]
+        :return: A dictionary containing the user's account information.
+        :rtype: dict
 
-        `**Parameters**`
-        - `None`
+        This method fetches the account information for the authenticated user. The account information includes
+        the user's username, email address, and other relevant details. The method calls the `UserProfile` object's
+        `handler` method with the `method` parameter set to `GET` and the `url` parameter set to the user profile endpoint.
+        The result is an `ApiResponse` object that contains the user's profile information.
 
-        `**Returns**`
-        - `dict` - The response from the request.
+        The method then calls the `handler` method of the `request` object with the `method` parameter set to `GET`
+        and the `url` parameter set to the account endpoint. The result is an `ApiResponse` object that contains the
+        user's account information in JSON format.
 
+        The method returns a dictionary containing the user's account information.
         """
         self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
-    def upload_image(self, image: str) -> ApiResponse:
+    @authenticated
+    def upload_image(self, image: str) -> str:
         """
-        `upload_image` - Uploads an image.
+        Uploads an image to amino servers.
 
-        `**Parameters**``
-        - `image` - The image to upload.
+        :param image: The base64-encoded image data.
+        :type image: str
+        :return: The URL of the uploaded image.
+        :rtype: str
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method uploads an image to amino servers. The image data is passed as a string argument. The method calls the
+        `upload_image` method of the `account` object with the `image` parameter set to the given image data. The result is
+        a `mediaValue` object that contains the URL of the uploaded image.
 
-        client = Client()
-
-        client.upload_image(image="image")
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        The method returns the URL of the uploaded image.
         """
-        return self.account.upload_image(image=image)
+        return self.account.upload_image(image=image).mediaValue
 
+
+    @authenticated
     def fetch_profile(self) -> UserProfile:
         """
-        `fetch_profile` - Fetches the profile of the client.
+        Fetches the user profile of the authenticated user.
 
-        `**Parameters**``
-        - `None`
+        :return: A `UserProfile` object containing the user's profile information.
+        :rtype: UserProfile
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method fetches the user profile of the authenticated user. The method calls the `fetch_profile` method of the
+        `account` object to get the profile information. The result is a `UserProfile` object that contains the user's profile
+        information.
 
-        client = Client()
-
-        client.fetch_profile()
-        ```
-
-        `**Returns**``
-        - `UserProfile` - The profile of the client.
+        The method returns the `UserProfile` object.
         """
         return self.account.fetch_profile()
+
 
     @authenticated
     def set_amino_id(self, aminoId: str) -> ApiResponse:
         """
-        `set_amino_id` - Sets the amino id of the client.
+        Sets the Amino ID of the authenticated user.
 
-        `**Parameters**``
-        - `aminoId` - The amino id to set.
+        :param aminoId: The Amino ID to set for the user.
+        :type aminoId: str
+        :return: An `ApiResponse` object containing the server's response to the set Amino ID request.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method sets the Amino ID of the authenticated user. The Amino ID is passed as a string argument. The method calls
+        the `set_amino_id` method of the `account` object with the `aminoId` parameter set to the given Amino ID. The result
+        is an `ApiResponse` object that contains the server's response to the set Amino ID request.
 
-        client = Client()
-
-        client.set_amino_id(aminoId="aminoId")
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        The method returns the `ApiResponse` object obtained from calling the `set_amino_id` method of the `account` object.
+        The response will return a `0` status code if the Amino ID is set successfully.
         """
         return self.account.set_amino_id(aminoId=aminoId)
+
 
     @authenticated
     def fetch_wallet(self) -> Wallet:
         """
-        `fetch_wallet` - Fetches the wallet of the client.
+        Fetches the wallet information for the authenticated user.
 
-        `**Parameters**``
-        - `None`
+        :return: A `Wallet` object containing the user's wallet information.
+        :rtype: Wallet
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method fetches the wallet information for the authenticated user. The wallet information includes the user's
+        total number of coins, the number of business coins, and other relevant details. The method calls the `fetch_wallet`
+        method of the `account` object. The result is a `Wallet` object that contains the user's wallet information.
 
-        client = Client()
-
-        client.fetch_wallet()
-        ```
-
-        `**Returns**``
-        - `Wallet` - The wallet of the client.
+        The method returns a `Wallet` object containing the user's wallet information.
         """
         return self.account.fetch_wallet()
 
+
     def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
         """
-        `request_security_validation` - Requests a security validation.
+        Requests security validation for the provided email address.
 
-        `**Parameters**``
-        - `email` - The email of the account.
-        - `resetPassword` - Whether or not to reset the password.
+        :param email: The email address to request security validation for.
+        :type email: str
+        :param resetPassword: Optional flag to indicate if the user is requesting password reset. Default is False.
+        :type resetPassword: bool
+        :return: An `ApiResponse` object containing the server's response to the security validation request.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
+        This method requests security validation for the provided email address. The email parameter is used to send
+        a validation email to the provided email address. If resetPassword parameter is True, then the email will be sent for
+        password reset. The method calls the `request_security_validation` method of the `account` object with the `email`
+        parameter set to the provided email address and `resetPassword` parameter set to the provided flag. The result is
+        an `ApiResponse` object that contains the server's response to the security validation request.
 
-        client = Client()
-
-        client.request_security_validation(email="email", resetPassword=True)
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        The method returns an `ApiResponse` object containing the server's response to the security validation request.
         """
         return self.account.request_security_validation(email=email, resetPassword=resetPassword)
 
+
     def activate_email(self, email: str, code: str) -> ApiResponse:
         """
-        `activate_email` - Activates an email.
+        Activates the user's email using the provided verification code.
 
-        `**Parameters**``
-        - `email` - The email of the account.
-        - `code` - The code of the account.
+        :param email: The email address to activate.
+        :type email: str
+        :param code: The verification code sent to the email address for activation.
+        :type code: str
+        :return: An `ApiResponse` object containing the server's response to the activation request.
+        :rtype: ApiResponse
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.activate_email(email="email", code="code")
-        ```
-
-        `**Returns**``
-        - `ApiResponse` - The response of the request.
+        This method activates the user's email using the provided verification code. The email and verification code
+        parameters are used to authenticate the request. The method returns an `ApiResponse` object containing the server's
+        response to the activation request.
         """
         return self.account.activate_email(email=email, code=code)
 
+
     @authenticated
-    def reset_password(self, email: str, new_password: str, code: str) -> ResetPassword:
+    def reset_password(self, email: str, newPassword: str, code: str) -> ResetPassword:
         """
-        `reset_password` - Resets a password.
+        Resets the user's password using the provided email, verification code, and new password.
 
-        `**Parameters**``
-        - `email` - The email of the account.
-        - `new_password` - The new password of the account.
-        - `code` - The code of the account.
+        :param email: The email address associated with the account.
+        :type email: str
+        :param newPassword: The new password to use for the account.
+        :type newPassword: str
+        :param code: The verification code sent to the email address for account verification.
+        :type code: str
+        :return: A `ResetPassword` object containing the user's session ID and user ID.
+        :rtype: ResetPassword
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.reset_password(email="email", new_password="new_password", code="code")
-        ```
-
-        `**Returns**``
-        - `ResetPassword` - The response of the request.
+        This method resets the user's password using the provided email, verification code, and new password. The email,
+        verification code, and new password parameters are used to authenticate the request. The method returns a `ResetPassword`
+        object containing the user's session ID and user ID.
         """
-        return self.account.reset_password(email=email, newPassword=new_password, code=code)
+        return self.account.reset_password(email=email, newPassword=newPassword, code=code)
+
 
     @authenticated
     def send_message(self, content: str, chatId: str, **kwargs) -> CMessage:
         """
-        `send_message` - Sends a message.
+        Sends a message to a chat thread.
 
-        `**Parameters**``
-        - `content` - The message to send.
-        - `chatId` - The chat id to send the message to.
-        - `**kwargs` - The additional parameters.
+        :param content: The content of the message.
+        :type content: str
+        :param chatId: The ID of the chat thread to send the message to.
+        :type chatId: str
+        :param **kwargs: Additional parameters for the message.
+        :return: A `CMessage` object containing the details of the sent message.
+        :rtype: CMessage
 
-        `**Example**``
-        ```python
-        from pymino import Client
-
-        client = Client()
-
-        client.send_message(content="message", chatId="chatId")
-        ```
-
-        `**Returns**``
-        - `CMessage` - The message that was sent.
+        This method sends a message to a chat thread. The content and chat ID parameters are required. Additional parameters
+        can be passed as keyword arguments. The method calls the `PrepareMessage` object's `json` method to prepare the message
+        data. The result is a `CMessage` object containing the details of the sent message.
         """
         return CMessage(self.request.handler(
             method="POST", url=f"/g/s/chat/thread/{chatId}/message",
