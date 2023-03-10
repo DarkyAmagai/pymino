@@ -413,40 +413,6 @@ class Bot(WSClient):
             )).json()
 
 
-    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
-        """
-        Authenticates the bot with the provided email and password.
-
-        :param email: The email to use to log in.
-        :type email: str
-        :param password: The password to use to log in.
-        :type password: str
-        :param device_id: The device id to use to log in. Defaults to None.
-        :type device_id: Optional[str]
-        :return: A dictionary representing the server response.
-        :rtype: dict
-        :raises: `APIError` if the API response code is not 200.
-        """
-        return ApiResponse(self.request.handler(
-            method="POST",
-            url = "/g/s/auth/login",
-            data = {
-                "secret": f"0 {password}",
-                "clientType": 100,
-                "systemPushEnabled": 0,
-                "timestamp": int(time() * 1000),
-                "locale": "en_US",
-                "action": "normal",
-                "bundleID": "com.narvii.master",
-                "timezone": -480,
-                "deviceID": device_id or self.device_id,
-                "email": email,
-                "v": 2,
-                "clientCallbackURL": "narviiapp://default"
-                }
-            )).json()
-
-
     def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
         """
         Authenticates the user with the provided email and password.
