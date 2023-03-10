@@ -10,6 +10,7 @@ from requests import Session as Http, Response as HttpResponse
 from ..entities import (
     Forbidden,
     BadGateway,
+    NullResponse,
     APIException,
     ServiceUnavailable
     )
@@ -287,15 +288,20 @@ class RequestHandler:
         if status_code in self.response_map:
             raise self.response_map[status_code]
         
-        try:
-            response = orjson_loads(response) if self.orjson else loads(response)
-        except Exception:
-            response = loads(response)
+        elif response.startswith("null"):
+            raise NullResponse
+        
+        else:
+            
+            try:
+                response = orjson_loads(response) if self.orjson else loads(response)
+            except Exception:
+                response = loads(response)
 
-        if status_code != 200:
-            self.raise_error(response)
+            if status_code != 200:
+                self.raise_error(response)
 
-        return response
+            return response
 
     def print_response(self, method: str, url: str, status_code: int):
         """

@@ -448,3 +448,9 @@ class WrongWebSocketPackage(Exception):
             "Wrong websocket package was installed. We corrected it for you."
             "\nPlease restart your bot.\n"
             )
+        
+class NullResponse(Exception):
+    def __init__(self):
+        super().__init__(
+            "Server returned a null response. Possible crash content in the requested data."
+            )

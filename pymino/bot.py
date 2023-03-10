@@ -1,5 +1,4 @@
 from time import time
-from colorama import Fore, Style
 from typing import Optional, Union
 
 from .ext.socket import WSClient
@@ -215,9 +214,11 @@ class Bot(WSClient):
     """
     def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, **kwargs):
         for key, value in kwargs.items(): setattr(self, key, value)
-        self.debug:             bool = check_debugger()
-        self.is_ready:          bool = False
-        self.userId:            str = None
+        self._debug:            bool = check_debugger()
+        self._is_ready:         bool = False
+        self._userId:           str = None
+        self._sid:              str = None
+        self.cache:             Cache = Cache("cache")
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
@@ -238,18 +239,159 @@ class Bot(WSClient):
 
         WSClient.__init__(self)
 
+    @property
+    def debug(self) -> bool:
+        """
+        Whether or not debug mode is enabled.
+
+        :return: True if debug mode is enabled, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not debug mode is enabled. Debug mode can be used to enable additional logging and
+        debug information during development.
+
+        **Note:** This property only returns the debug mode state and cannot be used to set the debug mode state. To set the
+        debug mode state, use the `self._debug` attribute directly.
+        """
+        return self._debug
+    
+
+    @debug.setter
+    def debug(self, value: bool) -> None:
+        """
+        Sets the debug mode state.
+
+        :param value: True to enable debug mode, False to disable it.
+        :type value: bool
+        :return: None
+
+        This setter sets the debug mode state. Debug mode can be used to enable additional logging and debug information
+        during development.
+
+        **Note:** This setter only sets the debug mode state and cannot be used to retrieve the debug mode state. To retrieve
+        the debug mode state, use the `self.debug` property.
+        """
+        self._debug = value
+
+
+    @property
+    def is_ready(self) -> bool:
+        """
+        Whether or not the bot is ready.
+
+        :return: True if the bot is ready, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not the bot is ready. The bot is ready after logging in to
+        Amino and receiving a valid session ID.
+
+        **Note:** This property only returns the authentication state and cannot be used to set the authentication state. To
+        set the authentication state, use the `self._is_ready` attribute directly.
+        """
+        return self._is_ready
+    
+
+    @is_ready.setter
+    def is_ready(self, value: bool) -> None:
+        """
+        Sets the `is_ready` state of the client.
+
+        :param value: True to set the client as ready, False to set it as not ready.
+        :type value: bool
+        :return: None
+
+        This setter sets the `is_ready` state of the bot client. The bot `is_ready` after logging in to Amino and
+        receiving a valid session ID.
+
+        **Note:** This setter only sets the authentication state and cannot be used to retrieve the authentication state. To
+        retrieve the authentication state, use the `self.is_ready` property.
+        """
+        self._is_ready = value
+
+
+    @property
+    def userId(self) -> str:
+        """
+        The ID of the user associated with the client.
+
+        :return: The ID of the user.
+        :rtype: str
+
+        This property returns the ID of the user associated with the client. The user ID is set when the client logs in to
+        Amino, and can be used to make API calls related to the user, such as retrieving the user's profile or posts.
+
+        **Note:** This property only returns the user ID and cannot be used to set the user ID. To set the user ID, use the
+        `self._userId` attribute directly.
+        """
+        return self._userId
+
+
+    @userId.setter
+    def userId(self, value: str) -> None:
+        """
+        Sets the ID of the user associated with the client.
+
+        :param value: The ID of the user to set.
+        :type value: str
+        :return: None
+
+        This setter sets the ID of the user associated with the client. The user ID is used to make API calls related to the
+        user, such as retrieving the user's profile or posts.
+
+        **Note:** This setter only sets the user ID and cannot be used to retrieve the user ID. To retrieve the user ID, use
+        the `self.userId` property.
+        """
+        self._userId = value
+
+        
+    @property
+    def sid(self) -> str:
+        """
+        The session ID of the client.
+
+        :return: The session ID.
+        :rtype: str
+
+        This property returns the session ID of the client. The session ID is set when the client logs in to Amino, and is
+        used to make authenticated API calls, such as posting messages or retrieving user information.
+
+        **Note:** This property only returns the session ID and cannot be used to set the session ID. To set the session ID,
+        use the `self._sid` attribute directly.
+        """
+        return self._sid
+
+
+    @sid.setter
+    def sid(self, value: str) -> None:
+        """
+        Sets the session ID of the client.
+
+        :param value: The session ID to set.
+        :type value: str
+        :return: None
+
+        This setter sets the session ID of the client. The session ID is used to make authenticated API calls, such as
+        posting messages or retrieving user information.
+
+        **Note:** This setter only sets the session ID and cannot be used to retrieve the session ID. To retrieve the session
+        ID, use the `self.sid` property.
+        """
+        self._sid = value
+
 
     def authenticate(self, email: str, password: str, device_id: str = None) -> dict:
         """
-        `authenticate` - authenticates the bot.
+        Authenticates the bot with the provided email and password.
 
-        [This is used internally.]
-
-        `**Parameters**`
-        - `email` - The email to use to login.
-        - `password` - The password to use to login.
-        - `device_id` - The device id to use to login. `Defaults` to `None`.
-
+        :param email: The email to use to log in.
+        :type email: str
+        :param password: The password to use to log in.
+        :type password: str
+        :param device_id: The device id to use to log in. Defaults to None.
+        :type device_id: Optional[str]
+        :return: A dictionary representing the server response.
+        :rtype: dict
+        :raises: `APIError` if the API response code is not 200.
         """
         return ApiResponse(self.request.handler(
             method="POST",
@@ -270,21 +412,96 @@ class Bot(WSClient):
                 }
             )).json()
 
-    def fetch_account(self) -> dict:
+
+    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
-        `fetch_account` - fetches the account of the bot to verify the sid is valid.
+        Authenticates the bot with the provided email and password.
 
-        [This is used internally.]
-
-        `**Parameters**`
-        - `None`
-
-        `**Returns**`
-        - `dict` - The response from the request.
-
+        :param email: The email to use to log in.
+        :type email: str
+        :param password: The password to use to log in.
+        :type password: str
+        :param device_id: The device id to use to log in. Defaults to None.
+        :type device_id: Optional[str]
+        :return: A dictionary representing the server response.
+        :rtype: dict
+        :raises: `APIError` if the API response code is not 200.
         """
-        self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
-        return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
+        return ApiResponse(self.request.handler(
+            method="POST",
+            url = "/g/s/auth/login",
+            data = {
+                "secret": f"0 {password}",
+                "clientType": 100,
+                "systemPushEnabled": 0,
+                "timestamp": int(time() * 1000),
+                "locale": "en_US",
+                "action": "normal",
+                "bundleID": "com.narvii.master",
+                "timezone": -480,
+                "deviceID": device_id or self.device_id,
+                "email": email,
+                "v": 2,
+                "clientCallbackURL": "narviiapp://default"
+                }
+            )).json()
+
+
+    def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
+        """
+        Authenticates the user with the provided email and password.
+
+        :param email: The email address associated with the account.
+        :type email: str
+        :param password: The password for the account.
+        :type password: str
+        :param device_id: The device ID associated with the account. Defaults to None.
+        :type device_id: Optional[str]
+        :param use_cache: Whether or not to use cached login credentials. Defaults to True.
+        :type use_cache: bool
+        :return: A dictionary containing the login response from the server.
+        :rtype: dict
+        
+        The function first checks if cached login credentials are available for the provided email. If so, it uses the cached
+        session ID and device ID to fetch the account details from the server. If the server returns an exception, it falls
+        back to authenticating with the provided email and password, and the device ID from the cache.
+
+        If no cached credentials are available, the function authenticates with the provided email and password, and the
+        provided or default device ID.
+
+        Finally, the function sets the email and password on the request object for future API calls.
+
+        **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
+        """
+        if use_cache and cache_exists(email=email):
+            cached = fetch_cache(email=email)
+
+            self.sid: str = cached[0]
+            self.request.sid: str = cached[0]
+            self.userId: str = parse_auid(cached[0])
+
+            try:
+                response: dict = self.fetch_account()
+            except Exception:
+                response: dict = self.authenticate(
+                    email=email,
+                    password=password,
+                    device_id=cached[1]
+                    )
+
+        else:
+            self.sid = None
+            response: dict = self.authenticate(
+                email=email,
+                password=password,
+                device_id=device_id
+                )
+
+        for key, value in {"email": email, "password": password}.items():
+            setattr(self.request, key, value)            
+
+        return response
+
 
     def run(
         self,
@@ -295,67 +512,75 @@ class Bot(WSClient):
         use_cache: bool = True
     ) -> None:
         """
-        `run` - runs the bot.
+        Logs in to the client and starts running it. 
 
-        `**Parameters**`
-        - `email` - The email to use to login. Defaults to `None`.
-        - `password` - The password to use to login. Defaults to `None`.
-        - `sid` - The sid to use to login. Defaults to `None`.
-        - `device_id` - The device id to use to login. Defaults to `None`.
+        If authentication is successful, the bot will be logged in and the client will be ready to use.
 
-        `**Example**`
-        ```python
-        from pymino import Bot
+        :param email: The email to use to log in. Defaults to None.
+        :type email: str, optional
+        :param password: The password to use to log in. Defaults to None.
+        :type password: str, optional
+        :param sid: The sid to use to log in. Defaults to None.
+        :type sid: str, optional
+        :param device_id: The device id to use to log in. Defaults to None.
+        :type device_id: str, optional
+        :param use_cache: Whether to use the cache to retrieve the sid. Defaults to True.
+        :type use_cache: bool, optional
+        :raises MissingEmailPasswordOrSid: If email, password, or sid is missing.
+        :raises LoginFailed: If authentication failed.
+        :return: None.
+        :rtype: None
 
-        bot = Bot()
+        **Example usage:**
 
-        bot.run(email="email", password="password")
-        ```
+        >>> client = Client()
+        >>> client.run(email="example@example.com", password="password")
         """
-        if email and password:
-            if use_cache and cache_exists(email=email):
-                cached = fetch_cache(email=email)
-                self.sid: str = cached[0]
-                self.request.sid: str = cached[0]
-                self.userId: str = parse_auid(cached[0])
-
-                try:
-                    response: dict = self.fetch_account()
-                except Exception:
-                    response: dict = self.authenticate(
-                        email=email,
-                        password=password,
-                        device_id=cached[1]
-                        )
-
-            else:
-                self.sid = None
-                response: dict = self.authenticate(
-                    email=email,
-                    password=password,
-                    device_id=device_id
-                    )
-
-            for key, value in {"email": email, "password": password}.items():
-                setattr(self.request, key, value)            
-
-        elif sid:
-            self.sid: str = sid
-            self.request.sid: str = sid
-            self.userId: str = parse_auid(sid)
-            response: dict = self.fetch_account()
-
-        else:
+        if not sid and not email and not password:
             raise MissingEmailPasswordOrSid
+
+        if sid:
+            self.sid = sid
+            self.request.sid = sid
+            self.userId = parse_auid(sid)
+            response = self.fetch_account()
+        else:
+            response = self._login_handler(
+                email=email,
+                password=password,
+                device_id=device_id,
+                use_cache=use_cache
+                )
 
         if not response:
             raise LoginFailed
-        
-        else:
-            return self.__run__(response)
-        
-    def __run__(self, response: dict) -> Union[None, Exception]:
-        if response["api:statuscode"] != 0: input(response), exit()
+
+        return self._run(response)
+
+    def _run(self, response: dict) -> dict:
+        """
+        Processes the response from a successful login attempt and sets up the authenticated client.
+
+        :param response: The response from the login attempt.
+        :type response: dict
+        :return: The response from the login attempt.
+        :rtype: dict
+
+        This method is called internally by the `login` and `run` methods after a successful login attempt.
+        It sets up the authenticated client by parsing the response, initializing some client properties,
+        and caching the login credentials if applicable.
+
+        If the `debug` property of the client instance is `True`, this method prints a message to the console
+        confirming that the client is now authenticated.
+
+        **Example usage:**
+
+        >>> client = Client()
+        >>> response = client.authenticate(email="example@example.com", password="password")
+        >>> client.__run__(response)
+        """
+        if response["api:statuscode"] != 0:
+            input(response), exit()
 
         if not hasattr(self, "profile"): 
             self.profile: UserProfile = UserProfile(response)
@@ -367,6 +592,7 @@ class Bot(WSClient):
         self.community.userId: str = self.userId
         self.request.sid: str = self.sid
         self.request.userId: str = self.userId
+        self.is_authenticated: bool = True
 
         if hasattr(self.request, "email"):
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
@@ -380,50 +606,90 @@ class Bot(WSClient):
 
         return response
 
+
+    def fetch_account(self) -> dict:
+        """
+        Fetches the account information for the authenticated user.
+
+        :return: A dictionary containing the user's account information.
+        :rtype: dict
+
+        This method fetches the account information for the authenticated user. The account information includes
+        the user's username, email address, and other relevant details. The method calls the `UserProfile` object's
+        `handler` method with the `method` parameter set to `GET` and the `url` parameter set to the user profile endpoint.
+        The result is an `ApiResponse` object that contains the user's profile information.
+
+        The method then calls the `handler` method of the `request` object with the `method` parameter set to `GET`
+        and the `url` parameter set to the account endpoint. The result is an `ApiResponse` object that contains the
+        user's account information in JSON format.
+
+        The method returns a dictionary containing the user's account information.
+        """
+        self.profile: UserProfile = UserProfile(
+            self.request.handler(
+                method="GET",
+                url=f"/g/s/user-profile/{self.userId}"
+                ))
+        
+        return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
+
+
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
-        `fetch_community_id` - fetches the community id from a community link.
+        Fetches the community ID associated with the provided community link.
 
-        `**Parameters**`
-        - `community_link` - The community link to fetch the community id from.
-        - `set_community_id` - Whether or not to set the community id. Defaults to `True`.
+        :param community_link: The community link for which to fetch the ID.
+        :type community_link: str
+        :param set_community_id: Whether or not to set the fetched community ID on the client instance. Defaults to True.
+        :type set_community_id: Optional[bool]
+        :return: The community ID associated with the provided community link.
+        :rtype: int
 
-        `**Returns**`
-        - `int` - The community id.
+        The function first checks if the community ID for the provided community link is already present in the cache.
+        If not, it fetches the community ID from the server using the provided community link. It then stores the community
+        ID in the cache for future use.
 
-        `**Example**`
-        ```python
-        from pymino import Bot
+        If the `set_community_id` parameter is set to True, the function also sets the community ID on the client instance
+        for future API calls.
 
-        bot = Bot()
+        If the provided community link is not found on the server, the function raises a CommunityNotFound exception.
 
-        bot.fetch_community_id("https://aminoapps.com/c/CommunityName")
-        ```
+        **Note:** The community ID is required for making API calls related to a specific community, such as posting or
+        retrieving posts. It is recommended to use this function if you do not already know the community ID.
         """
-        community_id = CCommunity(self.request.handler(
-            method="GET", url=f"/g/s/link-resolution?q={community_link}")
-            ).comId
+        KEY = str((community_link, "comId"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, CCommunity(self.request.handler(
+                method="GET", url=f"/g/s/link-resolution?q={community_link}")
+                ).comId)
+            
+        community_id = self.cache.get(KEY)
 
         if set_community_id:
             self.set_community_id(community_id)
 
         return community_id
 
+
     def set_community_id(self, community_id: Union[str, int]) -> int:
         """
-        `set_community_id` - sets the community id.
+        Sets the community ID on the client instance and the Community object.
 
-        `**Parameters**`
-        - `community_id` - The community id to set.
+        :param community_id: The community ID to set.
+        :type community_id: Union[str, int]
+        :return: The community ID that was set.
+        :rtype: int
 
-        `**Example**`
-        ```python
-        from pymino import Bot
+        The function first checks if the provided community ID is not None and not already an integer. If it is a string,
+        it converts it to an integer.
 
-        bot = Bot()
+        If the community ID cannot be verified, the function raises a VerifyCommunityIdIsCorrect exception.
 
-        bot.set_community_id(123456789)
-        ```
+        The function then sets the community ID on the client instance and the Community object for future API calls.
+
+        **Note:** The community ID is required for making API calls related to a specific community, such as posting or
+        retrieving posts. It is recommended to use the `fetch_community_id` function if you do not already know the
+        community ID.
         """
         try:
             if community_id is not None and not isinstance(community_id, int):

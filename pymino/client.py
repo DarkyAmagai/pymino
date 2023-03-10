@@ -1,6 +1,4 @@
 from time import time
-from diskcache import Cache
-from colorama import Fore, Style
 from typing import Any, Callable, Optional, TypeVar, Union
 
 from .ext.entities.handlers import *
@@ -332,7 +330,6 @@ class Client:
         **Note:** The community ID is required for making API calls related to a specific community, such as posting or
         retrieving posts. It is recommended to use this function if you do not already know the community ID.
         """
-
         KEY = str((community_link, "comId"))
         if not self.cache.get(KEY):
             self.cache.set(KEY, CCommunity(self.request.handler(
@@ -898,7 +895,7 @@ class Client:
         """
         return self.account.check_device(deviceId=device_id)
 
-    @authenticated
+
     def fetch_account(self) -> dict:
         """
         Fetches the account information for the authenticated user.
@@ -917,8 +914,14 @@ class Client:
 
         The method returns a dictionary containing the user's account information.
         """
-        self.profile: UserProfile = UserProfile(self.request.handler(method="GET", url=f"/g/s/user-profile/{self.userId}"))
+        self.profile: UserProfile = UserProfile(
+            self.request.handler(
+                method="GET",
+                url=f"/g/s/user-profile/{self.userId}"
+                ))
+        
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
+
 
     @authenticated
     def upload_image(self, image: str) -> str:
