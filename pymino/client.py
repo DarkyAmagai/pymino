@@ -120,25 +120,26 @@ class Client:
 
     """
     def __init__(self, **kwargs):
-        self._debug: bool = check_debugger()
+        self._debug:            bool = check_debugger()
         self._is_authenticated: bool = False
-        self._userId: str = None
-        self._sid: str = None
-        self.cache: Cache = Cache("cache")
-        self.community_id: Optional[str] = kwargs.get("comId", kwargs.get("community_id"))
-        self.device_id: Optional[str] = kwargs.get("device_id") or generate_device_id()
-        self.request: RequestHandler = RequestHandler(
-            self,
-            proxy=kwargs.get("proxy")
-        )
-        self.account: Account = Account(
-            session=self.request
-        )
-        self.community: Community = Community(
-            bot=self,
-            session=self.request,
-            community_id=self.community_id
-        )
+        self._userId:           str = None
+        self._sid:              str = None
+        self._cached:           bool = False
+        self.cache:             Cache = Cache("cache")
+        self.community_id:      Optional[str] = kwargs.get("comId", kwargs.get("community_id"))
+        self.device_id:         Optional[str] = kwargs.get("device_id") or generate_device_id()
+        self.request:           RequestHandler = RequestHandler(
+                                self,
+                                proxy=kwargs.get("proxy")
+                                )
+        self.account:           Account = Account(
+                                session=self.request
+                                )
+        self.community:         Community = Community(
+                                bot=self,
+                                session=self.request,
+                                community_id=self.community_id
+                                )
 
 
     @property
@@ -390,6 +391,9 @@ class Client:
         :rtype: dict
         :raises: `APIError` if the API response code is not 200.
         """
+        if device_id:
+            self.device_id = device_id
+
         return ApiResponse(self.request.handler(
             method="POST",
             url = "/g/s/auth/login",
@@ -402,7 +406,7 @@ class Client:
                 "action": "normal",
                 "bundleID": "com.narvii.master",
                 "timezone": -480,
-                "deviceID": device_id or self.device_id,
+                "deviceID": self.device_id,
                 "email": email,
                 "v": 2,
                 "clientCallbackURL": "narviiapp://default"
@@ -454,6 +458,7 @@ class Client:
 
         else:
             self.sid = None
+            self._cached = True
             response: dict = self.authenticate(
                 email=email,
                 password=password,
@@ -575,7 +580,7 @@ class Client:
 
         >>> client = Client()
         >>> response = client.authenticate(email="example@example.com", password="password")
-        >>> client.__run__(response)
+        >>> client._run(response)
         """
         if response["api:statuscode"] != 0: input(response), exit()
 
@@ -591,7 +596,7 @@ class Client:
         self.request.userId: str = self.userId
         self.is_authenticated: bool = True
 
-        if hasattr(self.request, "email"):
+        if hasattr(self.request, "email") and self._cached:
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if self.debug:

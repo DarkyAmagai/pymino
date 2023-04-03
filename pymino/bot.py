@@ -218,6 +218,7 @@ class Bot(WSClient):
         self._is_ready:         bool = False
         self._userId:           str = None
         self._sid:              str = None
+        self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
@@ -379,7 +380,7 @@ class Bot(WSClient):
         self._sid = value
 
 
-    def authenticate(self, email: str, password: str, device_id: str = None) -> dict:
+    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
         Authenticates the bot with the provided email and password.
 
@@ -393,6 +394,9 @@ class Bot(WSClient):
         :rtype: dict
         :raises: `APIError` if the API response code is not 200.
         """
+        if device_id:
+            self.device_id = device_id
+
         return ApiResponse(self.request.handler(
             method="POST",
             url = "/g/s/auth/login",
@@ -405,7 +409,7 @@ class Bot(WSClient):
                 "action": "normal",
                 "bundleID": "com.narvii.master",
                 "timezone": -480,
-                "deviceID": device_id or self.device_id,
+                "deviceID": self.device_id,
                 "email": email,
                 "v": 2,
                 "clientCallbackURL": "narviiapp://default"
@@ -457,6 +461,7 @@ class Bot(WSClient):
 
         else:
             self.sid = None
+            self._cached = True
             response: dict = self.authenticate(
                 email=email,
                 password=password,
@@ -560,7 +565,7 @@ class Bot(WSClient):
         self.request.userId: str = self.userId
         self.is_authenticated: bool = True
 
-        if hasattr(self.request, "email"):
+        if hasattr(self.request, "email") and self._cached:
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
