@@ -303,6 +303,40 @@ class Account:
                 "deviceID": device_id(),
                 "timestamp": int(time() * 1000)
             }))
+    
+    
+    def verify(self, email: str, code: str, deviceId: str) -> ApiResponse:
+        """
+        `**verify**` - Verifies the code sent to the email.
+
+        `**Parameters**`
+        
+        - `email` - The email of the account.
+        
+        - `code` - The code sent to the email.
+
+        - `deviceId` - The device id.
+        
+        `**Example**`
+        
+        ```py
+        from pymino import *
+        
+        bot = Bot()
+        response = bot.verify(email=email, code=code, deviceId=deviceId)
+        print(response)
+        ```
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url="/g/s/auth/check-security-validation",
+            data={
+                "type": 1,
+                "identity": email,
+                "data": {"code":code},
+                "deviceID": deviceId,
+                "timestamp": int(time() * 1000)
+            }))
 
     def reset_password(self, email: str, newPassword: str, code: str, deviceId: str = device_id()) -> ResetPassword:
         """

@@ -904,6 +904,40 @@ class Community:
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/notification?pagingType=t&size={size}"
             ))
+    
+    
+    @community
+    def clear_notifications(self, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Clears all notifications for the current or specified community.
+
+        :param comId: The ID of the community to clear the notifications for. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :raises NotLoggedIn: If the user is not logged in.
+        :return: An ApiResponse object containing the status of the request.
+        :rtype: ApiResponse
+
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+
+        The function sends a DELETE request to the API to clear the notifications.
+
+        `ApiResponse`:
+
+        - `statuscode`: The status code of the request.
+        - `status`: The status of the request.
+        - `duration`: The duration of the API request.
+        - `timestamp`: The timestamp of the API response.
+
+        **Example usage:**
+
+        >>> api_response = client.community.clear_notifications()
+        >>> if api_response.statuscode == 0:
+        ...     print("Notifications cleared successfully!")
+        """
+        return ApiResponse(self.session.handler(
+            method = "DELETE",
+            url = f"/x{self.community_id if comId is None else comId}/s/notification"
+            ))
 
 
     @community
@@ -5162,3 +5196,588 @@ class Community:
             "timestamp": int(time() * 1000)
             }))
     
+    @community
+    def invite_to_vc(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Invites a user to a voice chat in the current or specified community.
+
+        :param chatId: The ID of the chat to invite the user to.
+        :type chatId: str
+        :param userId: The ID of the user to invite.
+        :type userId: str
+        :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to invite a user to a voice chat in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the user was successfully invited to the voice chat.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To invite a user with ID "0000-0000-0000-0000" to a voice chat with ID "1111-1111-1111-1111" in the current community:
+
+        >>> response = client.community.invite_to_vc(chatId="1111-1111-1111-1111", userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("User invited successfully!")
+        ... else:
+        ...     print("Failed to invite user.")
+
+        To invite a user with ID "1111-1111-1111-1111" to a voice chat with ID "2222-2222-2222-2222" in a community with ID "123":
+
+        >>> response = client.community.invite_to_vc(chatId="2222-2222-2222-2222", userId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("User invited successfully!")
+        ... else:
+        ...     print("Failed to invite user.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/",
+            data = {"uid": userId}))
+    
+    @community
+    def feature_user(self, time: int, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Features a user in the current or specified community.
+
+        :param time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
+        :type time: int
+        :param userId: The ID of the user to feature.
+        :type userId: str
+        :param comId: The ID of the community to feature the user in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to feature a user in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the user was successfully featured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To feature a user with ID "0000-0000-0000-0000" for 1 day in the current community:
+
+        >>> response = client.community.feature_user(time=1, userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("User featured successfully!")
+        ... else:
+        ...     print("Failed to feature user.")
+
+        To feature a user with ID "1111-1111-1111-1111" for 2 days in a community with ID "123":
+
+        >>> response = client.community.feature_user(time=2, userId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("User featured successfully!")
+        ... else:
+        ...     print("Failed to feature user.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 4, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
+            "timestamp": int(time() * 1000)
+            }))
+    
+    @community
+    def feature_chat(self, time: int, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Features a chat in the current or specified community.
+
+        :param time: The duration of the feature. 1 = 1 hour, 2 = 2 hours, 3 = 3 hours.
+        :type time: int
+        :param chatId: The ID of the chat to feature.
+        :type chatId: str
+        :param comId: The ID of the community to feature the chat in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to feature a chat in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the chat was successfully featured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To feature a chat with ID "0000-0000-0000-0000" for 1 hour in the current community:
+
+        >>> response = client.community.feature_chat(time=1, chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Chat featured successfully!")
+        ... else:
+        ...     print("Failed to feature chat.")
+
+        To feature a chat with ID "1111-1111-1111-1111" for 2 hours in a community with ID "123":
+
+        >>> response = client.community.feature_chat(time=2, chatId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Chat featured successfully!")
+        ... else:
+        ...     print("Failed to feature chat.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 5, "featuredDuration": 3600 if time == 1 else 7200 if time == 2 else 10800 if time == 3 else None},
+            "timestamp": int(time() * 1000)
+            }))
+    
+    @community
+    def feature_blog(self, time: int, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Features a blog in the current or specified community.
+
+        :param time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
+        :type time: int
+        :param blogId: The ID of the blog to feature.
+        :type blogId: str
+        :param comId: The ID of the community to feature the blog in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to feature a blog in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the blog was successfully featured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To feature a blog with ID "0000-0000-0000-0000" for 1 day in the current community:
+
+        >>> response = client.community.feature_blog(time=1, blogId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Blog featured successfully!")
+        ... else:
+        ...     print("Failed to feature blog.")
+
+        To feature a blog with ID "1111-1111-1111-1111" for 2 days in a community with ID "123":
+
+        >>> response = client.community.feature_blog(time=2, blogId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Blog featured successfully!")
+        ... else:
+        ...     print("Failed to feature blog.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 1, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
+            "timestamp": int(time() * 1000)
+            }))
+    
+    @community
+    def feature_wiki(self, time: int, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Features a wiki in the current or specified community.
+
+        :param time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
+        :type time: int
+        :param wikiId: The ID of the wiki to feature.
+        :type wikiId: str
+        :param comId: The ID of the community to feature the wiki in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to feature a wiki in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the wiki was successfully featured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To feature a wiki with ID "0000-0000-0000-0000" for 1 day in the current community:
+
+        >>> response = client.community.feature_wiki(time=1, wikiId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Wiki featured successfully!")
+        ... else:
+        ...     print("Failed to feature wiki.")
+
+        To feature a wiki with ID "1111-1111-1111-1111" for 2 days in a community with ID "123":
+
+        >>> response = client.community.feature_wiki(time=2, wikiId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Wiki featured successfully!")
+        ... else:
+        ...     print("Failed to feature wiki.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 2, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
+            "timestamp": int(time() * 1000)
+            }))
+
+    @community
+    def unfeature_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Unfeatures a chat in the current or specified community.
+
+        :param chatId: The ID of the chat to unfeature.
+        :type chatId: str
+        :param comId: The ID of the community to unfeature the chat in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to unfeature a chat in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the chat was successfully unfeatured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To unfeature a chat with ID "0000-0000-0000-0000" in the current community:
+
+        >>> response = client.community.unfeature_chat(chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Chat unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature chat.")
+
+        To unfeature a chat with ID "1111-1111-1111-1111" in a community with ID "123":
+
+        >>> response = client.community.unfeature_chat(chatId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Chat unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature chat.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 0},
+            "timestamp": int(time() * 1000)
+            }))
+
+    @community
+    def unfeature_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Unfeatures a wiki in the current or specified community.
+
+        :param wikiId: The ID of the wiki to unfeature.
+        :type wikiId: str
+        :param comId: The ID of the community to unfeature the wiki in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to unfeature a wiki in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the wiki was successfully unfeatured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To unfeature a wiki with ID "0000-0000-0000-0000" in the current community:
+
+        >>> response = client.community.unfeature_wiki(wikiId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Wiki unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature wiki.")
+
+        To unfeature a wiki with ID "1111-1111-1111-1111" in a community with ID "123":
+
+        >>> response = client.community.unfeature_wiki(wikiId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Wiki unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature wiki.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 0},
+            "timestamp": int(time() * 1000)
+            }))
+
+    @community
+    def unfeature_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Unfeatures a blog in the current or specified community.
+
+        :param blogId: The ID of the blog to unfeature.
+        :type blogId: str
+        :param comId: The ID of the community to unfeature the blog in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to unfeature a blog in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the blog was successfully unfeatured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To unfeature a blog with ID "0000-0000-0000-0000" in the current community:
+
+        >>> response = client.community.unfeature_blog(blogId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Blog unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature blog.")
+
+        To unfeature a blog with ID "1111-1111-1111-1111" in a community with ID "123":
+
+        >>> response = client.community.unfeature_blog(blogId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Blog unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature blog.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 0},
+            "timestamp": int(time() * 1000)
+            }))
+    
+    @community
+    def unfeature_user(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Unfeatures a user in the current or specified community.
+
+        :param userId: The ID of the user to unfeature.
+        :type userId: str
+        :param comId: The ID of the community to unfeature the user in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to unfeature a user in the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the user was successfully unfeatured.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To unfeature a user with ID "0000-0000-0000-0000" in the current community:
+
+        >>> response = client.community.unfeature_user(userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("User unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature user.")
+
+        To unfeature a user with ID "1111-1111-1111-1111" in a community with ID "123":
+
+        >>> response = client.community.unfeature_user(userId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("User unfeatured successfully!")
+        ... else:
+        ...     print("Failed to unfeature user.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data = {
+            "adminOpName": 114,
+            "adminOpValue": {"featuredType": 0},
+            "timestamp": int(time() * 1000)
+            }))
+
+
+    @community
+    def claim_vc_reputation(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Claims VC reputation for the current or specified community.
+
+        :param chatId: The ID of the chat to claim VC reputation for.
+        :type chatId: str
+        :param comId: The ID of the community to claim VC reputation for. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to claim VC reputation for the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the VC reputation was successfully claimed.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To claim VC reputation for the current community:
+
+        >>> response = client.community.claim_vc_reputation(chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("VC reputation claimed successfully!")
+        ... else:
+        ...     print("Failed to claim VC reputation.")
+
+        To claim VC reputation for a community with ID "123":
+
+        >>> response = client.community.claim_vc_reputation(chatId="0000-0000-0000-0000", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("VC reputation claimed successfully!")
+        ... else:
+        ...     print("Failed to claim VC reputation.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
+            data = {
+            "timestamp": int(time() * 1000)
+            }))
+    
+
+    @community
+    def fetch_vc_reputation_info(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Fetches VC reputation information for the current or specified community.
+
+        :param chatId: The ID of the chat to fetch VC reputation information for.
+        :type chatId: str
+        :param comId: The ID of the community to fetch VC reputation information for. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a GET request to the API to fetch VC reputation information for the specified community.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the VC reputation information was successfully fetched.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To fetch VC reputation information for the current community:
+
+        >>> response = client.community.fetch_vc_reputation_info(chatId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("VC reputation information fetched successfully!")
+        ... else:
+        ...     print("Failed to fetch VC reputation information.")
+
+        To fetch VC reputation information for a community with ID "123":
+
+        >>> response = client.community.fetch_vc_reputation_info(chatId="0000-0000-0000-0000", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("VC reputation information fetched successfully!")
+        ... else:
+        ...     print("Failed to fetch VC reputation information.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "GET",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
+            data = {
+            "timestamp": int(time() * 1000)
+            }))
+
+
+    def subscribe_influencer(self, userId: str, autoRenew: bool = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Subscribes to an influencer.
+
+        :param userId: The ID of the user to subscribe to.
+        :type userId: str
+        :param autoRenew: Whether to automatically renew the subscription.
+        :type autoRenew: bool
+        :param transactionId: The ID of the transaction. If not provided, a random UUID is used.
+        :type transactionId: str
+        :param comId: The ID of the community to subscribe to the influencer in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: An `ApiResponse` object containing information about the request status.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to subscribe to an influencer.
+
+        `ApiResponse`:
+
+        - `message` (str): A message indicating whether the subscription was successful.
+        - `statuscode` (int): The status code of the API response.
+        - `duration` (str): The duration of the API request.
+        - `timestamp` (str): The timestamp of the API request.
+
+        **Example usage:**
+
+        To subscribe to an influencer with ID "0000-0000-0000-0000" in the current community:
+
+        >>> response = client.community.subscribe_influencer(userId="0000-0000-0000-0000")
+        ... if response.statuscode == 0:
+        ...     print("Subscribed successfully!")
+        ... else:
+        ...     print("Failed to subscribe.")
+
+        To subscribe to an influencer with ID "1111-1111-1111-1111" in a community with ID "123":
+
+        >>> response = client.community.subscribe_influencer(userId="1111-1111-1111-1111", comId=123)
+        ... if response.statuscode == 0:
+        ...     print("Subscribed successfully!")
+        ... else:
+        ...     print("Failed to subscribe.")
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
+            data = {
+            "paymentContext": {
+                "transactionId": str(uuid4()) if transactionId is None else transactionId,
+                "isAutoRenew": autoRenew
+            },
+            "timestamp": int(time() * 1000)
+            }))

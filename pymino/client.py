@@ -11,7 +11,7 @@ from .ext.entities.exceptions import (
     LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
     )
 from .ext.entities.general import (
-    ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet
+    ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet, LinkInfo
     )
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -605,6 +605,78 @@ class Client:
         return response
 
 
+    def fetch_object_id(self, link: str) -> str:
+        """
+        Fetches the object ID given a link to the object.
+
+        :param link: The link to the object.
+        :type link: str
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: The ID of the object.
+        :rtype: str
+
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        The method caches the object ID for faster access in future calls.
+
+        **Example usage:**
+
+        >>> object_id = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
+        >>> print(object_id)
+        """
+
+        KEY = str((link, "OBJECT_ID"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, self.request.handler(
+                method = "GET",
+                url = f"/g/s/link-resolution?q={link}"
+                ))
+        return LinkInfo(self.cache.get(KEY)).objectId
+    
+
+    def fetch_object_info(self, link: str) -> LinkInfo:
+        """
+        Fetches information about an object given its link.
+
+        :param link: The link to the object.
+        :type link: str
+        :raises NotLoggedIn: If the user is not logged in.
+        :raises MissingCommunityId: If the community ID is missing.
+        :return: A LinkInfo object containing information about the object.
+        :rtype: LinkInfo
+
+        The `community` decorator is used to ensure that the user is logged in and the community ID is present.
+        The method caches the object information for faster access in future calls.
+
+        `LinkInfo`:
+
+        - `data`: The raw response data from the API.
+        - `linkInfoV2`: The link information data.
+        - `path`: The path of the object.
+        - `extensions`: The extensions data.
+        - `objectId`: The ID of the object.
+        - `shareURLShortCode`: The short code of the share URL.
+        - `targetCode`: The target code.
+        - `ndcId`: The NDC ID.
+        - `comId`: The community ID.
+        - `fullPath`: The full path of the object.
+        - `shortCode`: The short code of the object.
+        - `objectType`: The type of the object.
+
+        **Example usage:**
+
+        >>> object_info = client.community.fetch_object_info(link="https://aminoapps.com/p/w2Fs6H")
+        >>> print(object_info.objectId)
+        """
+
+        KEY = str((link, "OBJECT_INFO"))
+        if not self.cache.get(KEY):
+            self.cache.set(KEY, self.request.handler(
+                method = "GET",
+                url = f"/g/s/link-resolution?q={link}"
+                ))
+        return LinkInfo(self.cache.get(KEY))
+    
     @authenticated
     def disconnect_google(self, password: str) -> dict:
         """
