@@ -387,7 +387,11 @@ class Context():
                     media=image,
                     content_type="image/jpg",
                     media_value=False
-            )))
+            )),
+            mediaUploadValueContentType="image/jpg",
+            mediaUhqEnabled=False,
+            attachedObject=None
+            )
 
         return message
             
@@ -415,7 +419,11 @@ class Context():
                     media=gif,
                     content_type="image/gif",
                     media_value=False
-            )))
+            )),
+            mediaUploadValueContentType="image/gif",
+            mediaUhqEnabled=False,
+            attachedObject=None
+            )
         
         return message
 
