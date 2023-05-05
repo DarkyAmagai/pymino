@@ -387,11 +387,7 @@ class Context():
                     media=image,
                     content_type="image/jpg",
                     media_value=False
-            )),
-            mediaUploadValueContentType="image/jpg",
-            mediaUhqEnabled=False,
-            attachedObject=None
-            )
+            )))
 
         return message
             
@@ -419,11 +415,7 @@ class Context():
                     media=gif,
                     content_type="image/gif",
                     media_value=False
-            )),
-            mediaUploadValueContentType="image/gif",
-            mediaUhqEnabled=False,
-            attachedObject=None
-            )
+            )))
         
         return message
 
@@ -677,12 +669,18 @@ class EventHandler(Context):
         command_name = data.content[len(self.command_prefix):].split(" ")[0]
 
         if any([self.command_exists(command_name) != True, self.command_prefix != data.content[:len(self.command_prefix)]]):
-            if command_name == "help":
+            if (
+                command_name == "help"
+                and data.content == f"{self.command_prefix}help"
+            ):
                 return Context(data, self.request).reply(self._commands.__help__())
             elif "text_message" in self._events:
                 return self._handle_text_message(data)
             else:
                 return None
+
+        if data.content[:len(self.command_prefix)] != self.command_prefix:
+            return None
 
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         parameters = [{
