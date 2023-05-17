@@ -1284,8 +1284,6 @@ class EventHandler: #NEW.
 
         if event == "text_message":
             self._add_cache(data.chatId, data.author.userId, data.content)
-            if event in self._events:
-                return self._handle_command(data=data, context=context)
         
         if event in self._events:
             self._remove_cache(data.chatId, data.author.userId)
@@ -1301,4 +1299,5 @@ class EventHandler: #NEW.
 
             return self._events[event](context)
 
-        return None
+        with suppress(KeyError):
+            return self._handle_command(data=data, context=context)
