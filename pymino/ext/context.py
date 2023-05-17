@@ -1,4 +1,5 @@
 from requests import get
+from diskcache import Cache
 from threading import Thread
 from base64 import b64encode
 from contextlib import suppress
@@ -12,7 +13,7 @@ from .entities.userprofile import OnlineMembers
 from .utilities.commands import Command, Commands
 from .entities.exceptions import InvalidImage, MustRunInContext
 from .entities.messages import (
-    CMessage, Message, MessageAuthor, PrepareMessage
+    CMessage, Message, MessageAuthor, PrepareMessage, NNotification
     )
 
 class Context():
@@ -25,9 +26,9 @@ class Context():
 
     """
     def __init__(self, message: Message, session):
-        self.message:  Message = message
-        self.userId:   str = session.userId
-        self.request   = session
+        self.message:   Message = message
+        self.userId:    str = session.userId
+        self.request    = session
 
     @property
     def author(self) -> MessageAuthor:
@@ -114,7 +115,54 @@ class Context():
             method = "DELETE",
             url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}"
             ))
+    
+    def wait_for_message(self, message: str, timeout: int = 10) -> Message:
+        """
+        `wait_for_message` - This waits for a message. 
+        
+        `**Parameters**`
+        - `message` - The message to wait for.
+        - `timeout` - The time to wait before timing out.
+        
+        `**Returns**`
+        - `Message` - The message that was sent.
+        
+        `**Example**`
+        ```py
+        @bot.on_member_join()
+        def on_member_join(ctx: Context):
+            if ctx.comId != bot.community.community_id:
+                return
+                
+            TIMEOUT = 15
 
+            ctx.send(content="Welcome to the chat! Please verify yourself by typing `$verify` in the chat.", delete_after=TIMEOUT)
+
+            response = ctx.wait_for_message(message="$verify", timeout=15)
+
+            if response is None:
+                ctx.send(content="You took too long to verify yourself. You have been kicked from the chat.", delete_after=TIMEOUT)
+                return bot.community.kick(userId=ctx.author.userId, chatId=ctx.chatId, allowRejoin=True, comId=ctx.comId)
+
+            else:
+                ctx.send(content="You have been verified!", delete_after=TIMEOUT)
+        ```
+        """
+        start = time()
+        cache = Cache("cache")
+        
+        while True:
+            cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
+            if time() - start >= timeout:
+                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                return None
+            if cached_message is not None and cached_message != message:
+                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                return None
+            if cached_message == message:
+                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                return self.message
+    
     @_run
     def send(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
@@ -142,8 +190,8 @@ class Context():
             ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
             ] if isinstance(mentioned, list) else None
             })
-        
-        self._delete(message, delete_after) if delete_after else None
+
+        Thread(target=self._delete, args=(message, delete_after)) if delete_after else None
 
         return message
 
@@ -176,7 +224,7 @@ class Context():
             ] if isinstance(mentioned, list) else None
             })
         
-        self._delete(message, delete_after) if delete_after else None
+        Thread(target=self._delete, args=(message, delete_after)) if delete_after else None
         
         return message
 
@@ -481,7 +529,8 @@ class Context():
             url=f"/{self.communityId}/s/chat/thread/{chatId or self.chatId}/member/{self.userId}"
             ))
     
-class EventHandler(Context):
+class EventHandler: #NEW.
+    #OLD: class EventHandler(Context):
     """
     `EventHandler` - AKA where all the events are handled.
 
@@ -492,8 +541,10 @@ class EventHandler(Context):
     def __init__(self):
         self.command_prefix:    str = self.command_prefix
         self._events:           dict = {}
+        self._wait_for:         Cache = Cache("cache")
         self._commands:         Commands = Commands()
-        super().__init__(self, self.request)
+        self.context:           Context = Context
+
 
     def start_task(self, func):
         """`start_task` - This starts a task."""
@@ -664,7 +715,7 @@ class EventHandler(Context):
         """
         return self._commands.fetch_command(command_name)
 
-    def _handle_command(self, data: Message):
+    def _handle_command(self, data: Message, context: Context):
         """`_handle_command` is a function that handles commands."""
         command_name = data.content[len(self.command_prefix):].split(" ")[0]
 
@@ -673,7 +724,7 @@ class EventHandler(Context):
                 command_name == "help"
                 and data.content == f"{self.command_prefix}help"
             ):
-                return Context(data, self.request).reply(self._commands.__help__())
+                return context.reply(self._commands.__help__())
             elif "text_message" in self._events:
                 return self._handle_text_message(data)
             else:
@@ -684,7 +735,7 @@ class EventHandler(Context):
 
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         parameters = [{
-            "ctx": Context(data, self.request),
+            "ctx": context,
             "message": None if len(message) == 0 else message,
             "username": data.author.username,
             "userId": data.author.userId
@@ -694,7 +745,7 @@ class EventHandler(Context):
 
         if self._commands.fetch_command(command_name).cooldown > 0:
             if self._commands.fetch_cooldown(command_name, data.author.userId) > time():
-                return Context(data, self.request).reply(f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
+                return context.reply(f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
             self._commands.set_cooldown(command_name, self._commands.fetch_command(command_name).cooldown, data.author.userId)
 
         return self._commands.fetch_command(command_name).func(*parameters)
@@ -753,23 +804,33 @@ class EventHandler(Context):
             self._events["text_message"] = func
             return func
         return decorator
+    
+    def _add_cache(self, chatId: str, userId: str, content: str):
+        if self._wait_for.get(f"{chatId}_{userId}") is not None:
+            self._wait_for.clear(f"{chatId}_{userId}")
 
-    def _handle_text_message(self, data: Message):
-        """`_handle_text_message` is a function that handles text messages."""
-
-        ctx: Context = Context(data, self.request)
+        self._wait_for.add(
+            key=f"{chatId}_{userId}",
+            value=content,
+            expire=90
+            )
         
+    def _remove_cache(self, chatId: str, userId: str):
+        self._wait_for.clear(f"{chatId}_{userId}")
+
+    def _handle_text_message(self, data: Message, context: Context):
+        """`_handle_text_message` is a function that handles text messages."""
         if data.content.startswith(self.command_prefix):
             command_name = data.content.split(" ")[0][len(self.command_prefix):]
         else:
             command_name = None
 
         parameters = [{
-            "ctx": ctx,
+            "ctx": context,
             "command": self.command_prefix + command_name if command_name != None else "Command not found",
-            "message": ctx.message.content[len(command_name) + len(self.command_prefix) + 1:] if command_name else ctx.message.content,
-            "username": ctx.author.username,
-            "userId": ctx.author.userId
+            "message": context.message.content[len(command_name) + len(self.command_prefix) + 1:] if command_name else context.message.content,
+            "username": context.author.username,
+            "userId": context.author.userId
         }.get(i) for i in inspect_signature(self._events["text_message"]).parameters]
 
         return self._events["text_message"](*parameters)
@@ -1147,13 +1208,97 @@ class EventHandler(Context):
             return func
         return decorator
 
-    def _handle_event(self, event: str, data: Message):
+
+    def on_member_set_you_host(self):
+        """
+        `on_member_set_you_host` - This is an event that is called when you are set as host.
+
+        `**Example**``
+        ```py
+        from pymino.ext import *
+        chatId = "0000-0000-0000-0000"
+
+        @bot.on_member_set_you_host()
+        def member_set_you_host(notification: NNotification):
+            if notification.chatId == chatId:
+                print("You are now host")
+                bot.community.send_message(chatId=chatId, content="I am now host", comId=notification.comId)
+        ```
+        """
+        def decorator(func):
+            self._events["member_set_you_host"] = func
+            return func
+        return decorator
+    
+    def on_member_set_you_cohost(self):
+        """
+        `on_member_set_you_cohost` - This is an event that is called when you are set as cohost.
+        
+        `**Example**``
+        ```py
+        from pymino.ext import *
+        chatId = "0000-0000-0000-0000"
+        
+        @bot.on_member_set_you_cohost()
+        def member_set_you_cohost(notification: NNotification):
+            if notification.chatId == chatId:
+                print("You are now cohost")
+                bot.community.send_message(chatId=chatId, content="I am now cohost", comId=notification.comId)
+        ```
+        """
+        def decorator(func):
+            self._events["member_set_you_cohost"] = func
+            return func
+        return decorator
+    
+    def on_member_remove_your_cohost(self):
+        """
+        `on_member_remove_your_cohost` - This is an event that is called when you are removed as cohost.
+        
+        `**Example**``
+        ```py
+        from pymino.ext import *
+        chatId = "0000-0000-0000-0000"
+        
+        @bot.on_member_remove_your_cohost()
+        def member_remove_your_cohost(notification: NNotification):
+            if notification.chatId == chatId:
+                print("You are no longer cohost")
+                bot.community.send_message(chatId=chatId, content="I am no longer cohost", comId=notification.comId)
+        ```
+        """
+        def decorator(func):
+            self._events["member_remove_your_cohost"] = func
+            return func
+        return decorator
+
+    def _handle_event(
+        self,
+        event: str,
+        data: Union[Message, OnlineMembers, NNotification, Context]
+        ) -> Union[Context, None]:
+        """
+        `_handle_event` is a function that handles events.
+        """
+        context = self.context(data, self.request)
+
         if event == "text_message":
-            return self._handle_command(data)
+            self._add_cache(data.chatId, data.author.userId, data.content)
+            if event in self._events:
+                return self._handle_command(data=data, context=context)
+        
+        if event in self._events:
+            self._remove_cache(data.chatId, data.author.userId)
+            if event == "user_online":
+                return self._events[event](data)
 
-        elif event == "user_online":
-            return self._events["user_online"](OnlineMembers(data.json()))
+            if event in {
+                "member_set_you_host",
+                "member_set_you_cohost",
+                "member_remove_your_cohost",
+            }:
+                return self._events[event](data)
 
-        elif any([event != "text_message", event != "user_online"]):
-            with suppress(KeyError):
-                return self._events[event](Context(data, self.request))
+            return self._events[event](context)
+
+        return None

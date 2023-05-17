@@ -392,7 +392,7 @@ class ReplyMessage:
     
     @property
     @return_none
-    def author(self) -> UserProfile:
+    def author(self) -> Union[UserProfile, None]:
         """
         `Author` - is the user profile of the user who sent the message that was replied to.
 
@@ -401,7 +401,10 @@ class ReplyMessage:
             - `None` means that there was an error while trying to get the user profile.
 
         """
-        return UserProfile(self.data.get('author'))
+        try:
+            return UserProfile(self.data.get('author'))
+        except Exception:
+            return None
     
     @property
     @return_none
@@ -1279,4 +1282,62 @@ class Channel:
     
     def json(self) -> Union[dict, str]:
         """`JSON` - returns the raw data."""
+        return self.data
+    
+class NNotification:
+    def __init__(self, data: dict):
+        """
+        `NNotification - This contains all attributes aor any notification event.
+        """
+        self.data: dict = data
+
+    @property
+    def __parser__(self) -> dict:
+        try:
+            return self.data.get("o")
+        except Exception:
+            print(self.data)
+            return self.data
+    
+    @property
+    def payload(self) -> dict:
+        return self.__parser__.get("payload")
+    
+    @property
+    def exp(self) -> int:
+        return self.payload.get("exp")
+    
+    @property
+    def ndcId(self) -> int:
+        return self.payload.get("ndcId")
+    
+    @property
+    def comId(self) -> int:
+        return self.ndcId
+    
+    @property
+    def chatId(self) -> str:
+        return self.payload.get("tid")
+    
+    @property
+    def aps(self) -> dict:
+        return self.payload.get("aps")
+    
+    @property
+    def sound(self) -> str:
+        return self.aps.get("sound")
+    
+    @property
+    def alert(self) -> str:
+        return self.aps.get("alert")
+    
+    @property
+    def notifType(self) -> int:
+        return self.payload.get("notifType")
+    
+    @property
+    def id(self) -> str:
+        return self.payload.get("id")
+    
+    def json(self) -> dict:
         return self.data

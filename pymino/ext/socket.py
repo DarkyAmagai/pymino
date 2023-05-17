@@ -9,9 +9,9 @@ from ujson import loads, dumps, JSONDecodeError
 
 from .context import EventHandler
 from .dispatcher import MessageDispatcher
-from .entities.wsevents import EventTypes
+from .entities.wsevents import EventTypes, NotifTypes
 from .entities.userprofile import OnlineMembers
-from .entities.messages import Channel, Message
+from .entities.messages import Channel, Message, NNotification
 from .entities.exceptions import WrongWebSocketPackage
 from .utilities.generate import device_id, generate_signature
 from .entities.handlers import is_android, is_repl, notify, orjson_exists
@@ -37,10 +37,12 @@ class WSClient(EventHandler):
         self.online_status: bool = True        
         self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
+        self.notif_types:   dict =  NotifTypes().notifs
         self.dispatcher:    MessageDispatcher = MessageDispatcher()
         self.channel:       Optional[Channel] = None
         self.orjson:        bool = orjson_exists()
         
+        self.dispatcher.register(10, self._handle_notification)
         self.dispatcher.register(201, self._handle_agora_channel)
         self.dispatcher.register(400, self._handle_user_online)
         self.dispatcher.register(1000, self._handle_message)
@@ -91,18 +93,24 @@ class WSClient(EventHandler):
 
     def _handle_message(self, message: dict) -> None:
         """Sends the message to the event handler."""
-        message: Message = Message(message)
-        if self.userId == message.userId: return None
-        
+        _message: Message = Message(message)
+
+        if self.userId == _message.userId: return None
         None if any(
-            [message.ndcId is None, message.ndcId == 0]
-        ) else self._communities.add(message.ndcId)
+            [_message.ndcId is None, _message.ndcId == 0]
+        ) else self._communities.add(_message.ndcId)
 
-        key = self.event_types.get(f"{message.type}:{message.mediaType}")
-
+        key = self.event_types.get(f"{_message.type}:{_message.mediaType}")
         if key != None:
-            return Thread(target=self._handle_event, args=(key, message)).start()
+            return Thread(target=self._handle_event, args=(key, _message)).start()
 
+    def _handle_notification(self, message: dict) -> None:
+        """Handles notifications."""
+        notification: NNotification = NNotification(message)
+        key = self.notif_types.get(notification.notifType)
+        if key != None:
+            return Thread(target=self._handle_event, args=(key, notification)).start()
+    
     def _handle_agora_channel(self, message: dict) -> None:
         """Sets the agora channel."""
         self.channel: Channel = Channel(message)

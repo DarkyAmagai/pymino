@@ -1,5 +1,5 @@
 class EventTypes:
-    def __init__(self):
+    def __init__(self) -> None:
         self.events = {
             "0:0": "text_message",
             "0:100": "image_message",
@@ -51,3 +51,11 @@ class EventTypes:
             "65282:0": "welcome_message",
             "65283:0": "invite_message"
             }
+        
+class NotifTypes:
+    def __init__(self) -> None:
+        self.notifs = {
+        53: "member_set_you_host",
+        67: "member_set_you_cohost",
+        68: "member_remove_your_cohost"
+        }

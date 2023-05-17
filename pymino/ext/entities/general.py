@@ -97,7 +97,10 @@ class CheckIn:
             self.hasCheckInToday:         Union[bool, None] = self.checkInHistory.get("hasCheckInToday", self.hasCheckInToday)
             self.hasAnyCheckIn:           Union[bool, None] = self.checkInHistory.get("hasAnyCheckIn", self.hasAnyCheckIn)
             self.history:                 dict = self.checkInHistory.get("history", self.history)
-            self.userProfile:             dict = self.data.get("userProfile", self.userProfile)
+            try:
+                self.userProfile:         Union[dict, None] = self.data.get("userProfile", self.userProfile)
+            except Exception:
+                self.userProfile:         Union[dict, None] = None
 
     def json(self) -> Union[dict, str]:
         return self.data
@@ -281,7 +284,12 @@ class CBlog:
             self.blogId:                str = self.data.get("blogId", self.blogId)
             self.viewCount:             int = self.data.get("viewCount", self.viewCount)
             self.language:              str = self.data.get("language", self.language)
-            self.author:                UserProfile = UserProfile(data=self.data.get("author", self.author))
+
+            try:
+                self.author:            Union[UserProfile, None] = UserProfile(data=self.data.get("author", self.author))
+            except Exception:
+                self.author:            Union[UserProfile, None] = None
+
             self.extensions:            dict = self.data.get("extensions", self.extensions)
             self.votesCount:            int = self.data.get("votesCount", self.votesCount)
             self.ndcId:                 int = self.data.get("ndcId", self.ndcId)
@@ -427,7 +435,12 @@ class Notification:
             self.contextText:       Union[str, None] = self.data.get("contextText", self.contextText)
             self.type:              Union[int, None] = self.data.get("type", self.type)
             self.parentId:          Union[str, None] = self.data.get("parentId", self.parentId)
-            self.operator:          UserProfile = UserProfile(self.data.get("operator", self.operator))
+
+            try:
+                self.operator:          Union[UserProfile, None] = UserProfile(self.data.get("operator", self.operator))
+            except Exception:
+                self.operator:          Union[UserProfile, None] = None
+
             self.createdTime:       Union[str, None] = self.data.get("createdTime", self.createdTime)
             self.parentType:        Union[int, None] = self.data.get("parentType", self.parentType)
             self.comId:             Union[int, None] = self.data.get("ndcId", self.comId)
@@ -531,7 +544,12 @@ class CComment:
             self.parentNdcId:       Union[int, None] = self.data.get("parentNdcId", self.parentNdcId)
             self.mediaList:         Union[None, None] = self.data.get("mediaList", self.mediaList)
             self.votesSum:          Union[int, None] = self.data.get("votesSum", self.votesSum)
-            self.author:            UserProfile = UserProfile(self.data.get("author", self.author))
+
+            try:
+                self.author:            Union[UserProfile, None] = UserProfile(self.data.get("author", self.author))
+            except Exception:
+                self.author:            Union[UserProfile, None] = None
+
             self.extensions:        CCommentExtensions = CCommentExtensions(self.data.get("extensions", self.extensions))
             self.content:           Union[str, None] = self.data.get("content", self.content)
             self.parentId:          Union[str, None] = self.data.get("parentId", self.parentId)
@@ -754,8 +772,11 @@ class FeaturedBlog:
     
     @property
     @return_none
-    def author(self) -> UserProfile:
-        return UserProfile(self.ref_object.get('author'))
+    def author(self) -> Union[UserProfile, None]:
+        try:
+            return UserProfile(self.ref_object.get('author'))
+        except Exception:
+            return None
 
     def json(self) -> Union[dict, None]:
         return self.data
@@ -884,7 +905,10 @@ class QuizRanking:
         """
         `author` - Returns the author of the quiz.
         """
-        return UserProfile(self.data.get('author'))
+        try:
+            return UserProfile(self.data.get('author'))
+        except Exception:
+            return None
     
     @property
     @return_none
