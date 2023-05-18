@@ -62,15 +62,18 @@ def parse_auid(sid: str) -> str:
 
 def cache_login(email: str, device: str, sid: str):
     """Cache the login credentials for the current user."""
-    cache = Cache("cache")
-    cache[email] = {"device": device, "sid": sid}
+    with suppress(Exception):
+        cache = Cache("cache")
+        cache[email] = {"device": device, "sid": sid}
 
 def fetch_cache(email: str) -> tuple:
     """Fetch the login credentials for the current user."""
-    cache = Cache("cache")
-    return cache[email]["sid"], cache[email]["device"]
+    with suppress(Exception):
+        cache = Cache("cache")
+        return cache[email]["sid"], cache[email]["device"]
 
 def cache_exists(email: str) -> bool:
     """Check if the cache exists for the current user."""
-    cache = Cache("cache")
-    return email in cache
+    with suppress(Exception):
+        cache = Cache("cache")
+        return email in cache

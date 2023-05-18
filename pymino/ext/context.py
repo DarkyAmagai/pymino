@@ -151,18 +151,20 @@ class Context():
         start = time()
         cache = Cache("cache")
         
-        while True:
+        while time() - start < timeout:
             cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
-            if time() - start >= timeout:
-                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
-                return None
-            if cached_message is not None and cached_message != message:
-                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
-                return None
+
             if cached_message == message:
                 cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
                 return self.message
-    
+
+            if all([cached_message is not None, cached_message != message]):
+                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                return None
+
+        cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+        return None
+
     @_run
     def send(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
@@ -191,7 +193,7 @@ class Context():
             ] if isinstance(mentioned, list) else None
             })
 
-        Thread(target=self._delete, args=(message, delete_after)) if delete_after else None
+        Thread(target=self._delete, args=(message, delete_after)).start() if delete_after else None
 
         return message
 
@@ -224,7 +226,7 @@ class Context():
             ] if isinstance(mentioned, list) else None
             })
         
-        Thread(target=self._delete, args=(message, delete_after)) if delete_after else None
+        Thread(target=self._delete, args=(message, delete_after)).start() if delete_after else None
         
         return message
 
@@ -1280,24 +1282,20 @@ class EventHandler: #NEW.
         """
         `_handle_event` is a function that handles events.
         """
-        context = self.context(data, self.request)
-
-        if event == "text_message":
-            self._add_cache(data.chatId, data.author.userId, data.content)
-        
-        if event in self._events:
-            self._remove_cache(data.chatId, data.author.userId)
-            if event == "user_online":
-                return self._events[event](data)
-
-            if event in {
-                "member_set_you_host",
-                "member_set_you_cohost",
-                "member_remove_your_cohost",
-            }:
-                return self._events[event](data)
-
-            return self._events[event](context)
-
         with suppress(KeyError):
-            return self._handle_command(data=data, context=context)
+            context = self.context(data, self.request)
+
+            if event in self._events:
+                if event in {
+                    "user_online",
+                    "member_set_you_host",
+                    "member_set_you_cohost",
+                    "member_remove_your_cohost",
+                }:
+                    return self._events[event](data)
+                else:
+                    return self._events[event](context)
+
+            if event == "text_message":
+                self._add_cache(data.chatId, data.author.userId, data.content)
+                return self._handle_command(data=data, context=context)
