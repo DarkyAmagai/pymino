@@ -4196,6 +4196,7 @@ class Community:
             content_type = content_type
             )).mediaValue
 
+
     @community
     def join_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -4232,6 +4233,7 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
             ))
 
+
     @community
     def leave_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -4267,6 +4269,7 @@ class Community:
             method = "DELETE",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
             ))
+
 
     @community
     def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: Union[str, int] = None) -> ApiResponse:
@@ -4308,6 +4311,7 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"
             ))
 
+
     @community
     def delete_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -4343,6 +4347,7 @@ class Community:
             method = "DELETE",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
+
 
     @community
     def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -4395,6 +4400,7 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
             ))
 
+
     @community
     def transfer_host(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -4435,6 +4441,7 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def accept_host(self, chatId: str, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -4472,6 +4479,7 @@ class Community:
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"
             ))
+
 
     @community
     def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -4519,6 +4527,7 @@ class Community:
                 "timestamp": int(time() * 1000)
                 }))
 
+
     @community
     def thank_props(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -4556,6 +4565,7 @@ class Community:
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"
             ))
+
 
     @community
     def send_active(
@@ -4622,6 +4632,7 @@ class Community:
             data=data
             ))
 
+
     @community
     def send_coins(
         self,
@@ -4670,13 +4681,10 @@ class Community:
         ...     print("Failed to send coins.")
         """
         return ApiResponse(self.session.handler(
-            method="POST", url=f'/x{self.community_id if comId is None else comId}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
-            data={
-                "coins": coins,
-                "tippingContext": {"transactionId": transactionId or (str(uuid4()))},
-                "timestamp": int(time() * 1000)
-            }
-        ))
+            method="POST",
+            url=f'/x{self.community_id if comId is None else comId}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
+            data={"coins": coins, "tippingContext": {"transactionId": transactionId or (str(uuid4()))}, "timestamp": int(time() * 1000)}
+            ))
 
 
     @community
@@ -4699,7 +4707,7 @@ class Community:
         message: Optional[str] = None,
         content: Optional[str] = None,
         comId: Optional[Union[str, int]] = None
-    ) -> ApiResponse:
+    ) -> CThread:
         """
         Creates a new chat with the given users.
 
@@ -4718,7 +4726,7 @@ class Community:
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        `ApiResponse`:
+        `ApiResponse`: TODO: Update this to reflect the new return type.
 
         - `message`: A message indicating whether the chat was successfully created.
         - `statuscode`: The status code of the API response.
@@ -4735,8 +4743,9 @@ class Community:
         ... else:
         ...     print("Failed to create chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
+        return CThread(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
             data = {
             "title": title,
             "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
@@ -4746,6 +4755,7 @@ class Community:
             "publishToGlobal": 0,
             "timestamp": int(time() * 1000)
             }))
+
 
     @community
     def invite_chat(self, chatId: str, userIds: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
@@ -4783,7 +4793,8 @@ class Community:
         ...     print("Failed to send invitation.")
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/invite",
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/invite",
             data = {
             "uids": userIds if isinstance(userIds, list) else [userIds],
             "timestamp": int(time() * 1000)
