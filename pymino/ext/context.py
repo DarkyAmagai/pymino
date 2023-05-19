@@ -1285,6 +1285,14 @@ class EventHandler: #NEW.
         with suppress(KeyError):
             context = self.context(data, self.request)
 
+            if event == "text_message":
+                if not self.command_exists(
+                    command_name=data.content[len(self.command_prefix):].split(" ")[0]
+                    ):
+                    self._add_cache(data.chatId, data.author.userId, data.content)
+
+                return self._handle_command(data=data, context=context)
+            
             if event in self._events:
                 if event in {
                     "user_online",
@@ -1295,11 +1303,3 @@ class EventHandler: #NEW.
                     return self._events[event](data)
                 else:
                     return self._events[event](context)
-
-            if event == "text_message":
-                if not self.command_exists(
-                    command_name=data.content[len(self.command_prefix):].split(" ")[0]
-                    ):
-                    self._add_cache(data.chatId, data.author.userId, data.content)
-
-                return self._handle_command(data=data, context=context)
