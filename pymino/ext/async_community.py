@@ -5,8 +5,11 @@ from random import randint
 from diskcache import Cache
 from base64 import b64encode
 from time import time, timezone
-from typing import BinaryIO, Callable, List, Optional, Union, TypeVar, Any
 
+from typing import (
+    BinaryIO, Callable, List,
+    Optional, Union, TypeVar, Any
+    )
 
 from .entities.enums import *
 from .entities.threads import CThread, CThreadList
@@ -19,11 +22,16 @@ from .entities.exceptions import (
     InvalidImage, MissingCommunityId,
     MissingTimers, NoDataProvided, NotLoggedIn
     )
-from .entities.general import *
+from .entities.general import (
+    ApiResponse, CBlog, CBlogList, CChatMembers,
+    CComment, CCommentList, CCommunity, CCommunityList,
+    CheckIn, CommunityInvitation, Coupon, FeaturedBlogs,
+    InvitationId, LinkInfo, NotificationList, QuizRankingList
+    )
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-class Community:
+class AsyncCommunity:
     """
     The `Community` class handles community related actions.
 
@@ -113,7 +121,8 @@ class Community:
         self.cache = Cache("cache")
         self.community_id: Union[str, int] = community_id
         self.userId: Optional[str] = None
-        if self.userId is None: return
+
+        if self.userId is None: return None
 
 
     def community(func: F) -> F:
@@ -140,18 +149,18 @@ class Community:
         >>> def my_function(self, comId: str):
         >>>     # Function code
         """
-        def community_func(*args, **kwargs) -> Any:
+        async def community_func(*args, **kwargs) -> Any:
             if not args[0].userId:
                 raise NotLoggedIn("You are not logged in. Please login before using this function.")
             if not any([args[0].community_id, kwargs.get("comId")]):
                 raise MissingCommunityId("Please provide a community id to the bot before running it or add it to the function call.")
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
         community_func.__annotations__ = func.__annotations__
         return community_func
 
 
     @community
-    def invite_code(self, comId: Union[str, int] = None) -> CommunityInvitation:
+    async def invite_code(self, comId: Union[str, int] = None) -> CommunityInvitation:
         """
         Generates an invite code for the community.
 
@@ -182,15 +191,16 @@ class Community:
         >>> invite_code = client.community.invite_code(comId=123456)
         >>> print(invite_code.inviteCode)
         """
-        return CommunityInvitation(self.session.handler(
-            method = "POST",
-            url = f"/g/s-x{self.community_id if comId is None else comId}/community/invitation",
-            data = {"duration": 0, "force": True, "timestamp": int(time() * 1000)}
+        return CommunityInvitation(
+            await self.session.handler(
+                method="POST",
+                url=f"/g/s-x{self.community_id if comId is None else comId}/community/invitation",
+                data={"duration": 0, "force": True, "timestamp": int(time() * 1000)}
             ))
 
 
     @community
-    def fetch_object(
+    async def fetch_object(
         self,
         objectId: str,
         objectType: ObjectTypes = ObjectTypes.USER,
@@ -245,20 +255,18 @@ class Community:
             objectType = kwargs["object_type"]
             print("Warning: The 'object_type' parameter is deprecated. Please use 'objectType' instead.")
 
-        KEY = str((objectId, self.community_id if comId is None else comId))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "POST",
-                url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
-                data = {
+        return LinkInfo(
+            await self.session.handler(
+                method="POST",
+                url=f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
+                data={
                     "objectId": objectId,
                     "targetCode": 1,
                     "objectType": objectType.value if isinstance(objectType, ObjectTypes) else objectType,
                     "timestamp": int(time() * 1000)
                     }
                 ))
-        return LinkInfo(self.cache.get(KEY))
-
+    
 
     def fetch_object_id(self, link: str) -> str:
         """
@@ -282,14 +290,16 @@ class Community:
 
         KEY = str((link, "OBJECT_ID"))
         if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "GET",
-                url = f"/g/s/link-resolution?q={link}"
-                ))
+            response = self.session.handler(
+                method="GET",
+                url=f"/g/s/link-resolution?q={link}"
+            )
+            self.cache.set(KEY, response)
+
         return LinkInfo(self.cache.get(KEY)).objectId
 
 
-    def fetch_object_info(self, link: str) -> LinkInfo:
+    async def fetch_object_info(self, link: str) -> LinkInfo:
         """
         Fetches information about an object given its link.
 
@@ -326,14 +336,15 @@ class Community:
 
         KEY = str((link, "OBJECT_INFO"))
         if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "GET",
-                url = f"/g/s/link-resolution?q={link}"
-                ))
+            response = await self.session.handler(
+                method="GET",
+                url=f"/g/s/link-resolution?q={link}"
+            )
+            self.cache.set(KEY, response)
         return LinkInfo(self.cache.get(KEY))
 
 
-    def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
+    async def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
         """
         Fetches information about a community given its ID.
 
@@ -385,13 +396,13 @@ class Community:
         KEY = str((comId, "COMMUNITY_INFO"))
         if not self.cache.get(KEY):
             self.cache.set(KEY, self.session.handler(
-                method = "GET",
-                url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
+                method="GET",
+                url=f"/g/s-x{self.community_id if comId is None else comId}/community/info"
                 ))
         return CCommunity(self.cache.get(KEY))
 
 
-    def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
+    async def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
         """
         Fetches a list of communities the user has joined.
         
@@ -439,14 +450,15 @@ class Community:
         >>> community_list = client.community.joined_communities()
         >>> print(community_list.name)
         """
-        return CCommunityList(self.session.handler(
-            method = "GET",
-            url = f"/g/s/community/joined?v=1&start={start}&size={size}"
+        return CCommunityList(
+            await self.session.handler(
+            method="GET",
+            url=f"/g/s/community/joined?v=1&start={start}&size={size}"
             ))
 
 
     @community
-    def join_community(self, comId: Union[str, int] = None) -> ApiResponse:
+    async def join_community(self, comId: Union[str, int] = None) -> ApiResponse:
         """
         Joins the current or specified community.
 
@@ -475,13 +487,15 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Joined community successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/join", 
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/join", 
             data={"timestamp": int(time() * 1000)}
             ))
 
 
-    def fetch_invitationId(self, inviteCode: str, **kwargs) -> str:
+    async def fetch_invitationId(self, inviteCode: str, **kwargs) -> str:
         """
         Fetches the invitation ID for a given invite code.
 
@@ -505,14 +519,15 @@ class Community:
             inviteCode = kwargs["invite_code"]
             print("The 'invite_code' parameter has been deprecated. Please use 'inviteCode' instead.")
 
-        return InvitationId(self.session.handler(
-            method = "GET",
-            url = f"/g/s/community/link-identify?q={inviteCode}"
+        return InvitationId(
+            await self.session.handler(
+            method="GET",
+            url=f"/g/s/community/link-identify?q={inviteCode}"
             )).invitationId
 
 
     @community
-    def join_community_by_code(self, inviteCode: str, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
+    async def join_community_by_code(self, inviteCode: str, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
         """
         Joins a community using the invite code.
 
@@ -547,10 +562,11 @@ class Community:
             inviteCode = kwargs["invite_code"]
             print("The 'invite_code' parameter has been deprecated. Please use 'inviteCode' instead.")
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/join",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/join",
+            data={
                 "invitationId": self.fetch_invitationId(inviteCode=inviteCode),
                 "timestamp": int(time() * 1000)
                 }
@@ -558,7 +574,7 @@ class Community:
 
 
     @community
-    def leave_community(self, comId: Union[str, int] = None) -> ApiResponse:
+    async def leave_community(self, comId: Union[str, int] = None) -> ApiResponse:
         """
         Leaves the current or specified community.
 
@@ -587,15 +603,16 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Left community successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/leave", 
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/leave", 
             data={"timestamp": int(time() * 1000)}
             ))
 
 
     @community
-    def request_join(self, message: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def request_join(self, message: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Sends a membership request to join the current or specified community.
 
@@ -626,14 +643,16 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Membership request sent successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/membership-request", 
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/membership-request", 
             data={"message": message, "timestamp": int(time() * 1000)}
             ))
 
 
     @community
-    def flag_community(self, reason: str, flagType: FlagTypes = FlagTypes.OFFTOPIC, comId: Union[str, int] = None) -> ApiResponse:
+    async def flag_community(self, reason: str, flagType: FlagTypes = FlagTypes.OFFTOPIC, comId: Union[str, int] = None) -> ApiResponse:
         """
         Flags the current or specified community with the given reason and flag type.
 
@@ -677,9 +696,10 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Community flagged successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/flag", 
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/flag", 
             data={
             "objectId": self.community_id,
             "objectType": 16,
@@ -689,7 +709,7 @@ class Community:
             }))
 
     @community
-    def check_in(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> CheckIn:
+    async def check_in(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> CheckIn:
         """
         Performs a check-in for the current or specified community.
 
@@ -721,15 +741,16 @@ class Community:
         >>> if check_in_data.hasCheckInToday:
         ...     print("Check-in successful!")
         """
-        return CheckIn(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/check-in",
+        return CheckIn(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/check-in",
             data={"timezone": timezone, "timestamp": int(time() * 1000)}
             ))
 
 
     @community
-    def play_lottery(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> ApiResponse:
+    async def play_lottery(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> ApiResponse:
         """
         Plays the lottery for the current or specified community.
 
@@ -760,15 +781,16 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Lottery played successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/check-in/lottery",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/check-in/lottery",
             data={"timezone": timezone, "timestamp": int(time() * 1000)}
             ))
 
     
     @community
-    def online_status(
+    async def online_status(
         self,
         onlineStatus: OnlineTypes = OnlineTypes.ONLINE,
         comId: Union[str, int] = None,
@@ -808,15 +830,16 @@ class Community:
             onlineStatus = kwargs["status"]
             print("The 'status' parameter is deprecated. Please use 'onlineStatus' instead.")
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/online-status",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/online-status",
             data={"status": onlineStatus.value, "timestamp": int(time() * 1000)}
             ))
 
 
     @community
-    def fetch_new_user_coupon(self, comId: Union[str, int] = None) -> Coupon:
+    async def fetch_new_user_coupon(self, comId: Union[str, int] = None) -> Coupon:
         """
         Fetches the new user coupon for the current or specified community.
 
@@ -849,14 +872,15 @@ class Community:
         >>> new_user_coupon = client.community.fetch_new_user_coupon()
         >>> print(new_user_coupon.title)
         """
-        return Coupon(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/coupon/new-user-coupon"
+        return Coupon(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/coupon/new-user-coupon"
             ))
 
 
     @community
-    def fetch_notifications(self, size: Optional[int] = 25, comId: Union[str, int] = None) -> NotificationList:
+    async def fetch_notifications(self, size: Optional[int] = 25, comId: Union[str, int] = None) -> NotificationList:
         """
         Fetches a list of notifications for the current or specified community.
 
@@ -895,14 +919,15 @@ class Community:
         >>> notifications = client.community.fetch_notifications(size=10)
         >>> listOfOfObjectIds = notifications.objectId
         """
-        return NotificationList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/notification?pagingType=t&size={size}"
+        return NotificationList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/notification?pagingType=t&size={size}"
             ))
     
     
     @community
-    def clear_notifications(self, comId: Union[str, int] = None) -> ApiResponse:
+    async def clear_notifications(self, comId: Union[str, int] = None) -> ApiResponse:
         """
         Clears all notifications for the current or specified community.
 
@@ -929,14 +954,15 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Notifications cleared successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/notification"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/notification"
             ))
 
 
     @community
-    def fetch_user(self, userId: str, comId: Union[str, int] = None) -> UserProfile:
+    async def fetch_user(self, userId: str, comId: Union[str, int] = None) -> UserProfile:
         """
         Fetches the user profile of the specified user in the current or specified community.
 
@@ -996,14 +1022,15 @@ class Community:
         >>> print(user_profile.nickname)
         'John Doe'
         """
-        return UserProfile(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}"
+        return UserProfile(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}"
             ))
 
 
     @community
-    def fetch_users(
+    async def fetch_users(
         self,
         userType: UserTypes = UserTypes.RECENT,
         start: Optional[int] = 0,
@@ -1085,13 +1112,14 @@ class Community:
         if "type" in kwargs: #TODO: Get rid of this in the near future.
             userType = kwargs["type"]
             print("WARNING: The 'type' parameter is deprecated. Please use 'userType' instead.")
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile?type={userType.value if isinstance(userType, UserTypes) else userType}&start={start}&size={size}"
+        return UserProfileList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile?type={userType.value if isinstance(userType, UserTypes) else userType}&start={start}&size={size}"
             ))
 
     @community
-    def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25, comId: Union[str, int] = None) -> UserProfileList:
+    async def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
         Fetches a list of online users in the current or specified community.
 
@@ -1153,13 +1181,14 @@ class Community:
         >>> print(online_users[0].nickname) # Prints the nickname of the first user in the list.
         'John Doe'
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/live-layer?topic=ndtopic:x{self.community_id if comId is None else comId}:online-members&start={start}&size={size}"
+        return UserProfileList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/live-layer?topic=ndtopic:x{self.community_id if comId is None else comId}:online-members&start={start}&size={size}"
             ))
 
     @community
-    def fetch_followers(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+    async def fetch_followers(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
         Fetches a list of followers for a specified user in the current or specified community.
 
@@ -1225,13 +1254,14 @@ class Community:
         >>> print(followers.uid) # Prints all the user IDs in the list.
         ['0000-000000-000000-0000', '0000-000000-000000-0001', '0000-000000-000000-0002']
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member?start={start}&size={size}"
+        return UserProfileList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member?start={start}&size={size}"
             ))
 
     @community
-    def fetch_following(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+    async def fetch_following(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
         Fetches a list of users that the specified user is following in the current or specified community.
 
@@ -1297,13 +1327,14 @@ class Community:
         >>> print(following.uid) # Prints all the user IDs in the list.
         ['0000-000000-000000-0000', '0000-000000-000000-0001', '0000-000000-000000-0002']
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/joined?start={start}&size={size}"
+        return UserProfileList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/joined?start={start}&size={size}"
             ))
 
     @community
-    def fetch_chat(self, chatId: str, comId: Union[str, int] = None) -> CThread:
+    async def fetch_chat(self, chatId: str, comId: Union[str, int] = None) -> CThread:
         """
         Fetches the chat thread with the specified ID in the current or specified community.
 
@@ -1352,14 +1383,15 @@ class Community:
         >>> print(chat_thread.title) # Prints the title of the chat thread.
         'My Chat Thread'
         """
-        return CThread(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
+        return CThread(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
 
     
     @community
-    def fetch_chat_mods(self, chatId: str, comId: Union[str, int] = None, moderators: Optional[str] = "all") -> List[str]:
+    async def fetch_chat_mods(self, chatId: str, comId: Union[str, int] = None, moderators: Optional[str] = "all") -> List[str]:
         """
         Fetches a list of moderators for a specified chat thread in the current or specified community.
 
@@ -1376,7 +1408,7 @@ class Community:
         :return: A list of moderator user IDs.
         :rtype: List[str]
         """
-        response: CThread = self.fetch_chat(chatId=chatId, comId=comId)
+        response: CThread = await self.fetch_chat(chatId=chatId, comId=comId)
 
         return {
             "all": list(response.extensions.coHost) + [response.hostUserId],
@@ -1386,7 +1418,7 @@ class Community:
 
 
     @community
-    def fetch_chat_moderators(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
+    async def fetch_chat_moderators(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
         """
         Fetches a list of all moderators for a specified chat thread in the current or specified community.
 
@@ -1401,7 +1433,7 @@ class Community:
 
 
     @community
-    def fetch_chat_co_hosts(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
+    async def fetch_chat_co_hosts(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
         """
         Fetches a list of co-hosts for a specified chat thread in the current or specified community.
 
@@ -1416,7 +1448,7 @@ class Community:
 
 
     @community
-    def fetch_chat_host(self, chatId: str, comId: Union[str, int] = None) -> str:
+    async def fetch_chat_host(self, chatId: str, comId: Union[str, int] = None) -> str:
         """
         Fetches the host of a specified chat thread in the current or specified community.
 
@@ -1431,7 +1463,7 @@ class Community:
 
 
     @community
-    def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
+    async def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
         """
         Fetches a list of chat threads in the current or specified community that the user has joined.
 
@@ -1489,14 +1521,15 @@ class Community:
         'My Chat Thread'
         'My Other Chat Thread'
         """
-        return CThreadList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=joined-me&start={start}&size={size}"
+        return CThreadList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=joined-me&start={start}&size={size}"
             ))
 
 
     @community
-    def fetch_live_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
+    async def fetch_live_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
         """
         Fetches a list of live chat threads in the current or specified community that are publicly visible.
 
@@ -1554,14 +1587,15 @@ class Community:
         'My Live Chat Thread'
         'My Other Live Chat Thread'
         """
-        return CThreadList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/live-layer/public-live-chats?start={start}&size={size}"
+        return CThreadList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/live-layer/public-live-chats?start={start}&size={size}"
             ))
 
 
     @community
-    def fetch_public_chats(
+    async def fetch_public_chats(
         self,
         chatType: ChatTypes = ChatTypes.RECOMMENDED,
         start: int = 0,
@@ -1638,14 +1672,15 @@ class Community:
             chatType = kwargs["type"]
             print("WARNING: The `type` parameter is deprecated. Please use `chatType` instead.")
 
-        return CThreadList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=public-all&filterType={chatType.value if isinstance(chatType, ChatTypes) else chatType}&start={start}&size={size}"
+        return CThreadList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=public-all&filterType={chatType.value if isinstance(chatType, ChatTypes) else chatType}&start={start}&size={size}"
             ))
 
 
     @community
-    def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CChatMembers:
+    async def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CChatMembers:
         """
         Fetches a list of members in the specified chat thread in the current or specified community.
 
@@ -1722,14 +1757,15 @@ class Community:
         'My Username'
         'My Other Username'
         """
-        return CChatMembers(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
+        return CChatMembers(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
             ))
 
 
     @community
-    def fetch_messages(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CMessages:
+    async def fetch_messages(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CMessages:
         """
         Fetches a list of messages in a chat thread with the specified `chatId`.
 
@@ -1781,14 +1817,15 @@ class Community:
         'How are you?'
         'I'm doing well, thanks!'
         """
-        return CMessages(self.session.handler(
+        return CMessages(
+            await self.session.handler(
             method="GET",
             url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message?start={start}&size={size}&type=default"
         ))
 
 
     @community
-    def fetch_blogs(self, size: int = 25, comId: Union[str, int] = None) -> CBlogList:
+    async def fetch_blogs(self, size: int = 25, comId: Union[str, int] = None) -> CBlogList:
         """
         Fetches a list of blogs from the community with the specified `comId`.
 
@@ -1850,13 +1887,14 @@ class Community:
         'How to learn a new language'
         ...
         """
-        return CBlogList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/feed/blog-all?pagingType=t&size={size}"
+        return CBlogList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/feed/blog-all?pagingType=t&size={size}"
             ))
     
     @community
-    def fetch_featured_blogs(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> FeaturedBlogs:
+    async def fetch_featured_blogs(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> FeaturedBlogs:
         """
         Fetches a list of featured blog posts.
 
@@ -1918,13 +1956,14 @@ class Community:
         'How to learn a new language'
         ...
         """
-        return FeaturedBlogs(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/feed/featured?start={start}&size={size}"
+        return FeaturedBlogs(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/feed/featured?start={start}&size={size}"
             ))
 
     @community
-    def fetch_leaderboard(
+    async def fetch_leaderboard(
         self,
         leaderboardType: LeaderboardTypes = LeaderboardTypes.HALL_OF_FAME,
         start: int = 0,
@@ -2004,13 +2043,14 @@ class Community:
         'Jane Doe'
         ...
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/leaderboard?rankingType={leaderboardType.value if isinstance(leaderboardType, LeaderboardTypes) else leaderboardType}&start={start}&size={size}"
+        return UserProfileList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/leaderboard?rankingType={leaderboardType.value if isinstance(leaderboardType, LeaderboardTypes) else leaderboardType}&start={start}&size={size}"
             ))
 
     @community
-    def fetch_comments(
+    async def fetch_comments(
         self,
         userId: Optional[str] = None,
         blogId: Optional[str] = None,
@@ -2090,7 +2130,7 @@ class Community:
 
 
     @community
-    def set_cohost(self, chatId: str, userIds: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
+    async def set_cohost(self, chatId: str, userIds: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
         """
         Sets the specified user(s) as co-host(s) for the chat with the given `chatId`.
 
@@ -2128,14 +2168,15 @@ class Community:
         ... else:
         ...    print("Failed to set user as co-host.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/cohost",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/cohost",
             data={"userIds": userIds if isinstance(userIds, list) else [userIds]}
             ))
 
     @community
-    def remove_cohost(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def remove_cohost(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Removes a co-host from the specified chat.
 
@@ -2171,14 +2212,15 @@ class Community:
         ... else:
         ...     print("Failed to remove co-host.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/co-host/{userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/co-host/{userId}"
             ))
 
 
     @community
-    def follow(self, userId: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
+    async def follow(self, userId: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
         """
         Follows the specified user or users.
 
@@ -2223,7 +2265,7 @@ class Community:
         )
 
     @community
-    def unfollow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unfollow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unfollows the specified user.
         
@@ -2256,13 +2298,14 @@ class Community:
         ... else:
         ...     print("Failed to unfollow user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member/{self.userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member/{self.userId}"
             ))
 
     @community
-    def block(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def block(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Blocks a user from the current community.
 
@@ -2287,14 +2330,15 @@ class Community:
         ... else:
         ...     print("Failed to block user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
             ))
 
 
     @community
-    def unblock(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unblock(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unblocks a user from the current community.
         
@@ -2319,18 +2363,20 @@ class Community:
         ... else:
         ...     print("Failed to unblock user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
             ))
 
 
     @community
-    def post_blog(self, title: str, content: str, comId: Union[str, int] = None) -> CBlog: #TODO: ADD DOCSTRING
-        return CBlog(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog",
-            data = {
+    async def post_blog(self, title: str, content: str, comId: Union[str, int] = None) -> CBlog: #TODO: ADD DOCSTRING
+        return CBlog(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog",
+            data={
                 "content": content,
                 "title": title,
                 "timestamp": int(time() * 1000)
@@ -2338,7 +2384,7 @@ class Community:
 
 
     @community
-    def delete_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes the specified blog.
 
@@ -2371,14 +2417,15 @@ class Community:
         ... else:
         ...     print("Blog deletion failed.")
         """
-        return ApiResponse(self.session.handler(
+        return ApiResponse(
+            await self.session.handler(
             method="DELETE",
             url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
             ))
 
 
     @community
-    def post_wiki(self, title: str, content: str, fansOnly: bool=False, comId: Union[str, int] = None) -> ApiResponse:
+    async def post_wiki(self, title: str, content: str, fansOnly: bool=False, comId: Union[str, int] = None) -> ApiResponse:
         """
         Posts a new wiki article in the specified community.
 
@@ -2417,10 +2464,11 @@ class Community:
         ... else:
         ...     print("Wiki article could not be posted.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/item",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/item",
+            data={
             "extensions": {"fansOnly": fansOnly},
             "content": content,
             "latitude": 0,
@@ -2434,7 +2482,7 @@ class Community:
 
 
     @community
-    def delete_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes a wiki item with the given ID.
 
@@ -2467,13 +2515,14 @@ class Community:
         ... else:
         ...     print("Failed to delete wiki item.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"
             ))
 
     @community
-    def delete_comment(
+    async def delete_comment(
         self,
         commentId: str,
         userId: Optional[str] = None,
@@ -2530,14 +2579,15 @@ class Community:
         else:
             endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}"
 
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
             url = endpoint
             ))
     
 
     @community
-    def delete_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes a comment on a wiki item with the given comment ID and wiki ID.
 
@@ -2565,7 +2615,7 @@ class Community:
         return self.delete_comment(commentId = commentId, wikiId = wikiId, comId = comId)
 
 
-    def delete_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes a comment on a user's profile with the given comment ID and user ID.
 
@@ -2594,7 +2644,7 @@ class Community:
 
 
     @community
-    def delete_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes a comment from a blog post in the current or specified community.
 
@@ -2631,7 +2681,7 @@ class Community:
 
 
     @community
-    def comment(
+    async def comment(
         self,
         content: str,
         userId: Optional[str] = None,
@@ -2688,7 +2738,7 @@ class Community:
         ... print(comment.content)
         Hello world
         """
-        data = {"timestamp": int(time() * 1000), "content": content}
+        data={"timestamp": int(time() * 1000), "content": content}
 
         if any([userId, blogId, wikiId]):
             endpoint_mapping = {
@@ -2707,15 +2757,16 @@ class Community:
         if image:
             data["mediaList"] = [[100,self.__handle_media__(media=image, media_value=True), None, None, None, None]]
 
-        return CComment(self.session.handler(
-            method = "POST",
+        return CComment(
+            await self.session.handler(
+            method="POST",
             url = endpoint,
             data = data
             ))
 
 
     @community
-    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    async def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
         Creates a comment in the current or specified community, on a blog post with the given ID.
 
@@ -2744,7 +2795,7 @@ class Community:
 
 
     @community
-    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    async def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
         Creates a comment in the current or specified community, on a wiki page with the given ID.
         
@@ -2773,7 +2824,7 @@ class Community:
 
 
     @community
-    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    async def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
         """
         Creates a comment in the current or specified community, on a user profile with the given ID.
         
@@ -2802,7 +2853,7 @@ class Community:
 
    
     @community
-    def like_comment(
+    async def like_comment(
         self,
         commentId: str,
         userId: Optional[str] = None,
@@ -2862,10 +2913,11 @@ class Community:
         else:
             endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}/vote"
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
             url = endpoint,
-            data = {
+            data={
             "value": 1,
             "timestamp": int(time() * 1000),
             "eventSource": "CommentDetailView" if userId is None else "UserProfileView"
@@ -2874,7 +2926,7 @@ class Community:
 
 
     @community
-    def like_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def like_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Likes the comment with the given ID on a wiki page with the given ID.
         
@@ -2910,7 +2962,7 @@ class Community:
 
 
     @community
-    def like_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def like_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Likes the comment with the given ID on a blog page with the given ID.
         
@@ -2946,7 +2998,7 @@ class Community:
 
 
     @community
-    def like_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def like_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Likes the comment with the given ID on a user profile page with the given ID.
         
@@ -2982,7 +3034,7 @@ class Community:
 
 
     @community
-    def unlike_comment(
+    async def unlike_comment(
         self,
         commentId: str,
         userId: Optional[str] = None,
@@ -3040,14 +3092,15 @@ class Community:
         else:
             endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}/vote"
 
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
             url = endpoint
             ))
 
 
     @community
-    def like_blog(self, blogId: str, userId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def like_blog(self, blogId: str, userId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Likes a blog post.
 
@@ -3079,10 +3132,11 @@ class Community:
         ... else:
         ...     print("Failed to like blog post.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote",
+            data={
                 "value": 4,
                 "timestamp": int(time() * 1000),
                 "eventSource": "UserProfileView" if userId is None else "PostDetailView"
@@ -3090,7 +3144,7 @@ class Community:
 
 
     @community
-    def unlike_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unlike_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Removes a like from a blog post.
 
@@ -3120,14 +3174,15 @@ class Community:
         ... else:
         ...     print("Failed to remove like from blog post.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote"
             ))
 
 
     @community
-    def upvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def upvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Upvotes a comment on a blog post.
 
@@ -3159,10 +3214,11 @@ class Community:
         ... else:
         ...     print("Failed to upvote comment.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
+            data={
                 "value": 1,
                 "eventSource": "PostDetailView",
                 "timestamp": int(time() * 1000)
@@ -3170,7 +3226,7 @@ class Community:
 
 
     @community
-    def downvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def downvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Downvotes a comment on a blog post.
 
@@ -3202,9 +3258,11 @@ class Community:
         ... else:
         ...     print("Failed to downvote comment.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
+            data={
                 "value": -1,
                 "eventSource": "PostDetailView",
                 "timestamp": int(time() * 1000)
@@ -3212,7 +3270,7 @@ class Community:
 
 
     @community
-    def fetch_blog(self, blogId: str, comId: Union[str, int] = None) -> CBlog:
+    async def fetch_blog(self, blogId: str, comId: Union[str, int] = None) -> CBlog:
         """
         Fetches information about a blog.
 
@@ -3266,14 +3324,15 @@ class Community:
         ... print(f"Blog title: {blog.title}")
         ... print(f"Blog author: {blog.author.nickname}")
         """
-        return CBlog(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
+        return CBlog(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
             ))
 
 
     @community
-    def fetch_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add Wiki class
+    async def fetch_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add Wiki class
         """
         Fetches information about a wiki.
 
@@ -3302,12 +3361,13 @@ class Community:
         ... else:
         ...     print("Failed to fetch wiki.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"))
+        return ApiResponse(
+            await self.session.handler(
+            method="GET", url=f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"))
 
 
     @community
-    def fetch_quiz(self, quizId: str, start: int = 0, size: int = 10, comId: Union[str, int] = None) -> QuizRankingList:
+    async def fetch_quiz(self, quizId: str, start: int = 0, size: int = 10, comId: Union[str, int] = None) -> QuizRankingList:
         """
         Fetches the ranking list for a quiz.
 
@@ -3349,14 +3409,15 @@ class Community:
         ... print(highest_scores)
         ... print(beat_rates)
         """
-        return QuizRankingList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}"
+        return QuizRankingList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}"
             ))
     
 
     @community
-    def reply_wall(self, userId: str, commentId: str, message: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def reply_wall(self, userId: str, commentId: str, message: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Replies to a comment on a user's wall.
 
@@ -3390,9 +3451,11 @@ class Community:
         ... else:
         ...     print("Failed to post reply.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/comment",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/comment",
+            data={
                 "content": message,
                 "stackedId": None,
                 "respondTo": commentId,
@@ -3403,7 +3466,7 @@ class Community:
 
 
     @community
-    def vote_poll(self, blogId: str, optionId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def vote_poll(self, blogId: str, optionId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Votes for a poll option in the current or specified community.
 
@@ -3443,9 +3506,11 @@ class Community:
         ... else:
         ...     print("Failed to vote.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/poll/option/{optionId}/vote",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/poll/option/{optionId}/vote",
+            data={
                 "value": 1,
                 "eventSource": "PostDetailView",
                 "timestamp": int(time() * 1000)
@@ -3453,11 +3518,12 @@ class Community:
 
 
     @community
-    def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None, comId: Union[str, int] = None) -> CBlog:
-        return CBlog(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog",
-            data = {
+    async def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None, comId: Union[str, int] = None) -> CBlog:
+        return CBlog(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog",
+            data={
                 "content": content,
                 "refObjectId": blogId if blogId is not None else wikiId,
                 "refObjectType": 1 if blogId is not None else 2,
@@ -3467,7 +3533,7 @@ class Community:
 
 
     @community
-    def ban(self, userId: str, reason: str, banType: int = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def ban(self, userId: str, reason: str, banType: int = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Bans a user in the current or specified community.
 
@@ -3509,15 +3575,16 @@ class Community:
         ... else:
         ...     print("Failed to ban user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/ban",
-            data = {"reasonType": banType, "note": {"content": reason}, "timestamp": int(time() * 1000)
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/ban",
+            data={"reasonType": banType, "note": {"content": reason}, "timestamp": int(time() * 1000)
             }))
 
 
     @community
-    def unban(self, userId: str, reason: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unban(self, userId: str, reason: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unbans a user in the current or specified community.
 
@@ -3557,15 +3624,16 @@ class Community:
         ... else:
         ...     print("Failed to unban user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/unban",
-            data = {"note": {"content": reason}, "timestamp": int(time() * 1000)
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/unban",
+            data={"note": {"content": reason}, "timestamp": int(time() * 1000)
             }))
 
 
     @community
-    def strike(
+    async def strike(
         self,
         userId: str,
         amountOfTime: int = 5,
@@ -3621,9 +3689,11 @@ class Community:
             amountOfTime = kwargs["amount"]
             print("Warning: The 'amount' parameter is deprecated. Please use 'amountOfTime' instead.")
 
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/notice",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/notice",
+            data={
                 "uid": userId,
                 "title": title,
                 "content": reason,
@@ -3637,7 +3707,7 @@ class Community:
 
 
     @community
-    def warn(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def warn(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Issues a warning to a user in the current or specified community.
 
@@ -3677,9 +3747,11 @@ class Community:
         ... else:
         ...     print("Failed to issue warning.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/notice",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/notice",
+            data={
                 "uid": userId,
                 "title": "Custom",
                 "content": reason,
@@ -3692,7 +3764,7 @@ class Community:
 
 
     @community
-    def edit_titles(self, userId: str, titles: list, colors: list, comId: Union[str, int] = None) -> ApiResponse:
+    async def edit_titles(self, userId: str, titles: list, colors: list, comId: Union[str, int] = None) -> ApiResponse:
         """
         Edits the titles of a user in the current or specified community.
 
@@ -3734,9 +3806,11 @@ class Community:
         ... else:
         ...     print("Failed to edit titles.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data={
                 "adminOpName": 207,
                 "adminOpValue": {"titles": [{"title": title, "color": color} for title, color in zip(titles, colors)]},
                 "timestamp": int(time() * 1000)
@@ -3744,7 +3818,7 @@ class Community:
 
 
     @community
-    def fetch_mod_history(
+    async def fetch_mod_history(
         self,
         userId: str = None,
         blogId: str = None,
@@ -3801,9 +3875,10 @@ class Community:
         ... else:
         ...     print("Failed to fetch moderation history.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/admin/operation",
+        return ApiResponse(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/admin/operation",
             params = {
                 "objectId": blogId if blogId is not None else wikiId if wikiId is not None else quizId if quizId is not None else fileId if fileId is not None else userId,
                 "objectType": 1 if blogId is not None else 2 if wikiId is not None else 3 if quizId is not None else 109 if fileId is not None else 0,
@@ -3812,7 +3887,7 @@ class Community:
                 }))
 
     @community
-    def edit_profile(
+    async def edit_profile(
         self,
         nickname: str = None,
         content: str = None,
@@ -3847,13 +3922,13 @@ class Community:
 
         return UserProfile(
             self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}",
+                method="POST",
+                url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}",
                 data=data
                 ))
 
     @community
-    def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5, comId: Union[str, int] = None) -> CBlogList:
+    async def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5, comId: Union[str, int] = None) -> CBlogList:
         """
         Fetches a list of blogs created by a user in the current or specified community.
 
@@ -3914,13 +3989,14 @@ class Community:
         "This is a third blog!"
         ...
         """
-        return CBlogList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog?type=user&q={userId}&start={start}&size={size}"
+        return CBlogList(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog?type=user&q={userId}&start={start}&size={size}"
             ))
 
     @community
-    def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CWikiList:
+    async def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add WikiList
         """
         Fetches wikis created by a user based on the specified parameters.
 
@@ -3962,13 +4038,14 @@ class Community:
         ... else:
         ...     print("Failed to fetch user wikis.")
         """
-        return CWikiList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"
             ))
 
     @community
-    def fetch_user_check_ins(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def fetch_user_check_ins(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Fetches a list of check-ins made by a user in the current or specified community.
 
@@ -4006,15 +4083,19 @@ class Community:
         ... else:
         ...     print("Failed to fetch user check-ins.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/check-in/stats/{userId}?timezone=-300"
+        return ApiResponse(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/check-in/stats/{userId}?timezone=-300"
             ))
-            
+
+
     @community
-    def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str] = None, comId: Union[str, int] = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+    async def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str] = None, comId: Union[str, int] = None) -> CMessage:
+        return CMessage(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content = "[c]",
             attachedObject={
                 "title": title,
@@ -4024,12 +4105,14 @@ class Community:
                 }).json()))
 
     @community
-    def send_link_snippet(self, chatId: str, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None, comId: Union[str, int] = None) -> CMessage:
+    async def send_link_snippet(self, chatId: str, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None, comId: Union[str, int] = None) -> CMessage:
         if mentioned is None:
             mentioned = []
 
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=message,
             extensions = {
             "linkSnippetList": [{
@@ -4050,31 +4133,34 @@ class Community:
             }]
             }).json()))
 
+
     @community
-    def send_message(self, chatId: str, content: str, comId: Union[str, int] = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content=content).json()
+    async def send_message(self, chatId: str, content: str, comId: Union[str, int] = None) -> CMessage:
+        return CMessage(
+            await self.session.handler(
+                method="POST",
+                url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+                data = PrepareMessage(content=content).json()
             ))
 
-    @community
-    def send_image(self, chatId: str, image: BinaryIO = None, comId: Union[str, int] = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(
-                mediaType = 100,
-                mediaUploadValue=self.encode_media(
-                    self.__handle_media__(
-                    media=image,
-                    content_type="image/jpg",
-                    media_value=False
-                )),
-                mediaUploadValueContentType = "image/jpg",
-                mediaUhqEnabled = True).json()
-                ))
 
     @community
-    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None, comId: Union[str, int] = None) -> CMessage:
+    async def send_image(self, chatId: str, image: BinaryIO = None, comId: Union[str, int] = None) -> CMessage:
+        return CMessage(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+            data = PrepareMessage(
+                mediaType = 100,
+                mediaUploadValue=self.encode_media(self.__handle_media__(media=image, content_type="image/jpg", media_value=False)),
+                mediaUploadValueContentType = "image/jpg",
+                mediaUhqEnabled = True
+                ).json()
+            ))
+
+
+    @community
+    async def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None, comId: Union[str, int] = None) -> CMessage:
         """
         Sends an audio file to a chat.
 
@@ -4099,21 +4185,20 @@ class Community:
         >>> response = client.send_audio(chatId="1111-2222-3333-4444", audio="https://example.com/audio.aac")
         ... 
         """
-        return CMessage(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+        return CMessage(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(
                 type=2,
                 mediaType=110,
-                mediaUploadValue=self.encode_media(
-                    self.__handle_media__(
-                        media=audio,
-                        content_type="audio/aac",
-                        media_value=False
-            ))).json()))
+                mediaUploadValue=self.encode_media(self.__handle_media__(media=audio, content_type="audio/aac", media_value=False)
+                )).json()
+            ))
+
 
     @community
-    def send_sticker(self, chatId: str, stickerId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def send_sticker(self, chatId: str, stickerId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Sends a sticker to a chat.
 
@@ -4146,17 +4231,19 @@ class Community:
         ... else:
         ...     print("Failed to send sticker.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(
                 type=3,
                 mediaType=113,
                 mediaValue=f"ndcsticker://{stickerId}",
-                stickerId=stickerId).json()
-                ))
+                stickerId=stickerId
+                ).json()
+            ))
     
-    def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
+    async def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
         """Handles media files."""
         response = None
         
@@ -4171,21 +4258,22 @@ class Community:
             raise InvalidImage from e
 
         if media_value:
-            return self.upload_media(media=media, content_type=content_type)
+            return await self.upload_media(media=media, content_type=content_type)
 
         if response and not response.headers.get("content-type").startswith("image"):
             raise InvalidImage
 
         return media
 
-    def encode_media(self, file: bytes) -> str:
+    async def encode_media(self, file: bytes) -> str:
         """Encodes a media file to base64."""
         return b64encode(file).decode()
 
-    def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
+    async def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
         """Uploads a media file to the server."""
-        return ApiResponse(self.session.handler(
-            method = "POST",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
             url = "/g/s/media/upload",
             data = media,
             content_type = content_type
@@ -4193,7 +4281,7 @@ class Community:
 
 
     @community
-    def join_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def join_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Joins a chat.
 
@@ -4223,14 +4311,15 @@ class Community:
         ... else:
         ...     print("Failed to join chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
             ))
 
 
     @community
-    def leave_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def leave_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Leaves a chat.
 
@@ -4260,14 +4349,15 @@ class Community:
         ... else:
         ...     print("Failed to leave chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
             ))
 
 
     @community
-    def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: Union[str, int] = None) -> ApiResponse:
+    async def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: Union[str, int] = None) -> ApiResponse:
         """
         Kicks a user from a chat.
 
@@ -4301,14 +4391,15 @@ class Community:
         ... else:
         ...     print("Failed to kick user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"
             ))
 
 
     @community
-    def delete_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes a chat.
 
@@ -4338,14 +4429,15 @@ class Community:
         ... else:
         ...     print("Failed to delete chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
+        return ApiResponse(
+            await self.session.handler(
+            method="DELETE",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
 
 
     @community
-    def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes a message in a chat.
 
@@ -4382,22 +4474,23 @@ class Community:
         ...     print("Failed to delete message.")
         """
         return ApiResponse(
-            self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin",
-            data = {
-            "adminOpName": 102,
-            "adminOpNote": {"content": reason},
-            "timestamp": int(time() * 1000)
-            }
-            )) if asStaff else ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
+            await self.session.handler(
+                method="POST",
+                url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin",
+                data={
+                "adminOpName": 102,
+                "adminOpNote": {"content": reason},
+                "timestamp": int(time() * 1000)
+                }
+            )) if asStaff else ApiResponse(
+            await self.session.handler(
+                method="DELETE",
+                url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
             ))
 
 
     @community
-    def transfer_host(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def transfer_host(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Requests to transfer chat organizer privileges to another user.
 
@@ -4429,16 +4522,18 @@ class Community:
         ... else:
         ...     print("Failed to make transfer request.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer",
+            data={
                 "uidList": [userId],
                 "timestamp": int(time() * 1000)
                 }))
 
 
     @community
-    def accept_host(self, chatId: str, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def accept_host(self, chatId: str, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Accepts a request to transfer chat organizer privileges to the current user.
 
@@ -4470,14 +4565,15 @@ class Community:
         ... else:
         ...     print("Failed to accept transfer request.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"
             ))
 
 
     @community
-    def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Subscribes to an influencer's content.
 
@@ -4512,9 +4608,11 @@ class Community:
         ...     print("Failed to create subscription.")
         """
         if not transactionId: transactionId = str(uuid4())
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
+            data={
                 "paymentContext": {
                     "transactionId": transactionId,
                     "isAutoRenew": autoRenew
@@ -4524,7 +4622,7 @@ class Community:
 
 
     @community
-    def thank_props(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def thank_props(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Sends a thank-you message to a user who has been tipped in a chat.
 
@@ -4556,14 +4654,15 @@ class Community:
         ... else:
         ...     print("Failed to send thank-you message.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"
             ))
 
 
     @community
-    def send_active(
+    async def send_active(
         self,
         tz: int = -timezone // 1000,
         start: int = None,
@@ -4621,15 +4720,16 @@ class Community:
         else:
             data["userActiveTimeChunkList"] = [{"start": start, "end": end}]
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/stats/user-active-time",
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/community/stats/user-active-time",
             data=data
             ))
 
 
     @community
-    def send_coins(
+    async def send_coins(
         self,
         coins: int,
         blogId: str = None,
@@ -4675,7 +4775,8 @@ class Community:
         ... else:
         ...     print("Failed to send coins.")
         """
-        return ApiResponse(self.session.handler(
+        return ApiResponse(
+            await self.session.handler(
             method="POST",
             url=f'/x{self.community_id if comId is None else comId}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
             data={"coins": coins, "tippingContext": {"transactionId": transactionId or (str(uuid4()))}, "timestamp": int(time() * 1000)}
@@ -4683,19 +4784,19 @@ class Community:
 
 
     @community
-    def send_chat_props(self, coins: int, chatId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def send_chat_props(self, coins: int, chatId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """Refer to `send_coins` for documentation."""
-        return self.send_coins(coins=coins, chatId=chatId, transactionId=transactionId, comId=comId)
+        return await self.send_coins(coins=coins, chatId=chatId, transactionId=transactionId, comId=comId)
 
 
     @community
-    def send_blog_props(self, coins: int, blogId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def send_blog_props(self, coins: int, blogId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """Refer to `send_coins` for documentation."""
-        return self.send_coins(coins=coins, blogId=blogId, transactionId=transactionId, comId=comId)
+        return await self.send_coins(coins=coins, blogId=blogId, transactionId=transactionId, comId=comId)
 
 
     @community
-    def start_chat(
+    async def start_chat(
         self,
         userIds: Union[str, List[str]],
         title: Optional[str] = None,
@@ -4738,22 +4839,24 @@ class Community:
         ... else:
         ...     print("Failed to create chat.")
         """
-        return CThread(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
-            data = {
-            "title": title,
-            "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
-            "initialMessageContent": message,
-            "content": content,
-            "type": 0,
-            "publishToGlobal": 0,
-            "timestamp": int(time() * 1000)
-            }))
+        return CThread(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread",
+            data={
+                "title": title,
+                "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
+                "initialMessageContent": message,
+                "content": content,
+                "type": 0,
+                "publishToGlobal": 0,
+                "timestamp": int(time() * 1000)
+                }
+            ))
 
 
     @community
-    def invite_chat(self, chatId: str, userIds: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
+    async def invite_chat(self, chatId: str, userIds: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
         """
         Invites one or more users to join a chat.
 
@@ -4787,17 +4890,16 @@ class Community:
         ... else:
         ...     print("Failed to send invitation.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/invite",
-            data = {
-            "uids": userIds if isinstance(userIds, list) else [userIds],
-            "timestamp": int(time() * 1000)
-            }))
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/invite",
+            data={"uids": userIds if isinstance(userIds, list) else [userIds], "timestamp": int(time() * 1000)}
+            ))
 
 
     @community
-    def set_view_only(self, chatId: str, viewOnly: bool = True, comId: Union[str, int] = None) -> ApiResponse:
+    async def set_view_only(self, chatId: str, viewOnly: bool = True, comId: Union[str, int] = None) -> ApiResponse:
         """
         Set the view-only mode for a chat thread.
 
@@ -4831,14 +4933,15 @@ class Community:
         ... else:
         ...     print("Failed to enable view-only mode.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/disable"
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/disable"
             ))
 
 
     @community
-    def set_members_can_invite(self, chatId: str, canInvite: bool = True, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
+    async def set_members_can_invite(self, chatId: str, canInvite: bool = True, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
         """
         Sets whether members of a chat thread in the current or specified community can invite other members.
 
@@ -4882,14 +4985,15 @@ class Community:
             canInvite = kwargs["can_invite"]
             print("The 'can_invite' parameter is deprecated. Please use 'canInvite' instead.")
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/enable" if canInvite else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/disable"
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/enable" if canInvite else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/disable"
             ))
 
 
     @community
-    def change_chat_background(self, chatId: str, backgroundImage: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def change_chat_background(self, chatId: str, backgroundImage: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Changes the background image of a chat thread in the current or specified community.
 
@@ -4929,17 +5033,16 @@ class Community:
         ... else:
         ...     print("Failed to clear chat background.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
-            data = {
-            "media": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None]],
-            "timestamp": int(time() * 1000)
-            }))
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
+            data={"media": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None]], "timestamp": int(time() * 1000)}
+            ))
 
 
     @community
-    def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False, comId: Union[str, int] = None) -> ApiResponse:
+    async def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False, comId: Union[str, int] = None) -> ApiResponse:
         """
         Submits answers to a quiz in the current or specified community.
 
@@ -4986,20 +5089,22 @@ class Community:
         ... else:
         ...     print("Failed to solve quiz.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result",
-            data = {
-            "quizAnswerList": quizAnswers if isinstance(quizAnswers, list) else [quizAnswers],
-            "mode": 1 if hellMode else 0,
-            "timestamp": int(time() * 1000)
-            }))
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result",
+            data={
+                "quizAnswerList": quizAnswers if isinstance(quizAnswers, list) else [quizAnswers],
+                "mode": 1 if hellMode else 0,
+                "timestamp": int(time() * 1000)
+                }
+            ))
 
 
     @community
-    def set_channel(self, chatId: str, comId: Union[str, int] = None) -> None:
+    async def set_channel(self, chatId: str, comId: Union[str, int] = None) -> None:
         for i in range(2):
-            self.bot.send_websocket_message({
+            await self.bot.send_websocket_message({
                 "o": {
                     "ndcId": self.community_id if comId is None else comId,
                     "threadId": chatId,
@@ -5010,9 +5115,9 @@ class Community:
                 })
 
     @community
-    def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+    async def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
         for i in range(2):
-            self.bot.send_websocket_message({
+            await self.bot.send_websocket_message({
                 "o": {
                     "ndcId": self.community_id if comId is None else comId,
                     "threadId": chatId,
@@ -5025,8 +5130,8 @@ class Community:
 
 
     @community
-    def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
-        self.bot.send_websocket_message({
+    async def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        await self.bot.send_websocket_message({
             "o": {
                 "ndcId": self.community_id if comId is None else comId,
                 "threadId": chatId,
@@ -5038,7 +5143,7 @@ class Community:
 
 
     @community
-    def disable_chat(self, chatId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def disable_chat(self, chatId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Disables a chat thread in the current or specified community.
 
@@ -5078,23 +5183,22 @@ class Community:
         ... else:
         ...     print("Failed to disable chat thread.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
-            data = {
-            "adminOpName": 110,
-            "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            } if reason is None else {
-            "adminOpNote": {"content": reason},
-            "adminOpName": 110,
-            "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            }))
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
+            data={
+                "adminOpName": 110, "adminOpValue": 9, "timestamp": int(time() * 1000)
+                } if reason is None else {
+                    "adminOpNote": {"content": reason},
+                    "adminOpName": 110,
+                    "adminOpValue": 9,
+                    "timestamp": int(time() * 1000)
+                }))
 
 
     @community
-    def disable_blog(self, blogId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def disable_blog(self, blogId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Disables a blog in the current or specified community.
 
@@ -5134,23 +5238,22 @@ class Community:
         ... else:
         ...     print("Failed to disable blog.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
-            data = {
-            "adminOpName": 110,
-            "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            } if reason is None else {
-            "adminOpNote": {"content": reason},
-            "adminOpName": 110,
-            "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            }))
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
+            data={
+                "adminOpName": 110, "adminOpValue": 9, "timestamp": int(time() * 1000)
+                } if reason is None else {
+                    "adminOpNote": {"content": reason},
+                    "adminOpName": 110,
+                    "adminOpValue": 9,
+                    "timestamp": int(time() * 1000)
+                }))
 
 
     @community
-    def hide_user(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def hide_user(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Hides a user profile in the current or specified community.
 
@@ -5190,20 +5293,21 @@ class Community:
         ... else:
         ...     print("Failed to hide user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
-            "adminOpName": 18,
-            "timestamp": int(time() * 1000)
-            } if reason is None else {
-            "adminOpNote": {"content": reason},
-            "adminOpName": 18,
-            "timestamp": int(time() * 1000)
-            }))
-    
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data={
+                "adminOpName": 18, "timestamp": int(time() * 1000)
+                } if reason is None else {
+                    "adminOpNote": {"content": reason},
+                    "adminOpName": 18,
+                    "timestamp": int(time() * 1000)
+                }))
+
+
     @community
-    def invite_to_vc(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def invite_to_vc(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Invites a user to a voice chat in the current or specified community.
 
@@ -5243,13 +5347,16 @@ class Community:
         ... else:
         ...     print("Failed to invite user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/",
-            data = {"uid": userId}))
-    
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/",
+            data={"uid": userId}
+            ))
+
+
     @community
-    def feature_user(self, time: int, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def feature_user(self, time: int, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a user in the current or specified community.
 
@@ -5289,17 +5396,18 @@ class Community:
         ... else:
         ...     print("Failed to feature user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 4, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
     
     @community
-    def feature_chat(self, time: int, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def feature_chat(self, time: int, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a chat in the current or specified community.
 
@@ -5339,17 +5447,18 @@ class Community:
         ... else:
         ...     print("Failed to feature chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 5, "featuredDuration": 3600 if time == 1 else 7200 if time == 2 else 10800 if time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
     
     @community
-    def feature_blog(self, time: int, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def feature_blog(self, time: int, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a blog in the current or specified community.
 
@@ -5389,17 +5498,18 @@ class Community:
         ... else:
         ...     print("Failed to feature blog.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 1, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
     
     @community
-    def feature_wiki(self, time: int, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def feature_wiki(self, time: int, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a wiki in the current or specified community.
 
@@ -5439,17 +5549,18 @@ class Community:
         ... else:
         ...     print("Failed to feature wiki.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 2, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
 
     @community
-    def unfeature_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unfeature_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unfeatures a chat in the current or specified community.
 
@@ -5487,17 +5598,19 @@ class Community:
         ... else:
         ...     print("Failed to unfeature chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 0},
             "timestamp": int(time() * 1000)
             }))
 
+
     @community
-    def unfeature_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unfeature_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unfeatures a wiki in the current or specified community.
 
@@ -5535,17 +5648,19 @@ class Community:
         ... else:
         ...     print("Failed to unfeature wiki.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 0},
             "timestamp": int(time() * 1000)
             }))
 
+
     @community
-    def unfeature_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unfeature_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unfeatures a blog in the current or specified community.
 
@@ -5583,17 +5698,19 @@ class Community:
         ... else:
         ...     print("Failed to unfeature blog.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 0},
             "timestamp": int(time() * 1000)
             }))
-    
+
+
     @community
-    def unfeature_user(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def unfeature_user(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Unfeatures a user in the current or specified community.
 
@@ -5631,10 +5748,11 @@ class Community:
         ... else:
         ...     print("Failed to unfeature user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
+            data={
             "adminOpName": 114,
             "adminOpValue": {"featuredType": 0},
             "timestamp": int(time() * 1000)
@@ -5642,7 +5760,7 @@ class Community:
 
 
     @community
-    def claim_vc_reputation(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def claim_vc_reputation(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Claims VC reputation for the current or specified community.
 
@@ -5680,16 +5798,17 @@ class Community:
         ... else:
         ...     print("Failed to claim VC reputation.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
+            data={
             "timestamp": int(time() * 1000)
             }))
     
 
     @community
-    def fetch_vc_reputation_info(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    async def fetch_vc_reputation_info(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Fetches VC reputation information for the current or specified community.
 
@@ -5727,15 +5846,16 @@ class Community:
         ... else:
         ...     print("Failed to fetch VC reputation information.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="GET",
+            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
+            data={
             "timestamp": int(time() * 1000)
             }))
 
 
-    def subscribe_influencer(self, userId: str, autoRenew: bool = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    async def subscribe_influencer(self, userId: str, autoRenew: bool = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
         """
         Subscribes to an influencer.
 
@@ -5777,10 +5897,11 @@ class Community:
         ... else:
         ...     print("Failed to subscribe.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
-            data = {
+        return ApiResponse(
+            await self.session.handler(
+            method="POST",
+            url=f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
+            data={
             "paymentContext": {
                 "transactionId": str(uuid4()) if transactionId is None else transactionId,
                 "isAutoRenew": autoRenew

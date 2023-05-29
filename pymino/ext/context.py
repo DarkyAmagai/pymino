@@ -187,10 +187,7 @@ class Context():
         message: CMessage = self.__send_message__(
             content=content,
             extensions = {
-            "mentionedArray": [
-            {"uid": self.message.author.userId}
-            ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-            ] if isinstance(mentioned, list) else None
+            "mentionedArray": [{"uid": user} for user in mentioned] if mentioned else None
             })
 
         Thread(target=self._delete, args=(message, delete_after)).start() if delete_after else None
@@ -220,22 +217,19 @@ class Context():
             content=content,
             replyMessageId=self.message.messageId,
             extensions = {
-            "mentionedArray": [
-            {"uid": self.message.author.userId}
-            ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-            ] if isinstance(mentioned, list) else None
+            "mentionedArray": [{"uid": user} for user in mentioned] if mentioned else None
             })
         
         Thread(target=self._delete, args=(message, delete_after)).start() if delete_after else None
         
         return message
 
-    def prepare_mentions(self, mentioned: dict) -> list:
+    def prepare_mentions(self, mentioned: list) -> list:
         """
         `prepare_mentions` - This prepares the mentions for the message.
         
         `**Parameters**``
-        - `mentioned` - `ctx.message.mentioned_dictionary`.
+        - `mentioned` - `ctx.message.mentioned_user_names`.
         
         `**Returns**``
         - `list` - The list of mentions to use as your `message`
@@ -244,7 +238,7 @@ class Context():
         ```py
         @bot.command("mention")
         def mention(ctx: Context):
-            mentioned_users = ctx.message.mentioned_dictionary
+            mentioned_users = ctx.message.mentioned_user_names
             if not mentioned_users:
                 return ctx.reply("You didn't mention anyone!")
 
@@ -253,7 +247,7 @@ class Context():
                 "Mentioned: " + ", ".join(mentioned), mentioned=list(mentioned_users)
             )
         """
-        return [f"\u200e\u200f@{mentioned[user_id]}\u202c\u202d" for user_id in mentioned]
+        return [f"\u200e\u200f@{username}\u202c\u202d" for username in mentioned]
 
     @_run
     def send_link_snippet(self, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None) -> CMessage:
@@ -291,10 +285,7 @@ class Context():
                 "mediaUploadValueContentType": "image/png",
                 "link": link
                 }],
-            "mentionedArray": [
-            {"uid": self.message.author.userId}
-            ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-            ] if isinstance(mentioned, list) else None
+            "mentionedArray": [{"uid": user} for user in mentioned] if mentioned else None
             })
 
         return message
@@ -343,10 +334,7 @@ class Context():
                 "link": link
                 },
             extensions = {
-                "mentionedArray": [
-                {"uid": self.message.author.userId}
-                ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-                ] if isinstance(mentioned, list) else None
+                "mentionedArray": [{"uid": user} for user in mentioned] if mentioned else None
             })
         
         return message
@@ -460,6 +448,7 @@ class Context():
         """
         message: CMessage = self.__send_message__(
             mediaType=100,
+            mediaUploadValueContentType="image/gif",
             mediaUploadValue=self.encode_media(
                 self.__handle_media__(
                     media=gif,
@@ -728,7 +717,7 @@ class EventHandler: #NEW.
             ):
                 return context.reply(self._commands.__help__())
             elif "text_message" in self._events:
-                return self._handle_text_message(data)
+                return self._handle_text_message(data, context)
             else:
                 return None
 

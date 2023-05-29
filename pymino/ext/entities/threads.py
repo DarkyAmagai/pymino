@@ -22,7 +22,10 @@ class CThreadExtensions:
 
 class MemberSummary:
     def __init__(self, data: dict):
-        self.data = data[0] if isinstance(data[0], list) else data
+        try:
+            self.data = data[0] if isinstance(data[0], list) else data
+        except IndexError:
+            self.data = data
             
         self.status:            list = [x.get("status") for x in self.data]
         self.uid:               list = [x.get("uid") for x in self.data]

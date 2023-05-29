@@ -260,10 +260,15 @@ class DataNoLongerExists(Exception):
     def __init__(self, response: str):
         super().__init__(response)
 
+class InternalServerError(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
 class APIException(Exception):
     def __init__(self, response: dict):
         self.exception_map = {
             100: UnsupportedService,
+            101: InternalServerError,
             102: FileTooLarge,
             103: InvalidRequest,
             105: InvalidSession,
@@ -453,4 +458,10 @@ class NullResponse(Exception):
     def __init__(self):
         super().__init__(
             "Server returned a null response. Possible crash content in the requested data."
+            )
+        
+class PingFailed(Exception):
+    def __init__(self):
+        super().__init__(
+            "Ping failed. Please make sure you are logged in and try again."
             )

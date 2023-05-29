@@ -1,4 +1,4 @@
-from time import time
+from time import perf_counter, time
 from typing import Optional, Union
 
 from .ext.socket import WSClient
@@ -10,7 +10,8 @@ from .ext.entities.userprofile import UserProfile
 from .ext.utilities.request_handler import RequestHandler
 from .ext.entities.general import ApiResponse, CCommunity
 from .ext.entities.exceptions import (
-    LoginFailed, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
+    LoginFailed, MissingEmailPasswordOrSid,
+    VerifyCommunityIdIsCorrect, PingFailed
     )
 
 class Bot(WSClient):
@@ -20,6 +21,7 @@ class Bot(WSClient):
     `**Parameters**``
     - `command_prefix` - The prefix to use for commands. `Defaults` to `!`.
     - `community_id` - The community id to use for the bot. `Defaults` to `None`.
+    - `online_status` - Whether to set the bot's online status to `online`. `Defaults` to `True`.
     - `**kwargs` - Any other parameters to use for the bot.
 
         - `device_id` - The device id to use for the bot.
@@ -212,7 +214,13 @@ class Bot(WSClient):
         bot.run(email="email", password="password")
         ```
     """
-    def __init__(self, command_prefix: Optional[str] = "!", community_id: Union[str, int] = None, **kwargs):
+    def __init__(
+        self,
+        command_prefix: Optional[str] = "!",
+        community_id: Union[str, int] = None,
+        online_status: bool = True, 
+        **kwargs):
+
         for key, value in kwargs.items(): setattr(self, key, value)
         self._debug:            bool = check_debugger()
         self._is_ready:         bool = False
@@ -222,6 +230,7 @@ class Bot(WSClient):
         self.cache:             Cache = Cache("cache")
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
+        self.online_status:     bool = online_status
         self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
@@ -672,3 +681,36 @@ class Bot(WSClient):
         self.community.community_id = community_id
 
         return community_id
+    
+    def ping(self) -> float:
+        """
+        Pings the server and returns the elapsed time in milliseconds.
+        
+        :return: The elapsed time in milliseconds.
+        :rtype: float
+        
+        This method pings the server by sending a GET request to the account endpoint. It then calculates the elapsed
+        time in milliseconds and returns it.
+        
+        If the ping fails, the method raises a PingFailed exception.
+        
+        **Note:** This method is not recommended for production use. It is intended for testing purposes only.
+        
+        **Example usage:**
+        
+        ```python
+        bot = Bot()
+        @bot.command("ping")
+        def ping_command(ctx: Context):
+            ping = bot.ping()
+            ctx.reply(f"Pong! {ping}ms")
+        ```
+        """
+        try:
+            start = perf_counter()
+            self.request.handler(method="GET", url="/g/s/account")
+            end = perf_counter()
+            elapsed_time_ms = (end - start) * 1000
+            return round(elapsed_time_ms, 2)
+        except Exception:
+            raise PingFailed

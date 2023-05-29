@@ -230,72 +230,125 @@ class CCommunityList:
 class CBlog:
     def __init__(self, data: Union[dict, str]) -> None:
         self.data                   = data
-        self.globalVotesCount       = None
-        self.globalVotedValue       = None
-        self.votedValue             = None
-        self.keywords               = None
-        self.mediaList              = []
-        self.style                  = {}
-        self.totalQuizPlayCount     = None
-        self.title                  = None
-        self.tipInfo                = {}
-        self.contentRating          = None
-        self.content                = None
-        self.needHidden             = None
-        self.guestVotesCount        = None
-        self.type                   = None
-        self.status                 = None
-        self.globalCommentsCount    = None
-        self.modifiedTime           = None
-        self.widgetDisplayInterval  = None
-        self.totalPollVoteCount     = None
-        self.blogId                 = None
-        self.viewCount              = None
-        self.language               = None
-        self.author                 = None
-        self.extensions             = {}
-        self.votesCount             = None
-        self.ndcId                  = None
-        self.createdTime            = None
-        self.endTime                = None
-        self.commentsCount          = None
 
         if isinstance(data, dict):
             self.data:                  dict = data.get("blog", data)
-            self.globalVotesCount:      int = self.data.get("globalVotesCount", self.globalVotesCount)
-            self.globalVotedValue:      int = self.data.get("globalVotedValue", self.globalVotedValue)
-            self.votedValue:            int = self.data.get("votedValue", self.votedValue)
-            self.keywords:              str = self.data.get("keywords", self.keywords)
-            self.mediaList:             list = self.data.get("mediaList", self.mediaList)
-            self.style:                 dict = self.data.get("style", self.style)
-            self.totalQuizPlayCount:    int = self.data.get("totalQuizPlayCount", self.totalQuizPlayCount)
-            self.title:                 str = self.data.get("title", self.title)
-            self.tipInfo:               dict = self.data.get("tipInfo", self.tipInfo)
-            self.contentRating:         int = self.data.get("contentRating", self.contentRating)
-            self.content:               str = self.data.get("content", self.content)
-            self.needHidden:            bool = self.data.get("needHidden", self.needHidden)
-            self.guestVotesCount:       int = self.data.get("guestVotesCount", self.guestVotesCount)
-            self.type:                  int = self.data.get("type", self.type)
-            self.status:                int = self.data.get("status", self.status)
-            self.globalCommentsCount:   int = self.data.get("globalCommentsCount", self.globalCommentsCount)
-            self.modifiedTime:          str = self.data.get("modifiedTime", self.modifiedTime)
-            self.widgetDisplayInterval: str = self.data.get("widgetDisplayInterval", self.widgetDisplayInterval)
-            self.totalPollVoteCount:    int = self.data.get("totalPollVoteCount", self.totalPollVoteCount)
-            self.blogId:                str = self.data.get("blogId", self.blogId)
-            self.viewCount:             int = self.data.get("viewCount", self.viewCount)
-            self.language:              str = self.data.get("language", self.language)
+            self.globalVotesCount:      int = self.data.get("globalVotesCount")
+            self.globalVotedValue:      int = self.data.get("globalVotedValue")
+            self.votedValue:            int = self.data.get("votedValue")
+            self.keywords:              str = self.data.get("keywords")
+            self.mediaList:             list = self.data.get("mediaList")
+            self.style:                 dict = self.data.get("style")
+            self.totalQuizPlayCount:    int = self.data.get("totalQuizPlayCount")
+            self.title:                 str = self.data.get("title")
+            self.tipInfo:               dict = self.data.get("tipInfo")
+            self.contentRating:         int = self.data.get("contentRating")
+            self.content:               str = self.data.get("content")
+            self.needHidden:            bool = self.data.get("needHidden")
+            self.guestVotesCount:       int = self.data.get("guestVotesCount")
+            self.type:                  int = self.data.get("type")
+            self.status:                int = self.data.get("status")
+            self.globalCommentsCount:   int = self.data.get("globalCommentsCount")
+            self.modifiedTime:          str = self.data.get("modifiedTime")
+            self.widgetDisplayInterval: str = self.data.get("widgetDisplayInterval")
+            self.totalPollVoteCount:    int = self.data.get("totalPollVoteCount")
+            self.blogId:                str = self.data.get("blogId")
+            self.viewCount:             int = self.data.get("viewCount")
+            self.language:              str = self.data.get("language")
 
             try:
-                self.author:            Union[UserProfile, None] = UserProfile(data=self.data.get("author", self.author))
+                self.author:            Union[UserProfile, None] = UserProfile(data=self.data.get("author"))
             except Exception:
                 self.author:            Union[UserProfile, None] = None
 
-            self.extensions:            dict = self.data.get("extensions", self.extensions)
-            self.votesCount:            int = self.data.get("votesCount", self.votesCount)
-            self.ndcId:                 int = self.data.get("ndcId", self.ndcId)
-            self.createdTime:           str = self.data.get("createdTime", self.createdTime)
-            self.endTime:               str = self.data.get("endTime", self.endTime)
-            self.commentsCount:         int = self.data.get("commentsCount", self.commentsCount)
+            self.extensions:            dict = self.data.get("extensions")
+            self.votesCount:            int = self.data.get("votesCount")
+            self.ndcId:                 int = self.data.get("ndcId")
+            self.createdTime:           str = self.data.get("createdTime")
+            self.endTime:               str = self.data.get("endTime")
+            self.commentsCount:         int = self.data.get("commentsCount")
+
+    def json(self) -> Union[dict, str]:
+        return self.data
+
+class CWiki:
+    def __init__(self, data: Union[dict, str]) -> None:
+        self.data                   = data
+
+        if isinstance(data, dict):
+            self.data:                  dict = data.get("item", data)
+            self.globalVotesCount:      int = self.data.get("globalVotesCount")
+            self.globalVotedValue:      int = self.data.get("globalVotedValue")
+            self.votedValue:            int = self.data.get("votedValue")
+            self.keywords:              str = self.data.get("keywords")
+            self.mediaList:             list = self.data.get("mediaList")
+            self.style:                 dict = self.data.get("style")
+            self.totalQuizPlayCount:    int = self.data.get("totalQuizPlayCount")
+            self.title:                 str = self.data.get("title")
+            self.tipInfo:               dict = self.data.get("tipInfo")
+            self.contentRating:         int = self.data.get("contentRating")
+            self.content:               str = self.data.get("content")
+            self.needHidden:            bool = self.data.get("needHidden")
+            self.guestVotesCount:       int = self.data.get("guestVotesCount")
+            self.type:                  int = self.data.get("type")
+            self.status:                int = self.data.get("status")
+            self.globalCommentsCount:   int = self.data.get("globalCommentsCount")
+            self.modifiedTime:          str = self.data.get("modifiedTime")
+            self.widgetDisplayInterval: str = self.data.get("widgetDisplayInterval")
+            self.totalPollVoteCount:    int = self.data.get("totalPollVoteCount")
+            self.wikiId:                str = self.data.get("itemId")
+            self.viewCount:             int = self.data.get("viewCount")
+            self.language:              str = self.data.get("language")
+
+            try:
+                self.author:            Union[UserProfile, None] = UserProfile(data=self.data.get("author"))
+            except Exception:
+                self.author:            Union[UserProfile, None] = None
+
+            self.extensions:            dict = self.data.get("extensions")
+            self.votesCount:            int = self.data.get("votesCount")
+            self.ndcId:                 int = self.data.get("ndcId")
+            self.createdTime:           str = self.data.get("createdTime")
+            self.endTime:               str = self.data.get("endTime")
+            self.commentsCount:         int = self.data.get("commentsCount")
+
+    def json(self) -> Union[dict, str]:
+        return self.data
+
+
+class CWikiList:
+    def __init__(self, data: Union[dict, str]):
+        self.data:                   dict = data.get("itemList", data)
+        parser:                      List[CWiki] = [CWiki(x) for x in self.data]
+        self.author:                 UserProfileList = UserProfileList([x.author.json() for x in parser])
+        self.globalVotesCount:       list = [x.globalVotesCount for x in parser]
+        self.globalVotedValue:       list = [x.globalVotedValue for x in parser]
+        self.votedValue:             list = [x.votedValue for x in parser]
+        self.keywords:               list = [x.keywords for x in parser]
+        self.mediaList:              list = [x.mediaList for x in parser]
+        self.style:                  list = [x.style for x in parser]
+        self.totalQuizPlayCount:     list = [x.totalQuizPlayCount for x in parser]
+        self.title:                  list = [x.title for x in parser]
+        self.tipInfo:                list = [x.tipInfo for x in parser]
+        self.contentRating:          list = [x.contentRating for x in parser]
+        self.content:                list = [x.content for x in parser]
+        self.needHidden:             list = [x.needHidden for x in parser]
+        self.guestVotesCount:        list = [x.guestVotesCount for x in parser]
+        self.type:                   list = [x.type for x in parser]
+        self.status:                 list = [x.status for x in parser]
+        self.globalCommentsCount:    list = [x.globalCommentsCount for x in parser]
+        self.modifiedTime:           list = [x.modifiedTime for x in parser]
+        self.widgetDisplayInterval:  list = [x.widgetDisplayInterval for x in parser]
+        self.totalPollVoteCount:     list = [x.totalPollVoteCount for x in parser]
+        self.wikiId:                 list = [x.wikiId for x in parser]
+        self.viewCount:              list = [x.viewCount for x in parser]
+        self.language:               list = [x.language for x in parser]
+        self.extensions:             list = [x.extensions for x in parser]
+        self.votesCount:             list = [x.votesCount for x in parser]
+        self.ndcId:                  list = [x.ndcId for x in parser]
+        self.createdTime:            list = [x.createdTime for x in parser]
+        self.endTime:                list = [x.endTime for x in parser]
+        self.commentsCount:          list = [x.commentsCount for x in parser]
 
     def json(self) -> Union[dict, str]:
         return self.data

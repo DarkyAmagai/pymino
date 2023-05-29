@@ -14,19 +14,21 @@ from .entities.userprofile import OnlineMembers
 from .entities.messages import Channel, Message, NNotification
 from .entities.exceptions import WrongWebSocketPackage
 from .utilities.generate import device_id, generate_signature
-from .entities.handlers import is_android, is_repl, notify, orjson_exists
+from .entities.handlers import run_alive_loop, orjson_exists
 
 if orjson_exists():
     from orjson import (
         loads as orjson_loads, dumps as orjson_dumps
         )
 
+
 try:
     from websocket import WebSocket, WebSocketApp
 except ImportError as e:
     system("pip uninstall websocket -y")
-    system("pip install websocket-client==1.4.1")
+    system("pip install websocket-client==1.5.2")
     raise WrongWebSocketPackage from e
+
 
 class WSClient(EventHandler):
     """
@@ -47,14 +49,17 @@ class WSClient(EventHandler):
         self.dispatcher.register(400, self._handle_user_online)
         self.dispatcher.register(1000, self._handle_message)
         EventHandler.__init__(self)
-        
+
+
     def fetch_ws_url(self) -> str:
         return f"wss://ws{randint(1, 4)}.aminoapps.com"
+
 
     def connect(self) -> None:
         """Connects to the websocket."""
         self.run_forever()
         return self.emit("ready")
+
 
     def run_forever(self) -> None:
         """Runs the websocket forever."""
@@ -72,15 +77,21 @@ class WSClient(EventHandler):
             })
         return self.start_processes()
 
+
     def start_processes(self) -> None:
         """Starts the websocket processes."""
-        for process in[self.ws.run_forever, self.heartbeat]:
-            Thread(target=process).start()
+        websocket_thread = Thread(target=self.ws.run_forever)
+        websocket_thread.start()
+
+        aalive_thread = Thread(target=run_alive_loop, args=(self,))
+        aalive_thread.start()
+
 
     def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
         """Handles websocket errors."""
         with suppress(KeyError):
             self._events["error"](error)
+
 
     def on_websocket_message(self, ws: WebSocket, message: dict) -> None:
         """Handles websocket messages."""
@@ -90,6 +101,7 @@ class WSClient(EventHandler):
             raw_message = loads(message)
 
         self.dispatcher.handle(raw_message)
+
 
     def _handle_message(self, message: dict) -> None:
         """Sends the message to the event handler."""
@@ -104,33 +116,40 @@ class WSClient(EventHandler):
         if key != None:
             return Thread(target=self._handle_event, args=(key, _message)).start()
 
+
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
         notification: NNotification = NNotification(message)
         key = self.notif_types.get(notification.notifType)
         if key != None:
             return Thread(target=self._handle_event, args=(key, notification)).start()
-    
+
+
     def _handle_agora_channel(self, message: dict) -> None:
         """Sets the agora channel."""
         self.channel: Channel = Channel(message)
+
 
     def _handle_user_online(self, message: dict) -> None:
         """Handles user online events."""
         return self._handle_event("user_online", OnlineMembers(message))
 
+
     def on_websocket_close(self, ws: WebSocket, close_status_code: int, close_msg: str) -> None:
         """Handles websocket close events."""
         if [close_status_code, close_msg] == [None, None]:
             return self.run_forever() 
-        
+
+
     def send_websocket_message(self, message: dict) -> None:
         """Sends a websocket message."""
         return self.ws.send(orjson_dumps(message).decode() if self.orjson else dumps(message))
 
+
     def stop_websocket(self) -> None:
         """Stops the websocket."""
         return self.ws.close()
+
 
     def on_websocket_open(self, ws: WebSocket) -> None:
         """Handles websocket open events."""
@@ -143,13 +162,16 @@ class WSClient(EventHandler):
                     "id": int(time() * 1000)
                 }})
 
+
     def _last_active(self, last_activity_time: float) -> bool:
         """Returns True if the last activity was 5 minutes ago."""""
         return time() - last_activity_time >= 300
 
+
     def _last_message(self, last_message_time: float) -> bool:
         """Returns True if the last message was 30 seconds ago."""
         return time() - last_message_time >= 30
+
 
     def _send_message(self) -> None:
         """Sends a message to the websocket."""
@@ -159,6 +181,7 @@ class WSClient(EventHandler):
                 "id": randint(1, 100)},
                 "t": 116
                 })
+
 
     def _activity_status(self) -> None:
         """Sets the user's activity status to online."""
@@ -174,30 +197,3 @@ class WSClient(EventHandler):
                     self.online_status = False
 
             delay(randint(5, 10))
-
-    def heartbeat(self) -> None:
-        """Runs a few background processes."""
-        run_check = any([is_android(), is_repl()])
-
-        start_time          = time()
-        last_activity_time  = start_time
-        last_message_time   = start_time
-
-        while True:
-            current_time = time()
-            notify() if run_check else None
-
-            with suppress(Exception):
-
-                if self._last_message(last_message_time):
-                    self._send_message()
-                    last_message_time = current_time
-
-                if current_time - start_time >= 86400:
-                    start_time = current_time
-
-                if all([self._last_active(last_activity_time), current_time - start_time <= 36000]):
-                    self._activity_status()
-                    last_activity_time = current_time
-
-                delay(randint(25, 50))
