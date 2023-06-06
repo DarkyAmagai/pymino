@@ -5908,3 +5908,100 @@ class AsyncCommunity:
             },
             "timestamp": int(time() * 1000)
             }))
+
+    @community
+    async def edit_chat(self,
+                  chatId: str,
+                  doNotDisturb: bool = None,
+                  pinChat: bool = None,
+                  title: str = None,
+                  icon: str = None,
+                  backgroundImage: str = None,
+                  content: str = None,
+                  announcement: str = None,
+                  coHost: list = None,
+                  keywords: list = None,
+                  pinAnnouncement: bool = None,
+                  publishToGlobal: bool = None,
+                  canTip: bool = None,
+                  viewOnly: bool = None,
+                  canInvite: bool = None,
+                  fansOnly: bool = None,
+                  comId: Union[str, int] = None):
+        data = dict(timestamp = int(time() * 1000))
+
+        if title: data               |= dict(title = title)
+        if content: data             |= dict(content = content)
+        if icon: data                |= dict(icon = self.upload_media(open(icon, "rb").read()), content_type = "image/jpg")
+        if keywords: data            |= dict(keywords = keywords)
+        if announcement: data        |= dict(extensions = dict(announcement = announcement))
+        if pinAnnouncement: data     |= dict(extensions = dict(pinAnnouncement = pinAnnouncement))
+        if fansOnly: data            |= dict(extensions = dict(fansOnly = fansOnly))
+        if publishToGlobal: data     |= dict(publishToGlobal = 0)
+        if not publishToGlobal: data |= dict(publishToGlobal = 1)
+
+        responses = []
+
+        if doNotDisturb is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/alert",
+                data = {
+                    "alertOption": 2 if doNotDisturb else 1,
+                    "timestamp": int(time() * 1000)
+                }
+            )).statuscode)
+            
+        
+        if pinChat is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/{'pin' if pinChat else 'unpin'}",
+                data = data
+            )).statuscode)
+        
+        if backgroundImage is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
+                data = {
+                    "media": [100, self.upload_media(open(backgroundImage, "rb").read(), "image/jpg"), None],
+                    "timestamp": int(time() * 1000)
+                }
+            )).statuscode)
+        
+        if coHost is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/co-host",
+                data = {
+                    "uidList": coHost,
+                    "timestamp": int(time() * 1000)
+                }
+            )).statuscode)
+        
+        if viewOnly is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
+            )).statuscode)
+        
+        if canInvite is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
+            )).statuscode)
+        
+        if canTip is not None:
+            responses.append(ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
+            )).statuscode)
+        
+        responses.append(ApiResponse(await self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}",
+            data = data
+        )).statuscode)
+
+        return responses

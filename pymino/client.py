@@ -1155,3 +1155,29 @@ class Client:
             method="POST", url=f"/g/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content, **kwargs).json()
             ))
+
+    @authenticated
+    def edit_profile(self, nickname: str = None, content: str = None, icon: str = None, backgroundColor: str = None, backgroundImage: str = None, defaultBubbleId: str = None):
+        """
+        Edit the profile of the current account.
+
+        :param nickname: The new nickname of the account.
+        :type nickname: str.
+        :param content: The new content of the accounbt.
+        :type: content: str.
+        :param icon: The new icon of the account.
+        :type icon: str.
+        :backgrounfColor: Hex code of the new background color.
+        :type backgroundColor: str.
+        :backgroundImage: The new image on the background of the profile.
+        :type backgroundImage: str.
+        :defaultBubbleId: BubbleId for the new default bubble of the account.
+        :type defaultBubbleId: str.
+        """
+        return self.account.edit_profile(userId = self.userId,
+                                         nickname = nickname,
+                                         content = content,
+                                         icon = icon,
+                                         backgroundColor = backgroundColor,
+                                         backgroundImage = backgroundImage,
+                                         defaultBubbleId = defaultBubbleId)

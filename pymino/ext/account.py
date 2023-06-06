@@ -375,3 +375,41 @@ class Account:
                 "phoneNumberValidationContext": None,
                 "deviceID": deviceId
             }))
+
+    def edit_profile(self, userId: str, nickname: str = None, content: str = None, icon: str = None, backgroundColor: str = None, backgroundImage: str = None, defaultBubbleId: str = None) -> UserProfile:
+        data = {
+                "address": None,
+                "latitude": 0,
+                "longitude": 0,
+                "mediaList": None,
+                "eventSource": "UserProfileView",
+                "timestamp": int(time() * 1000),
+        }
+
+        if nickname: data['nickname'] = nickname
+        if icon: data['icon'] = self.upload_image(icon)
+        if content: data['content'] = content
+        if backgroundColor: data |= {
+                "extensions": {
+                    "style": {
+                        "backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"
+                    }
+                }
+            }
+        if backgroundImage: data |= {
+            "extensions": {
+                "style": {
+                    "backgroundMediaList": [[100, self.upload_image(backgroundImage), None, None, None]]
+                }
+            }
+        }
+        if defaultBubbleId: data |= {
+            "extensions": {
+                "defaultBubbleId": defaultBubbleId
+            }
+        }
+
+        return UserProfile(self.session.handler(
+            method = "POST", url = f"/g/s/user-profile/{userId}",
+            data = data
+        ))
