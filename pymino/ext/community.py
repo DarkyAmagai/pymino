@@ -5807,6 +5807,70 @@ class Community:
                   canInvite: bool = None,
                   fansOnly: bool = None,
                   comId: Union[str, int] = None):
+        """
+        Edits the chat settings.
+
+        :param chatId: The ID of the chat to edit.
+        :type chatId: str
+        :param doNotDisturb: Whether to enable or disable do not disturb mode.
+        :type doNotDisturb: bool
+        :param pinChat: Whether to pin or unpin the chat.
+        :type pinChat: bool
+        :param title: The new title for the chat.
+        :type title: str
+        :param icon: The new icon image file for the chat.
+        :type icon: str
+        :param backgroundImage: The new background image file for the chat.
+        :type backgroundImage: str
+        :param content: The new content for the chat.
+        :type content: str
+        :param announcement: The new announcement for the chat.
+        :type announcement: str
+        :param coHost: A list of user IDs to set as co-hosts.
+        :type coHost: list
+        :param keywords: A list of keywords for the chat.
+        :type keywords: list
+        :param pinAnnouncement: Whether to pin or unpin the announcement.
+        :type pinAnnouncement: bool
+        :param publishToGlobal: Whether to publish the chat to the global chat list.
+        :type publishToGlobal: bool
+        :param canTip: Whether tipping is enabled or disabled for the chat.
+        :type canTip: bool
+        :param viewOnly: Whether view-only mode is enabled or disabled for the chat.
+        :type viewOnly: bool
+        :param canInvite: Whether members can invite others to the chat.
+        :type canInvite: bool
+        :param fansOnly: Whether the chat is for fans only.
+        :type fansOnly: bool
+        :param comId: The ID of the community to edit the chat in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A list of `ApiResponse` objects containing the status codes of the API requests.
+        :rtype: list
+
+        This function sends multiple POST requests to the API to edit different aspects of the chat settings.
+
+        The list of `ApiResponse` objects contains the status codes of each request. The order of the responses corresponds to the order of the actions performed.
+
+        **Example usage:**
+
+        To enable do not disturb mode and pin the chat:
+
+        >>> responses = client.community.edit_chat(chatId="12345", doNotDisturb=True, pinChat=True)
+        ... for response in responses:
+        ...     if response.statuscode == 0:
+        ...         print("Edit successful!")
+        ...     else:
+        ...         print("Edit failed.")
+
+        To set a new title, icon, and content for the chat:
+
+        >>> responses = client.community.edit_chat(chatId="12345", title="New Chat", icon="path/to/icon.jpg", content="Welcome to the new chat!")
+        ... for response in responses:
+        ...     if response.statuscode == 0:
+        ...         print("Edit successful!")
+        ...     else:
+        ...         print("Edit failed.")
+        """
         data = dict(timestamp = int(time() * 1000))
 
         if title: data               |= dict(title = title)
@@ -5862,25 +5926,171 @@ class Community:
         if viewOnly is not None:
             responses.append(ApiResponse(self.session.handler(
                 method = "POST",
-                url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
+                url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
             )).statuscode)
         
         if canInvite is not None:
             responses.append(ApiResponse(self.session.handler(
                 method = "POST",
-                url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
+                url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
             )).statuscode)
         
         if canTip is not None:
             responses.append(ApiResponse(self.session.handler(
                 method = "POST",
-                url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
+                url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
             )).statuscode)
         
         responses.append(ApiResponse(self.session.handler(
             method = "POST",
-            url = f"/x{self.community_id if not comId else comId}/s/chat/thread/{chatId}",
+            url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}",
             data = data
         )).statuscode)
 
         return responses
+
+    @community
+    def edit_profile(self, nickname: str = None, content: str = None, icon: str = None, chatRequestPrivilege: str = None, imageList: list = None, captionList: list = None, backgroundImage: str = None, backgroundColor: str = None, titles: list = None, colors: list = None, defaultBubbleId: str = None, comId: Union[str, int] = None):
+        """
+        Edits the user profile.
+
+        :param nickname: The new nickname for the user.
+        :type nickname: str
+        :param content: The new content for the user profile.
+        :type content: str
+        :param icon: The new icon image file for the user profile.
+        :type icon: str
+        :param chatRequestPrivilege: The privilege level for chat invite requests.
+        :type chatRequestPrivilege: str
+        :param imageList: A list of image files to upload.
+        :type imageList: list
+        :param captionList: A list of captions for the uploaded images.
+        :type captionList: list
+        :param backgroundImage: The new background image file for the user profile.
+        :type backgroundImage: str
+        :param backgroundColor: The new background color for the user profile.
+        :type backgroundColor: str
+        :param titles: A list of custom titles for the user profile.
+        :type titles: list
+        :param colors: A list of colors corresponding to the custom titles.
+        :type colors: list
+        :param defaultBubbleId: The ID of the default bubble for the user profile.
+        :type defaultBubbleId: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile.
+
+        `UserProfile`:
+
+        - `nickname` (str): The nickname of the user.
+        - `content` (str): The content of the user profile.
+        - `icon` (str): The URL of the icon image.
+        - `chatRequestPrivilege` (str): The privilege level for chat invite requests.
+        - `backgroundImage` (str): The URL of the background image.
+        - `backgroundColor` (str): The background color of the user profile.
+        - `titles` (list): A list of custom titles for the user profile.
+        - `colors` (list): A list of colors corresponding to the custom titles.
+        - `defaultBubbleId` (str): The ID of the default bubble for the user profile.
+
+        **Example usage:**
+
+        To edit the user profile with a new nickname and content:
+
+        >>> profile = client.community.edit_profile(nickname="JohnDoe", content="Hello, I'm John!")
+        ... print(profile.nickname)  # "JohnDoe"
+        ... print(profile.content)  # "Hello, I'm John!"
+
+        To upload and set a new icon image:
+
+        >>> profile = client.community.edit_profile(icon="path/to/icon.jpg")
+        ... print(profile.icon)  # "https://example.com/icon.jpg"
+
+        To upload multiple images with captions:
+
+        >>> images = ["path/to/image1.jpg", "path/to/image2.jpg"]
+        ... captions = ["Caption 1", "Caption 2"]
+        ... profile = client.community.edit_profile(imageList=images, captionList=captions)
+        ... print(profile.media)  # List of uploaded image URLs with captions
+
+        To set a new background image and color:
+
+        >>> profile = client.community.edit_profile(backgroundImage="path/to/background.jpg", backgroundColor="#FFFFFF")
+        ... print(profile.backgroundImage)  # "https://example.com/background.jpg"
+        ... print(profile.backgroundColor)  # "#FFFFFF"
+
+        To set custom titles and colors:
+
+        >>> titles = ["Title 1", "Title 2"]
+        ... colors = ["#FF0000", "#00FF00"]
+        ... profile = client.community.edit_profile(titles=titles, colors=colors)
+        ... print(profile.titles)  # ["Title 1", "Title 2"]
+        ... print(profile.colors)  # ["#FF0000", "#00FF00"]
+
+        To set the default bubble:
+
+        >>> profile = client.community.edit_profile(defaultBubbleId="bubble123")
+        ... print(profile.defaultBubbleId)  # "bubble123"
+        """
+        media = []
+
+        data = dict(timestamp = int(time() * 1000))
+
+        if captionList is not None: media.append([100,
+                                                  self.upload_media(open(image, "rb").read(),
+                                                                    "image/jpg"),
+                                                                    caption] for image,
+                                                                    caption in zip(imageList,
+                                                                                   captionList))
+        elif imageList is not None: media.append([100,
+                                                  self.upload_media(open(image, "rb").read(),
+                                                                    "image/jpg"),
+                                                                    None] for image in imageList)
+
+        if imageList is not None or captionList is not None: data |= dict(mediaList = media)
+
+        if nickname: data |= dict(nickname = nickname)
+        if icon: data |= dict(icon = self.upload_media(open(icon, "rb").read(), "image/jpg"))
+        if content: data |= dict(content = content)
+
+        if chatRequestPrivilege: data |= {
+            "extensions": {
+                "privilegeOfChatInviteRequest": chatRequestPrivilege
+            }
+        }
+        
+        if backgroundImage: data |= {
+            "extensions": {
+                "style": {
+                    "backgroundMediaList": [[100, self.upload_media(open(backgroundImage, "rb").read(), "image/jpg"), None, None, None]]
+                }
+            }
+        }
+        
+        if backgroundColor: data |= {
+            "extensions": {
+                "style": {
+                    "backgroundColor": backgroundColor
+                }
+            }
+        }
+        
+        if defaultBubbleId: data |= {
+            "extensions": {
+                "defaultBubbleId": defaultBubbleId
+            }
+        }
+        
+        if titles or colors: data |= {
+            "extensions": {
+                "customTitles": [{"title": title, "color": color} for title, color in zip(titles, colors)]
+            }
+        }
+        
+        return UserProfile(self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
+            data = data
+        ))
