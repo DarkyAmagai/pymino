@@ -10,6 +10,7 @@ from .ext.utilities.generate import device_id as generate_device_id
 from .ext.entities.exceptions import (
     LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
     )
+from .ext.entities.threads import (CThread)
 from .ext.entities.general import (
     ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet, LinkInfo
     )
@@ -733,12 +734,14 @@ class Client:
 
 
     @authenticated
-    def join_community(self, community_id: int) -> ApiResponse:
+    def join_community(self, community_id: int, invitationId: str = None) -> ApiResponse:
         """
         Joins the user to a community with the provided community ID.
 
         :param community_id: The ID of the community to join.
         :type community_id: int
+        :param invitationId: The ID of the invitation link.
+        :type invitationId: str
         :return: An ApiResponse object containing the server response.
         :rtype: ApiResponse
         :raises LoginRequired: If the user is not logged in.
@@ -754,9 +757,13 @@ class Client:
         **Note:** This function can be used to join the user to a community with the provided community ID. Once joined,
         the user can make API calls related to the community, such as posting or retrieving posts.
         """
+        data = {"timestamp": int(time() * 1000)}
+        if invitationId: data |= dict(invitationId = invitationId)
+        
         return ApiResponse(self.request.handler(
             method="POST",
-            url=f"/x{community_id}/s/community/join"
+            url=f"/x{community_id}/s/community/join",
+            data = data
             ))
 
     @authenticated
@@ -1155,3 +1162,88 @@ class Client:
             method="POST", url=f"/g/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content, **kwargs).json()
             ))
+
+    @authenticated
+    def edit_profile(self, nickname: str = None, content: str = None, icon: str = None, backgroundColor: str = None, backgroundImage: str = None, defaultBubbleId: str = None):
+        """
+        Edits the user's profile.
+
+        :param nickname: The new nickname for the user.
+        :type nickname: str
+        :param content: The new content for the user's profile.
+        :type content: str
+        :param icon: The new icon image file for the user.
+        :type icon: str
+        :param backgroundColor: The new background color for the user's profile.
+        :type backgroundColor: str
+        :param backgroundImage: The new background image file for the user's profile.
+        :type backgroundImage: str
+        :param defaultBubbleId: The ID of the default bubble for the user's profile.
+        :type defaultBubbleId: str
+        :return: The response from the account's `edit_profile` method.
+        :rtype: Response
+
+        This method allows the authenticated user to edit their profile settings. Different aspects of the profile can be modified,
+        such as the nickname, content, icon, background color, background image, and default bubble. Only the specified parameters will
+        be updated. The `userId` parameter is set to the authenticated user's ID automatically.
+
+        **Example usage:**
+
+        To change the nickname and icon for the user:
+
+        >>> response = client.edit_profile(nickname="New Nickname", icon="path/to/icon.jpg")
+        ... if response.status == 200:
+        ...     print("Profile edited successfully!")
+        ... else:
+        ...     print("Failed to edit profile.")
+        """
+        return self.account.edit_profile(userId = self.userId,
+                                         nickname = nickname,
+                                         content = content,
+                                         icon = icon,
+                                         backgroundColor = backgroundColor,
+                                         backgroundImage = backgroundImage,
+                                         defaultBubbleId = defaultBubbleId)
+
+    @authenticated
+    def start_chat(self, userId: Union[str, list], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False):
+        """
+        Starts a chat thread.
+
+        :param userId: The ID or list of IDs of the users to invite to the chat.
+        :type userId: Union[str, list]
+        :param message: The initial message content.
+        :type message: str
+        :param title: The title of the chat thread (optional).
+        :type title: str, optional
+        :param content: Additional content for the message (optional).
+        :type content: str, optional
+        :param isGlobal: Indicates if the chat is global (optional, default: False).
+        :type isGlobal: bool, optional
+        :param publishToGlobal: Indicates if the chat should be published globally (optional, default: False).
+        :type publishToGlobal: bool, optional
+        :return: A `CThread` object representing the created chat thread.
+        :rtype: CThread
+        """
+        try:
+            userIds = [userId] if isinstance(userId, str) else userId
+        except Exception as e:
+            raise ValueError("Incorrect type for userId. <--- userId can be only a string or a list.") from e
+
+        data = dict(
+            title = title,
+            inviteeUids = userIds,
+            initialMessageContent = message,
+            content = content,
+            timestamp = int(time() * 1000),
+            publishToGlobal = 0
+        )
+
+        if isGlobal: data.update({"type": 2, "eventSource": "GlobalComposeMenu"})
+        else: data["type"] = 0
+
+        if publishToGlobal: data["publishToGlobal"] = 1
+
+        return CThread(
+            self.request.handler(method="POST", url="/g/s/chat/thread", data=data)
+        )

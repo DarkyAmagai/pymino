@@ -375,3 +375,66 @@ class Account:
                 "phoneNumberValidationContext": None,
                 "deviceID": deviceId
             }))
+
+    def edit_profile(self, userId: str, nickname: str = None, content: str = None, icon: str = None, backgroundColor: str = None, backgroundImage: str = None, defaultBubbleId: str = None) -> UserProfile:
+        """
+        `edit_profile` - Edits the user profile.
+
+        `Parameters`:
+        - `userId` (str): The ID of the user profile to edit.
+        - `nickname` (str, optional): The new nickname for the user.
+        - `content` (str, optional): The new content for the user profile.
+        - `icon` (str, optional): The path or URL of the new icon image for the user profile.
+        - `backgroundColor` (str, optional): The new background color for the user profile.
+        - `backgroundImage` (str, optional): The path or URL of the new background image for the user profile.
+        - `defaultBubbleId` (str, optional): The ID of the default bubble for the user profile.
+
+        `Returns`:
+        An instance of the `UserProfile` class representing the updated user profile.
+
+        `Example`:
+        ```python
+        from pymino import *
+
+        bot = Bot()
+        bot.run(email=email, password=password)
+        response = bot.edit_profile(userId="12345", nickname="NewNickname", content="NewContent", backgroundColor="#FFFFFF")
+        print(response.json)
+        ```
+        """
+        data = {
+                "address": None,
+                "latitude": 0,
+                "longitude": 0,
+                "mediaList": None,
+                "eventSource": "UserProfileView",
+                "timestamp": int(time() * 1000),
+        }
+
+        if nickname: data['nickname'] = nickname
+        if icon: data['icon'] = self.upload_image(icon)
+        if content: data['content'] = content
+        if backgroundColor:
+            data["extensions"] = {
+                "style": {
+                    "backgroundColor": backgroundColor
+                    if backgroundColor.startswith("#")
+                    else f"#{backgroundColor}"
+                }
+            }
+
+        if backgroundImage:
+            data["extensions"] = {
+                "style": {
+                    "backgroundMediaList": [
+                        [100, self.upload_image(backgroundImage), None, None, None]
+                    ]
+                }
+            }
+        if defaultBubbleId:
+            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
+
+        return UserProfile(self.session.handler(
+            method = "POST", url = f"/g/s/user-profile/{userId}",
+            data = data
+        ))
