@@ -1,19 +1,12 @@
 import asyncio
-from time import time, perf_counter
 from typing import Optional, Union
+from time import time, perf_counter
 
-from .ext.entities.handlers import *
+from .ext.entities import *
 from .ext.async_socket import AsyncWSClient
 from .ext.async_community import AsyncCommunity
-from .ext.entities.general import ApiResponse
 from .ext.utilities.generate import device_id
-from .ext.entities.userprofile import UserProfile
 from .ext.utilities.async_request_handler import AsyncRequestHandler
-
-from .ext.entities.exceptions import (
-    LoginFailed, MissingEmailPasswordOrSid,
-    VerifyCommunityIdIsCorrect, PingFailed
-    )
 
 
 class AsyncBot(AsyncWSClient):
@@ -239,5 +232,5 @@ class AsyncBot(AsyncWSClient):
             end = perf_counter()
             elapsed_time_ms = (end - start) * 1000
             return round(elapsed_time_ms, 2)
-        except Exception:
-            raise PingFailed
+        except Exception as e:
+            raise PingFailed from e

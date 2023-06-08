@@ -2,57 +2,9 @@ from re import findall
 from typing import Union, List
 
 from .exceptions import InvalidLink
+from .api_response import ApiResponse
 from .userprofile import UserProfile, UserProfileList
 
-class ApiResponse:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data       = data
-        self.message    = None
-        self.statuscode = None
-        self.duration   = None
-        self.timestamp  = None
-        self.mediaValue = None
-        
-        if isinstance(self.data, dict):
-            self.message:       Union[str, None] = self.data.get("api:message", self.message)
-            self.statuscode:    Union[int, None] = self.data.get("api:statuscode", self.statuscode)
-            self.duration:      Union[str, None] = self.data.get("api:duration", self.duration)
-            self.timestamp:     Union[str, None] = self.data.get("api:timestamp", self.timestamp)
-            self.mediaValue:    Union[str, None] = self.data.get("mediaValue", self.mediaValue) or self.data.get("result", {}).get("mediaValue", self.mediaValue)
-        
-    def json(self) -> Union[dict, str]:
-        return self.data
-
-class LinkInfo:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data               = data
-        self.linkInfoV2         = {}
-        self.path               = None
-        self.extensions         = {}
-        self.objectId           = None
-        self.shareURLShortCode  = None
-        self.targetCode         = None
-        self.ndcId              = None
-        self.comId              = None
-        self.fullPath           = None
-        self.shortCode          = None
-        self.objectType         = None
-
-        if isinstance(data, dict):
-            self.linkInfoV2:        dict = self.data.get("linkInfoV2", self.linkInfoV2)
-            self.path:              Union[str, None] = self.data.get("path", self.path)             or self.linkInfoV2.get("path", self.path)
-            self.extensions:        dict = self.data.get("extensions", self.extensions)             or self.linkInfoV2.get("extensions", self.extensions)
-            self.objectId:          Union[str, None] = self.data.get("objectId", self.objectId)     or self.extensions.get("linkInfo", {}).get("objectId", self.objectId)
-            self.shareURLShortCode: Union[str, None] = self.data.get("shareURLShortCode", self.shareURLShortCode) or self.extensions.get("linkInfo", {}).get("shareURLShortCode", self.shareURLShortCode)
-            self.targetCode:        Union[str, None] = self.data.get("targetCode", self.targetCode) or self.extensions.get("linkInfo", {}).get("targetCode", self.targetCode)
-            self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId)           or self.extensions.get("linkInfo", {}).get("ndcId", self.ndcId)
-            self.comId:             Union[int, None] = self.ndcId
-            self.fullPath:          Union[str, None] = self.data.get("fullPath", self.fullPath)     or self.extensions.get("linkInfo", {}).get("fullPath", self.fullPath)
-            self.shortCode:         Union[str, None] = self.data.get("shortCode", self.shortCode)   or self.extensions.get("linkInfo", {}).get("shortCode", self.shortCode)
-            self.objectType:        Union[str, None] = self.data.get("objectType", self.objectType) or self.extensions.get("linkInfo", {}).get("objectType", self.objectType)
-
-    def json(self) -> Union[dict, str]:
-        return self.data
 
 class CommunityInvitation:
     def __init__(self, data: Union[dict, str]) -> None:
@@ -568,111 +520,7 @@ class CChatMembers:
 
     def json(self) -> Union[dict, str]:
         return self.data
-    
-class CComment:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data = data
-        self.modifiedTime = None
-        self.ndcId = None
-        self.votedValue = None
-        self.parentType = None
-        self.commentId = None
-        self.parentNdcId = None
-        self.mediaList = None
-        self.votesSum = None
-        self.author = {}
-        self.extensions = {}
-        self.content = None
-        self.parentId = None
-        self.createdTime = None
-        self.subcommentsCount = None
-        self.type = None
 
-        if isinstance(data, dict):
-            self.modifiedTime:      Union[str, None] = self.data.get("modifiedTime", self.modifiedTime)
-            self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId)
-            self.votedValue:        Union[int, None] = self.data.get("votedValue", self.votedValue)
-            self.parentType:        Union[int, None] = self.data.get("parentType", self.parentType)
-            self.commentId:         Union[str, None] = self.data.get("commentId", self.commentId)
-            self.parentNdcId:       Union[int, None] = self.data.get("parentNdcId", self.parentNdcId)
-            self.mediaList:         Union[None, None] = self.data.get("mediaList", self.mediaList)
-            self.votesSum:          Union[int, None] = self.data.get("votesSum", self.votesSum)
-
-            try:
-                self.author:            Union[UserProfile, None] = UserProfile(self.data.get("author", self.author))
-            except Exception:
-                self.author:            Union[UserProfile, None] = None
-
-            self.extensions:        CCommentExtensions = CCommentExtensions(self.data.get("extensions", self.extensions))
-            self.content:           Union[str, None] = self.data.get("content", self.content)
-            self.parentId:          Union[str, None] = self.data.get("parentId", self.parentId)
-            self.createdTime:       Union[str, None] = self.data.get("createdTime", self.createdTime)
-            self.subcommentsCount:  Union[int, None] = self.data.get("subcommentsCount", self.subcommentsCount)
-            self.type:              Union[int, None] = self.data.get("type", self.type)
-        
-    def json(self) -> Union[dict, str]:
-        return self.data
-
-class CCommentList:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data:              dict = data.get("commentList", [])
-        parser:                 list = [CComment(x) for x in self.data]
-        self.modifiedTime:      list = [x.modifiedTime for x in parser]
-        self.ndcId:             list = [x.ndcId for x in parser]
-        self.votedValue:        list = [x.votedValue for x in parser]
-        self.parentType:        list = [x.parentType for x in parser]
-        self.commentId:         list = [x.commentId for x in parser]
-        self.parentNdcId:       list = [x.parentNdcId for x in parser]
-        self.mediaList:         list = [x.mediaList for x in parser]
-        self.votesSum:          list = [x.votesSum for x in parser]
-        #self.author:            list = [x.author for x in parser]
-        #self.extensions:        list = [x.extensions for x in parser]
-        self.content:           list = [x.content for x in parser]
-        self.parentId:          list = [x.parentId for x in parser]
-        self.createdTime:       list = [x.createdTime for x in parser]
-        self.subcommentsCount:  list = [x.subcommentsCount for x in parser]
-        self.type:              list = [x.type for x in parser]
-
-    def json(self) -> Union[dict, str]:
-        return self.data
-
-class CCommentExtensions:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data = data
-        self.status = None
-        self.iconV2 = None
-        self.name = None
-        self.stickerId = None
-        self.smallIconV2 = None
-        self.smallIcon = None
-        self.stickerCollectionId = None
-        self.mediumIcon = None
-        self.stickerCollectionSummary = {}
-        self.extensions = None
-        self.usedCount = None
-        self.mediumIconV2 = None
-        self.createdTime = None
-        self.icon = None
-
-        if isinstance(data, dict):
-            self.data:                      Union[dict, None] = self.data.get("sticker", self.data)
-            self.status:                    Union[int, None] = self.data.get("status", self.status)
-            self.iconV2:                    Union[str, None] = self.data.get("iconV2", self.iconV2)
-            self.name:                      Union[str, None] = self.data.get("name", self.name)
-            self.stickerId:                 Union[str, None] = self.data.get("stickerId", self.stickerId)
-            self.smallIconV2:               Union[str, None] = self.data.get("smallIconV2", self.smallIconV2)
-            self.smallIcon:                 Union[str, None] = self.data.get("smallIcon", self.smallIcon)
-            self.stickerCollectionId:       Union[str, None] = self.data.get("stickerCollectionId", self.stickerCollectionId)
-            self.mediumIcon:                Union[str, None] = self.data.get("mediumIcon", self.mediumIcon)
-            self.stickerCollectionSummary:  Union[dict, None] = self.data.get("stickerCollectionSummary", self.stickerCollectionSummary)
-            self.extensions:                Union[None, None] = self.data.get("extensions", self.extensions)
-            self.usedCount:                 Union[int, None] = self.data.get("usedCount", self.usedCount)
-            self.mediumIconV2:              Union[str, None] = self.data.get("mediumIconV2", self.mediumIconV2)
-            self.createdTime:               Union[None, None] = self.data.get("createdTime", self.createdTime)
-            self.icon:                      Union[str, None] = self.data.get("icon", self.icon)
-
-    def json(self) -> Union[dict, str]:
-        return self.data
 
 class FeaturedBlog:
     def __init__(self, data: Union[dict, str]):

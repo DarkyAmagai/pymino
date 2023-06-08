@@ -7,14 +7,10 @@ from urllib.parse import urlencode
 from time import sleep as delay, time
 from ujson import loads, dumps, JSONDecodeError
 
+from .entities import *
 from .context import EventHandler
 from .dispatcher import MessageDispatcher
-from .entities.wsevents import EventTypes, NotifTypes
-from .entities.userprofile import OnlineMembers
-from .entities.messages import Channel, Message, NNotification
-from .entities.exceptions import WrongWebSocketPackage
 from .utilities.generate import device_id, generate_signature
-from .entities.handlers import run_alive_loop, orjson_exists
 
 if orjson_exists():
     from orjson import (
@@ -119,8 +115,8 @@ class WSClient(EventHandler):
 
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
-        notification: NNotification = NNotification(message)
-        key = self.notif_types.get(notification.notifType)
+        notification: Notification = Notification(message)
+        key = self.notif_types.get(notification.notification_type)
         if key != None:
             return Thread(target=self._handle_event, args=(key, notification)).start()
 

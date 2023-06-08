@@ -264,6 +264,30 @@ class InternalServerError(Exception):
     def __init__(self, response: str):
         super().__init__(response)
 
+class InvalidEmail(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class InvalidPassword(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class WhoaCooldown(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class InvalidThemepack(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class InvalidVoiceNote(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
+class PostedTooRecently(Exception):
+    def __init__(self, response: str):
+        super().__init__(response)
+
 class APIException(Exception):
     def __init__(self, response: dict):
         self.exception_map = {
@@ -271,6 +295,7 @@ class APIException(Exception):
             101: InternalServerError,
             102: FileTooLarge,
             103: InvalidRequest,
+            104: InvalidRequest,
             105: InvalidSession,
             106: AccessDenied,
             107: UnexistentData,
@@ -279,6 +304,8 @@ class APIException(Exception):
             113: MessageNeeded,
             200: InvalidAccountOrPassword,
             210: AccountDisabled,
+            213: InvalidEmail,
+            214: InvalidPassword,
             215: EmailAlreadyTaken,
             216: AccountDoesNotExist,
             218: InvalidDevice,
@@ -296,9 +323,13 @@ class APIException(Exception):
             246: AccountDeleted,
             262: ReachedMaxTitles,
             270: VerificationRequired,
+            291: WhoaCooldown,
             293: UserBannedByTeamAmino,
             300: BadImage,
+            313: InvalidThemepack,
+            314: InvalidVoiceNote,
             500: RequestedNoLongerExists,
+            503: PostedTooRecently,
             551: InsufficientLevel,
             603: YouAreBlockedByThisUser,
             604: YouHaveBlockedThisUser,
@@ -310,6 +341,7 @@ class APIException(Exception):
             805: CommunityNameAlreadyTaken,
             806: CommunityCreateLimitReached,
             814: CommunityDisabled,
+            826: CommunityCreateLimitReached,
             833: CommunityDeleted,
             1600: DataNoLongerExists,
             1606: TooManyInviteUsers,

@@ -9,17 +9,11 @@ from urllib.parse import urlencode
 from ujson import loads, JSONDecodeError
 from contextlib import asynccontextmanager
 
-
+from .entities import *
 from .handle_queue import QueueHandler
 from .async_event_handler import AsyncEventHandler
-
 from .dispatcher import AsyncMessageDispatcher
-from .entities.userprofile import OnlineMembers
-from .entities.wsevents import EventTypes, NotifTypes
-
-from .entities.messages import Channel, Message, NNotification
 from .utilities.generate import device_id, generate_signature
-from .entities.handlers import orjson_exists, alive_loop
 
 if orjson_exists():
     from orjson import loads as orjson_loads
@@ -155,8 +149,8 @@ class AsyncWSClient(AsyncEventHandler):
 
 
     async def _handle_notification(self, message: dict) -> None:
-        notification: NNotification = NNotification(message)
-        key = self.notif_types.get(notification.notifType)
+        notification: Notification = Notification(message)
+        key = self.notif_types.get(notification.notification_type)
         if key != None:
             self.loop.create_task(self._handle_event(key, notification))
 

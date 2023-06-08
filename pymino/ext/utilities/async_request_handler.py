@@ -42,7 +42,7 @@ class AsyncRequestHandler:
         self.session:   Optional[ClientSession] = None
         self.sid:       Optional[str] = None
         self.userId:    Optional[str] = None
-        self.orjson:    bool = orjson_exists()
+        self.orjson:    bool = False
 
         self.proxy = proxy if proxy is not None else None
 
@@ -275,10 +275,10 @@ class AsyncRequestHandler:
 
         if not isinstance(data, bytes):
             data = (
-                orjson_dumps(data)
+                orjson_dumps(data).decode("utf-8")
                 if self.orjson
                 else dumps(data)
-            ).decode("utf-8")
+            )
 
         headers.update(
             {

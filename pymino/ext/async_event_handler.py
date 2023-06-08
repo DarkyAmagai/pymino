@@ -1,24 +1,15 @@
 import asyncio
-from requests import get
+from time import time
 from diskcache import Cache
-from threading import Thread
-from base64 import b64encode
 from contextlib import suppress
 from colorama import Fore, Style
-from time import sleep as delay, time
+from typing import Callable, Union
 from inspect import signature as inspect_signature
-from typing import BinaryIO, Callable, List, Union
-from asyncio import AbstractEventLoop
 
-from .entities.general import ApiResponse
-from .entities.userprofile import OnlineMembers
-from .utilities.commands import Command, Commands
-from .entities.exceptions import InvalidImage, MustRunInContext
-from .entities.messages import (
-    CMessage, Message, MessageAuthor, PrepareMessage, NNotification
-    )
 
+from .entities import *
 from .async_context import AsyncContext
+from .utilities.commands import Command, Commands
 
 class AsyncEventHandler:
     """
@@ -56,7 +47,7 @@ class AsyncEventHandler:
 
 
     def task(self, interval: int = 10):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             async def wrapper(interval: int):
                 await self._handle_task(func, interval)
             self.loop.create_task(wrapper(interval=interval))
@@ -173,7 +164,7 @@ class AsyncEventHandler:
             self._is_deprecated("command_description", "description")
             description = kwargs["command_description"]
 
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._commands.add_command(
                 Command(
                     func=func,
@@ -183,7 +174,7 @@ class AsyncEventHandler:
                     aliases=aliases,
                     cooldown=cooldown
                 ))
-            return await func
+            return func
         return decorator
 
 
@@ -224,9 +215,13 @@ class AsyncEventHandler:
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         command_name = dict(self._commands.__command_aliases__().copy()).get(command_name, command_name)
         
-        await self._check_cooldown(command_name, data, context)
-        func = self._commands.fetch_command(command_name).func
-        return await func(*await self._set_parameters(context=context, func=func, message=message))
+        response = await self._check_cooldown(command_name, data, context)
+
+        if response  != 403:
+            func = self._commands.fetch_command(command_name).func
+            return await func(*await self._set_parameters(context=context, func=func, message=message))
+        
+        return None
 
         
     async def _check_cooldown(self, command_name: str, data: Message, context: AsyncContext) -> None:
@@ -234,9 +229,10 @@ class AsyncEventHandler:
         if self._commands.fetch_command(command_name).cooldown > 0:
             if self._commands.fetch_cooldown(command_name, data.author.userId) > time():
 
-                return context.reply(
+                await context.reply(
                     content=f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds."
                     )
+                return 403
             
             self._commands.set_cooldown(
                 command_name=command_name,
@@ -244,27 +240,27 @@ class AsyncEventHandler:
                 userId=data.author.userId
                 )
 
-        return None
+        return 200
 
 
     def on_error(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["error"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_ready(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["ready"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_text_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["text_message"] = func
-            return await func
+            return func
         return decorator
 
 
@@ -282,347 +278,347 @@ class AsyncEventHandler:
 
 
     def on_image_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["image_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_youtube_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["youtube_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_strike_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["strike_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_voice_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["voice_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_sticker_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["sticker_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_not_answered(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_not_answered"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_not_cancelled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_not_cancelled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_not_declined(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_not_declined"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_video_chat_not_answered(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_not_answered"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_video_chat_not_cancelled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_not_cancelled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_video_chat_not_declined(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_not_declined"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_avatar_chat_not_answered(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_not_answered"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_avatar_chat_not_cancelled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_not_cancelled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_avatar_chat_not_declined(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_not_declined"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_delete_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             def wrapper(ctx: AsyncContext):
                 func(*self._set_parameters(ctx, func))
             self._events["delete_message"] = wrapper
-            return await func
+            return func
         return decorator
 
 
     def on_member_join(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["member_join"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_member_leave(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["member_leave"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_invite(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_invite"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_background_changed(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_background_changed"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_title_changed(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_title_changed"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_icon_changed(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_icon_changed"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_start(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_start"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_video_chat_start(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_start"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_avatar_chat_start(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_start"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_end(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_end"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_video_chat_end(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_end"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_avatar_chat_end(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_end"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_content_changed(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_content_changed"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_screen_room_start(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["screen_room_start"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_screen_room_end(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["screen_room_end"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_host_transfered(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_host_transfered"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_text_message_force_removed(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["text_message_force_removed"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_removed_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_removed_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_mod_deleted_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["mod_deleted_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_tip(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_tip"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_pin_announcement(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_pin_announcement"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_permission_open_to_everyone(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_permission_open_to_everyone"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_permission_invited_and_requested(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_permission_invited_and_requested"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_vc_permission_invite_only(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["vc_permission_invite_only"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_view_only_enabled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_view_only_enabled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_view_only_disabled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_view_only_disabled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_unpin_announcement(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_unpin_announcement"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_tipping_enabled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_tipping_enabled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_chat_tipping_disabled(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["chat_tipping_disabled"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_timestamp_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["timestamp_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_welcome_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["welcome_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_share_exurl_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["share_exurl_message"] = func
-            return await func
+            return func
         return decorator
     
 
     def on_invite_message(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["invite_message"] = func
-            return await func
+            return func
         return decorator
 
 
     def on_user_online(self):
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["user_online"] = func
-            return await func
+            return func
         return decorator
 
 
@@ -636,15 +632,15 @@ class AsyncEventHandler:
         chatId = "0000-0000-0000-0000"
 
         @bot.on_member_set_you_host()
-        def member_set_you_host(notification: NNotification):
+        def member_set_you_host(notification: Notification):
             if notification.chatId == chatId:
                 print("You are now host")
                 bot.community.send_message(chatId=chatId, content="I am now host", comId=notification.comId)
         ```
         """
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["member_set_you_host"] = func
-            return await func
+            return func
         return decorator
 
 
@@ -658,15 +654,15 @@ class AsyncEventHandler:
         chatId = "0000-0000-0000-0000"
         
         @bot.on_member_set_you_cohost()
-        def member_set_you_cohost(notification: NNotification):
+        def member_set_you_cohost(notification: Notification):
             if notification.chatId == chatId:
                 print("You are now cohost")
                 bot.community.send_message(chatId=chatId, content="I am now cohost", comId=notification.comId)
         ```
         """
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["member_set_you_cohost"] = func
-            return await func
+            return func
         return decorator
 
 
@@ -680,15 +676,15 @@ class AsyncEventHandler:
         chatId = "0000-0000-0000-0000"
         
         @bot.on_member_remove_your_cohost()
-        def member_remove_your_cohost(notification: NNotification):
+        def member_remove_your_cohost(notification: Notification):
             if notification.chatId == chatId:
                 print("You are no longer cohost")
                 bot.community.send_message(chatId=chatId, content="I am no longer cohost", comId=notification.comId)
         ```
         """
-        async def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             self._events["member_remove_your_cohost"] = func
-            return await func
+            return func
         return decorator
 
 
@@ -700,7 +696,7 @@ class AsyncEventHandler:
     async def _handle_event(
         self,
         event: str,
-        data: Union[Message, OnlineMembers, NNotification, AsyncContext]
+        data: Union[Message, OnlineMembers, Notification, AsyncContext]
         ) -> Union[AsyncContext, None]:
         """
         `_handle_event` is a function that handles events.

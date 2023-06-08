@@ -1,4 +1,4 @@
-from .entities.threads import *
+from .entities.chat_threads import *
 from .entities.general import *
 from .entities.messages import *
 from .entities.wsevents import *

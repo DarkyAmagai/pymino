@@ -8,13 +8,8 @@ from time import sleep as delay, time
 from inspect import signature as inspect_signature
 from typing import BinaryIO, Callable, List, Union
 
-from .entities.general import ApiResponse
-from .entities.userprofile import OnlineMembers
+from .entities import *
 from .utilities.commands import Command, Commands
-from .entities.exceptions import InvalidImage, MustRunInContext
-from .entities.messages import (
-    CMessage, Message, MessageAuthor, PrepareMessage, NNotification
-    )
 
 class Context():
     """
@@ -541,6 +536,7 @@ class EventHandler: #NEW.
         """`start_task` - This starts a task."""
         Thread(target=func).start()
 
+
     def _handle_task(self, func, interval):
         """
         `_handle_task` - This handles the task.
@@ -556,7 +552,8 @@ class EventHandler: #NEW.
                 func()
             else: func(self.community)
             delay(interval)
-            
+
+
     def task(self, interval: int = 10):
         """
         `task` - This creates a task.
@@ -583,11 +580,41 @@ class EventHandler: #NEW.
                 self._handle_task(func, interval)
             self.start_task(wrapper)
         return decorator
-                
-    def emit(self, name: str, *args):
+
+
+    def _set_parameters(self, context: Context, func: Callable, message: str = None) -> list:
+        try:
+            message = message if isinstance(message, str) else context.message.content
+        except AttributeError:
+            message = None
+
+        try:
+            username = context.author.username
+        except AttributeError:
+            username = None
+
+        try:
+            userId = context.author.userId
+        except AttributeError:
+            userId = None
+
+        potential_parameters = {
+            "ctx": context,
+            "message": message,
+            "username": username,
+            "userId": userId
+        }
+
+        return [
+            potential_parameters.get(parameter)
+            for parameter in inspect_signature(func).parameters
+        ]
+
+
+    def emit(self, name: str, *args) -> None:
         """`emit` is a function that emits an event."""
-        if name in self._events:
-            self._events[name](*args) 
+        self._events[name](*args) if name in self._events else None
+
 
     def command(
         self,
@@ -677,47 +704,36 @@ class EventHandler: #NEW.
                 ))
             return func
         return decorator
-    
+
+
     def _is_deprecated(self, parameter: str, new_parameter: str):
         print(f"{Style.BRIGHT}{Fore.RED}WARNING:{Style.RESET_ALL} '{parameter}' is deprecated. Please use '{new_parameter}' instead.")
 
+
     def command_exists(self, command_name: str) -> bool:
-        """
-        `command_exists` - This checks if a command exists.
-        
-        `**Parameters**``
-        - `command_name` - The name of the command.
-        
-        `**Returns**`` - bool
-        """
         return any([
             command_name in self._commands.__command_names__(),
             command_name in self._commands.__command_aliases__()
             ])
 
+
     def fetch_command(self, command_name: str) -> Command:
-        """
-        `fetch_command` - This fetches a command.
-        
-        `**Parameters**``
-        - `command_name` - The name of the command.
-        
-        `**Returns**`` - Command
-        """
         return self._commands.fetch_command(command_name)
 
     def _handle_command(self, data: Message, context: Context):
-        """`_handle_command` is a function that handles commands."""
+        """Handles commands."""
         command_name = data.content[len(self.command_prefix):].split(" ")[0]
 
-        if any([self.command_exists(command_name) != True, self.command_prefix != data.content[:len(self.command_prefix)]]):
-            if (
-                command_name == "help"
-                and data.content == f"{self.command_prefix}help"
-            ):
+        if (not self.command_exists(command_name) or
+                self.command_prefix != data.content[:len(self.command_prefix)]):
+
+            if (command_name == "help" and
+                    data.content == f"{self.command_prefix}help"):
                 return context.reply(self._commands.__help__())
+
             elif "text_message" in self._events:
-                return self._handle_text_message(data, context)
+                return self._handle_all_events(event="text_message", data=data, context=context)
+
             else:
                 return None
 
@@ -725,476 +741,410 @@ class EventHandler: #NEW.
             return None
 
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
-        parameters = [{
-            "ctx": context,
-            "message": None if len(message) == 0 else message,
-            "username": data.author.username,
-            "userId": data.author.userId
-        }.get(i) for i in inspect_signature(self.fetch_command(command_name).func).parameters]
+        command_name = dict(self._commands.__command_aliases__().copy()).get(command_name, command_name)
+        
+        response = self._check_cooldown(command_name, data, context)
 
-        command_name = dict(self._commands.__command_aliases__().copy()).get(command_name, command_name)  
+        if response  != 403:
+            func = self._commands.fetch_command(command_name).func
+            return func(*self._set_parameters(context=context, func=func, message=message))
+        
+        return None
 
+        
+    def _check_cooldown(self, command_name: str, data: Message, context: Context) -> None:
+        """`_check_cooldown` is a function that checks if a command is on cooldown."""
         if self._commands.fetch_command(command_name).cooldown > 0:
             if self._commands.fetch_cooldown(command_name, data.author.userId) > time():
-                return context.reply(f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
-            self._commands.set_cooldown(command_name, self._commands.fetch_command(command_name).cooldown, data.author.userId)
 
-        return self._commands.fetch_command(command_name).func(*parameters)
-        
+                context.reply(
+                    content=f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds."
+                    )
+                return 403
+            
+            self._commands.set_cooldown(
+                command_name=command_name,
+                cooldown=self._commands.fetch_command(command_name).cooldown,
+                userId=data.author.userId
+                )
+
+        return 200
+
+
     def on_error(self):
-        """
-        `on_error` - This is an event that handles errors to prevent the bot from crashing.
-        
-        `**Example**``
-        ```py
-        @bot.on_error()
-        def on_error(error: Exception):
-            print(error)
-        ```
-        """
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["error"] = func
             return func
         return decorator
 
-    def on_ready(self):
-        """
-        `on_ready` - This is an event that is called when the bot is ready.
 
-        `**Example**``
-        ```py
-        @bot.on_ready()
-        def on_ready():
-            print(f"Logged in as {bot.profile.username}")
-        ```
-        """
-        def decorator(func):
+    def on_ready(self):
+        def decorator(func: Callable) -> Callable:
             self._events["ready"] = func
             return func
         return decorator
 
+
     def on_text_message(self):
-        """
-        `on_text_message` - This is an event that is called when a text message is received.
-
-        `**Example**``
-        ```py
-        # Basic usage.
-        @bot.on_text_message()
-        def on_text_message(ctx: Context):
-            ctx.send(content="Hello World!")
-
-        # Parameter usage.
-        @bot.on_text_message()
-        def on_text_message(ctx: Context, message: str, username: str, userId: str):
-            ctx.send(content=f"{username} said {message}")
-            print(userId)
-        ```
-        """
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["text_message"] = func
             return func
         return decorator
-    
+
+
     def _add_cache(self, chatId: str, userId: str, content: str):
         if self._wait_for.get(f"{chatId}_{userId}") is not None:
             self._wait_for.clear(f"{chatId}_{userId}")
+            print("Cleared cache.")
 
         self._wait_for.add(
             key=f"{chatId}_{userId}",
             value=content,
             expire=90
             )
-        
-    def _remove_cache(self, chatId: str, userId: str):
-        self._wait_for.clear(f"{chatId}_{userId}")
+        print("Added cache.")
 
-    def _handle_text_message(self, data: Message, context: Context):
-        """`_handle_text_message` is a function that handles text messages."""
-        if data.content.startswith(self.command_prefix):
-            command_name = data.content.split(" ")[0][len(self.command_prefix):]
-        else:
-            command_name = None
-
-        parameters = [{
-            "ctx": context,
-            "command": self.command_prefix + command_name if command_name != None else "Command not found",
-            "message": context.message.content[len(command_name) + len(self.command_prefix) + 1:] if command_name else context.message.content,
-            "username": context.author.username,
-            "userId": context.author.userId
-        }.get(i) for i in inspect_signature(self._events["text_message"]).parameters]
-
-        return self._events["text_message"](*parameters)
 
     def on_image_message(self):
-        """
-        `on_image_message` - This is an event that is called when an image message is received.
-        
-        `**Example**``
-        ```py
-        # This will send the image back to the chat.
-        @bot.on_image_message()
-        def on_image_message(ctx: Context, image: str):
-            ctx.send_image(image=image)
-        ```
-        """
-        def decorator(func):
-            def wrapper(ctx: Context):
-                parameters = []
-                pparameters = {"ctx": ctx, "image": ctx.message.mediaValue}
-                for parameter in inspect_signature(func).parameters:
-                    parameters.append(pparameters.get(parameter, None))
-                func(*parameters)
-            self._events["image_message"] = wrapper
+        def decorator(func: Callable) -> Callable:
+            self._events["image_message"] = func
             return func
         return decorator
-        
-    def on_youtube_message(self):
-        """
-        `on_youtube_message` - This is an event that is called when a YouTube video message is received.
 
-        `**Example**``
-        ```py
-        # This will print the youtube title in the console.
-        @bot.on_youtube_message()
-        def on_youtube_message(ctx: Context, title: str):
-            print(title)
-        ```
-        """
-        def decorator(func):
-            def wrapper(ctx: Context):
-                parameters = []
-                pparameters = {"ctx": ctx, "title": ctx.message.content}
-                for parameter in inspect_signature(func).parameters:
-                    parameters.append(pparameters.get(parameter, None))
-                func(*parameters)
-            self._events["youtube_message"] = wrapper
+
+    def on_youtube_message(self):
+        def decorator(func: Callable) -> Callable:
+            self._events["youtube_message"] = func
             return func
         return decorator
+
 
     def on_strike_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["strike_message"] = func
             return func
         return decorator
 
+
     def on_voice_message(self):
-        """
-        `on_voice_message` - This is an event that is called when a voice message is received.
-        
-        `**Example**``
-        ```py
-        # This will send the audio message back to the chat.
-        @bot.on_voice_message()
-        def on_voice_message(ctx: Context, audio: str):
-            ctx.send_audio(audio=audio)
-        ```
-        """
-        def decorator(func):
-            def wrapper(ctx: Context):
-                inspect = len(inspect_signature(func).parameters)
-                if inspect > 2:
-                    return None
-                elif inspect > 1:
-                    func(ctx, ctx.message.mediaValue)
-                else:
-                    func(ctx)
-            self._events["voice_message"] = wrapper
+        def decorator(func: Callable) -> Callable:
+            self._events["voice_message"] = func
             return func
         return decorator
+
 
     def on_sticker_message(self):
-        def decorator(func):
-            def wrapper(ctx: Context):
-                inspect = len(inspect_signature(func).parameters)
-                if inspect > 2:
-                    return None
-                elif inspect > 1:
-                    func(ctx, ctx.message.mediaValue.split("://")[1])
-                else:
-                    func(ctx)
-            self._events["sticker_message"] = wrapper
+        def decorator(func: Callable) -> Callable:
+            self._events["sticker_message"] = func
             return func
         return decorator
 
+
     def on_vc_not_answered(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_not_answered"] = func
             return func
         return decorator
 
+
     def on_vc_not_cancelled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_not_cancelled"] = func
             return func
         return decorator
 
+
     def on_vc_not_declined(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_not_declined"] = func
             return func
         return decorator
 
+
     def on_video_chat_not_answered(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_not_answered"] = func
             return func
         return decorator
 
+
     def on_video_chat_not_cancelled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_not_cancelled"] = func
             return func
         return decorator
 
+
     def on_video_chat_not_declined(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_not_declined"] = func
             return func
         return decorator
 
+
     def on_avatar_chat_not_answered(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_not_answered"] = func
             return func
         return decorator
 
+
     def on_avatar_chat_not_cancelled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_not_cancelled"] = func
             return func
         return decorator
 
+
     def on_avatar_chat_not_declined(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_not_declined"] = func
             return func
         return decorator
 
+
     def on_delete_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             def wrapper(ctx: Context):
-                inspect = len(inspect_signature(func).parameters)
-                if inspect > 2:
-                    return None
-                elif inspect > 1:
-                    func(ctx, ctx.message.messageId)
-                else:
-                    func(ctx)
+                func(*self._set_parameters(ctx, func))
             self._events["delete_message"] = wrapper
             return func
         return decorator
 
+
     def on_member_join(self):
-        def decorator(func):
-            def wrapper(ctx: Context):
-                potential_parameters = {
-                    "ctx": ctx,
-                    "username": ctx.author.username,
-                    "userId": ctx.author.userId
-                }
-                parameters = []
-                for parameter in inspect_signature(func).parameters:
-                    parameters.append(potential_parameters.get(parameter, None))
-                func(*parameters)
-            self._events["member_join"] = wrapper
+        def decorator(func: Callable) -> Callable:
+            self._events["member_join"] = func
             return func
         return decorator
 
+
     def on_member_leave(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["member_leave"] = func
             return func
         return decorator
 
+
     def on_chat_invite(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_invite"] = func
             return func
         return decorator
 
+
     def on_chat_background_changed(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_background_changed"] = func
             return func
         return decorator
 
+
     def on_chat_title_changed(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_title_changed"] = func
             return func
         return decorator
 
+
     def on_chat_icon_changed(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_icon_changed"] = func
             return func
         return decorator
 
+
     def on_vc_start(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_start"] = func
             return func
         return decorator
 
+
     def on_video_chat_start(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_start"] = func
             return func
         return decorator
 
+
     def on_avatar_chat_start(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_start"] = func
             return func
         return decorator
 
+
     def on_vc_end(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_end"] = func
             return func
         return decorator
 
+
     def on_video_chat_end(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["video_chat_end"] = func
             return func
         return decorator
 
+
     def on_avatar_chat_end(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["avatar_chat_end"] = func
             return func
         return decorator
 
+
     def on_chat_content_changed(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_content_changed"] = func
             return func
         return decorator
 
+
     def on_screen_room_start(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["screen_room_start"] = func
             return func
         return decorator
 
+
     def on_screen_room_end(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["screen_room_end"] = func
             return func
         return decorator
 
+
     def on_chat_host_transfered(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_host_transfered"] = func
             return func
         return decorator
 
+
     def on_text_message_force_removed(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["text_message_force_removed"] = func
             return func
         return decorator
 
+
     def on_chat_removed_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_removed_message"] = func
             return func
         return decorator
 
+
     def on_mod_deleted_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["mod_deleted_message"] = func
             return func
         return decorator
 
+
     def on_chat_tip(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_tip"] = func
             return func
         return decorator
 
+
     def on_chat_pin_announcement(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_pin_announcement"] = func
             return func
         return decorator
 
+
     def on_vc_permission_open_to_everyone(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_permission_open_to_everyone"] = func
             return func
         return decorator
 
+
     def on_vc_permission_invited_and_requested(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_permission_invited_and_requested"] = func
             return func
         return decorator
 
+
     def on_vc_permission_invite_only(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["vc_permission_invite_only"] = func
             return func
         return decorator
 
+
     def on_chat_view_only_enabled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_view_only_enabled"] = func
             return func
         return decorator
 
+
     def on_chat_view_only_disabled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_view_only_disabled"] = func
             return func
         return decorator
 
+
     def on_chat_unpin_announcement(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_unpin_announcement"] = func
             return func
         return decorator
 
+
     def on_chat_tipping_enabled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_tipping_enabled"] = func
             return func
         return decorator
 
+
     def on_chat_tipping_disabled(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["chat_tipping_disabled"] = func
             return func
         return decorator
 
+
     def on_timestamp_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["timestamp_message"] = func
             return func
         return decorator
 
+
     def on_welcome_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["welcome_message"] = func
             return func
         return decorator
 
+
     def on_share_exurl_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["share_exurl_message"] = func
             return func
         return decorator
     
+
     def on_invite_message(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["invite_message"] = func
             return func
         return decorator
 
+
     def on_user_online(self):
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["user_online"] = func
             return func
         return decorator
@@ -1210,17 +1160,18 @@ class EventHandler: #NEW.
         chatId = "0000-0000-0000-0000"
 
         @bot.on_member_set_you_host()
-        def member_set_you_host(notification: NNotification):
+        def member_set_you_host(notification: Notification):
             if notification.chatId == chatId:
                 print("You are now host")
                 bot.community.send_message(chatId=chatId, content="I am now host", comId=notification.comId)
         ```
         """
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["member_set_you_host"] = func
             return func
         return decorator
-    
+
+
     def on_member_set_you_cohost(self):
         """
         `on_member_set_you_cohost` - This is an event that is called when you are set as cohost.
@@ -1231,17 +1182,18 @@ class EventHandler: #NEW.
         chatId = "0000-0000-0000-0000"
         
         @bot.on_member_set_you_cohost()
-        def member_set_you_cohost(notification: NNotification):
+        def member_set_you_cohost(notification: Notification):
             if notification.chatId == chatId:
                 print("You are now cohost")
                 bot.community.send_message(chatId=chatId, content="I am now cohost", comId=notification.comId)
         ```
         """
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["member_set_you_cohost"] = func
             return func
         return decorator
-    
+
+
     def on_member_remove_your_cohost(self):
         """
         `on_member_remove_your_cohost` - This is an event that is called when you are removed as cohost.
@@ -1252,21 +1204,27 @@ class EventHandler: #NEW.
         chatId = "0000-0000-0000-0000"
         
         @bot.on_member_remove_your_cohost()
-        def member_remove_your_cohost(notification: NNotification):
+        def member_remove_your_cohost(notification: Notification):
             if notification.chatId == chatId:
                 print("You are no longer cohost")
                 bot.community.send_message(chatId=chatId, content="I am no longer cohost", comId=notification.comId)
         ```
         """
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             self._events["member_remove_your_cohost"] = func
             return func
         return decorator
 
+
+    def _handle_all_events(self, event: str, data: Message, context: Context) -> None:
+        func = self._events[event]
+        return func(* self._set_parameters(context, func, data))
+
+
     def _handle_event(
         self,
         event: str,
-        data: Union[Message, OnlineMembers, NNotification, Context]
+        data: Union[Message, OnlineMembers, Notification, Context]
         ) -> Union[Context, None]:
         """
         `_handle_event` is a function that handles events.
@@ -1281,7 +1239,8 @@ class EventHandler: #NEW.
                     self._add_cache(data.chatId, data.author.userId, data.content)
 
                 return self._handle_command(data=data, context=context)
-            
+
+
             if event in self._events:
                 if event in {
                     "user_online",
@@ -1291,4 +1250,4 @@ class EventHandler: #NEW.
                 }:
                     return self._events[event](data)
                 else:
-                    return self._events[event](context)
+                    return self._handle_all_events(event=event, data=data, context=context)

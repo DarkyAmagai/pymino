@@ -1,19 +1,10 @@
 from time import time
 from typing import Any, Callable, Optional, TypeVar, Union
 
-from .ext.entities.handlers import *
-from .ext.entities.userprofile import UserProfile
+from .ext.entities import *
 from .ext import RequestHandler, Account, Community
-from .ext.entities.messages import CMessage, PrepareMessage
-
 from .ext.utilities.generate import device_id as generate_device_id
-from .ext.entities.exceptions import (
-    LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
-    )
-from .ext.entities.threads import (CThread)
-from .ext.entities.general import (
-    ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet, LinkInfo
-    )
+
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -734,14 +725,12 @@ class Client:
 
 
     @authenticated
-    def join_community(self, community_id: int, invitationId: str = None) -> ApiResponse:
+    def join_community(self, community_id: int) -> ApiResponse:
         """
         Joins the user to a community with the provided community ID.
 
         :param community_id: The ID of the community to join.
         :type community_id: int
-        :param invitationId: The ID of the invitation link.
-        :type invitationId: str
         :return: An ApiResponse object containing the server response.
         :rtype: ApiResponse
         :raises LoginRequired: If the user is not logged in.
@@ -757,13 +746,9 @@ class Client:
         **Note:** This function can be used to join the user to a community with the provided community ID. Once joined,
         the user can make API calls related to the community, such as posting or retrieving posts.
         """
-        data = {"timestamp": int(time() * 1000)}
-        if invitationId: data |= dict(invitationId = invitationId)
-        
         return ApiResponse(self.request.handler(
             method="POST",
-            url=f"/x{community_id}/s/community/join",
-            data = data
+            url=f"/x{community_id}/s/community/join"
             ))
 
     @authenticated
@@ -1163,8 +1148,17 @@ class Client:
             data = PrepareMessage(content=content, **kwargs).json()
             ))
 
+
     @authenticated
-    def edit_profile(self, nickname: str = None, content: str = None, icon: str = None, backgroundColor: str = None, backgroundImage: str = None, defaultBubbleId: str = None):
+    def edit_profile(
+        self,
+        nickname: str = None,
+        content: str = None,
+        icon: str = None,
+        backgroundColor: str = None,
+        backgroundImage: str = None,
+        defaultBubbleId: str = None
+        ) -> UserProfile:
         """
         Edits the user's profile.
 
@@ -1203,13 +1197,22 @@ class Client:
                                          icon = icon,
                                          backgroundColor = backgroundColor,
                                          backgroundImage = backgroundImage,
-                                         defaultBubbleId = defaultBubbleId)
+                                         defaultBubbleId = defaultBubbleId
+                                         )
+
 
     @authenticated
-    def start_chat(self, userId: Union[str, list], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False):
+    def start_chat(
+        self,
+        userId: Union[str, list],
+        message: str,
+        title: str = None,
+        content: str = None,
+        isGlobal: bool = False,
+        publishToGlobal: bool = False
+        ) -> ChatThread:
         """
         Starts a chat thread.
-
         :param userId: The ID or list of IDs of the users to invite to the chat.
         :type userId: Union[str, list]
         :param message: The initial message content.
@@ -1222,8 +1225,8 @@ class Client:
         :type isGlobal: bool, optional
         :param publishToGlobal: Indicates if the chat should be published globally (optional, default: False).
         :type publishToGlobal: bool, optional
-        :return: A `CThread` object representing the created chat thread.
-        :rtype: CThread
+        :return: A `ChatThread` object representing the created chat thread.
+        :rtype: ChatThread
         """
         try:
             userIds = [userId] if isinstance(userId, str) else userId
@@ -1244,6 +1247,11 @@ class Client:
 
         if publishToGlobal: data["publishToGlobal"] = 1
 
-        return CThread(
+        return ChatThread(
             self.request.handler(method="POST", url="/g/s/chat/thread", data=data)
         )
+
+
+
+
+

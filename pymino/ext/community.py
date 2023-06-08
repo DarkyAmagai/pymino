@@ -8,18 +8,7 @@ from time import time, timezone
 from typing import BinaryIO, Callable, List, Optional, Union, TypeVar, Any
 
 
-from .entities.enums import *
-from .entities.threads import CThread, CThreadList
-from .entities.userprofile import UserProfile, UserProfileList
-
-from .entities.messages import (
-    CMessage, CMessages, PrepareMessage
-    )
-from .entities.exceptions import (
-    InvalidImage, MissingCommunityId,
-    MissingTimers, NoDataProvided, NotLoggedIn
-    )
-from .entities.general import *
+from .entities import *
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -627,7 +616,8 @@ class Community:
         ...     print("Membership request sent successfully!")
         """
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/membership-request", 
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/community/membership-request", 
             data={"message": message, "timestamp": int(time() * 1000)}
             ))
 
@@ -1085,10 +1075,12 @@ class Community:
         if "type" in kwargs: #TODO: Get rid of this in the near future.
             userType = kwargs["type"]
             print("WARNING: The 'type' parameter is deprecated. Please use 'userType' instead.")
+
         return UserProfileList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/user-profile?type={userType.value if isinstance(userType, UserTypes) else userType}&start={start}&size={size}"
             ))
+
 
     @community
     def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25, comId: Union[str, int] = None) -> UserProfileList:
@@ -1157,6 +1149,7 @@ class Community:
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/live-layer?topic=ndtopic:x{self.community_id if comId is None else comId}:online-members&start={start}&size={size}"
             ))
+
 
     @community
     def fetch_followers(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
@@ -1230,6 +1223,7 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member?start={start}&size={size}"
             ))
 
+
     @community
     def fetch_following(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
@@ -1302,8 +1296,9 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/joined?start={start}&size={size}"
             ))
 
+
     @community
-    def fetch_chat(self, chatId: str, comId: Union[str, int] = None) -> CThread:
+    def fetch_chat(self, chatId: str, comId: Union[str, int] = None) -> ChatThread:
         """
         Fetches the chat thread with the specified ID in the current or specified community.
 
@@ -1312,19 +1307,19 @@ class Community:
         :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
         :type comId: Union[str, int]
         :raises NotLoggedIn: If the user is not logged in.
-        :return: A `CThread` object containing information about the chat thread.
-        :rtype: CThread
+        :return: A `ChatThread` object containing information about the chat thread.
+        :rtype: ChatThread
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
         The function sends a GET request to the API to fetch the chat thread with the specified ID.
 
-        `CThread`:
+        `ChatThread`:
 
         - `data`: The raw data of the chat thread.
         - `userAddedTopicList`: A list of topics added by the user.
         - `uid`: The user ID of the thread creator.
-        - `hostUserId`: An alias for `uid`.
+        - `host_user_id`: An alias for `uid`.
         - `membersQuota`: The maximum number of members allowed in the chat thread.
         - `membersSummary`: A `MemberSummary` object containing information about the chat thread's members.
         - `threadId`: The ID of the chat thread.
@@ -1352,7 +1347,7 @@ class Community:
         >>> print(chat_thread.title) # Prints the title of the chat thread.
         'My Chat Thread'
         """
-        return CThread(self.session.handler(
+        return ChatThread(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
             ))
@@ -1376,12 +1371,12 @@ class Community:
         :return: A list of moderator user IDs.
         :rtype: List[str]
         """
-        response: CThread = self.fetch_chat(chatId=chatId, comId=comId)
+        response: ChatThread = self.fetch_chat(chatId=chatId, comId=comId)
 
         return {
-            "all": list(response.extensions.coHost) + [response.hostUserId],
-            "co-hosts": list(response.extensions.coHost),
-            "host": [response.hostUserId]
+            "all": list(response.extensions.coHosts) + [response.host_user_id],
+            "co-hosts": list(response.extensions.coHosts),
+            "host": [response.host_user_id]
             }.get(moderators, "all")
 
 
@@ -1431,7 +1426,7 @@ class Community:
 
 
     @community
-    def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
+    def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ChatThreadList:
         """
         Fetches a list of chat threads in the current or specified community that the user has joined.
 
@@ -1442,21 +1437,21 @@ class Community:
         :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
         :type comId: Union[str, int]
         :raises NotLoggedIn: If the user is not logged in.
-        :return: A `CThreadList` object containing information about the chat threads.
-        :rtype: CThreadList
+        :return: A `ChatThreadList` object containing information about the chat threads.
+        :rtype: ChatThreadList
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
         The function sends a GET request to the API to fetch a list of chat threads that the user has joined.
 
-        `CThreadList`:
+        `ChatThreadList`:
 
         - `data`: The raw data of the chat thread list.
         - `extensions`: The extensions of the chat threads in the list.
         - `membersSummary`: The member summary of the chat threads in the list.
         - `userAddedTopicList`: A list of topics added by the user in the chat threads in the list.
         - `uid`: A list of user IDs of the thread creators in the chat threads in the list.
-        - `hostUserId`: An alias for `uid`.
+        - `host_user_id`: An alias for `uid`.
         - `membersQuota`: A list of maximum member counts allowed in the chat threads in the list.
         - `threadId`: A list of thread IDs of the chat threads in the list.
         - `chatId`: An alias for `threadId`.
@@ -1489,14 +1484,14 @@ class Community:
         'My Chat Thread'
         'My Other Chat Thread'
         """
-        return CThreadList(self.session.handler(
+        return ChatThreadList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=joined-me&start={start}&size={size}"
             ))
 
 
     @community
-    def fetch_live_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CThreadList:
+    def fetch_live_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ChatThreadList:
         """
         Fetches a list of live chat threads in the current or specified community that are publicly visible.
 
@@ -1507,21 +1502,21 @@ class Community:
         :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
         :type comId: Union[str, int]
         :raises NotLoggedIn: If the user is not logged in.
-        :return: A `CThreadList` object containing information about the live chat threads.
-        :rtype: CThreadList
+        :return: A `ChatThreadList` object containing information about the live chat threads.
+        :rtype: ChatThreadList
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
         The function sends a GET request to the API to fetch a list of publicly visible live chat threads.
 
-        `CThreadList`:
+        `ChatThreadList`:
 
         - `data`: The raw data of the live chat thread list.
         - `extensions`: The extensions of the live chat threads in the list.
         - `membersSummary`: The member summary of the live chat threads in the list.
         - `userAddedTopicList`: A list of topics added by the user in the live chat threads in the list.
         - `uid`: A list of user IDs of the thread creators in the live chat threads in the list.
-        - `hostUserId`: An alias for `uid`.
+        - `host_user_id`: An alias for `uid`.
         - `membersQuota`: A list of maximum member counts allowed in the live chat threads in the list.
         - `threadId`: A list of thread IDs of the live chat threads in the list.
         - `chatId`: An alias for `threadId`.
@@ -1554,7 +1549,7 @@ class Community:
         'My Live Chat Thread'
         'My Other Live Chat Thread'
         """
-        return CThreadList(self.session.handler(
+        return ChatThreadList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/live-layer/public-live-chats?start={start}&size={size}"
             ))
@@ -1568,7 +1563,7 @@ class Community:
         size: int = 25,
         comId: Union[str, int] = None,
         **kwargs
-        ) -> CThreadList:
+        ) -> ChatThreadList:
         """
         Fetches a list of public chat threads in the current or specified community.
 
@@ -1581,8 +1576,8 @@ class Community:
         :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
         :type comId: Union[str, int]
         :raises NotLoggedIn: If the user is not logged in.
-        :return: A `CThreadList` object containing information about the public chat threads.
-        :rtype: CThreadList
+        :return: A `ChatThreadList` object containing information about the public chat threads.
+        :rtype: ChatThreadList
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
@@ -1594,14 +1589,14 @@ class Community:
         - `POPULAR`: Fetches a list of popular public chat threads.
         - `LATEST`: Fetches a list of newest public chat threads.
 
-        `CThreadList`:
+        `ChatThreadList`:
 
         - `data`: The raw data of the public chat thread list.
         - `extensions`: The extensions of the public chat threads in the list.
         - `membersSummary`: The member summary of the public chat threads in the list.
         - `userAddedTopicList`: A list of topics added by the user in the public chat threads in the list.
         - `uid`: A list of user IDs of the thread creators in the public chat threads in the list.
-        - `hostUserId`: An alias for `uid`.
+        - `host_user_id`: An alias for `uid`.
         - `membersQuota`: A list of maximum member counts allowed in the public chat threads in the list.
         - `threadId`: A list of thread IDs of the public chat threads in the list.
         - `chatId`: An alias for `threadId`.
@@ -1638,7 +1633,7 @@ class Community:
             chatType = kwargs["type"]
             print("WARNING: The `type` parameter is deprecated. Please use `chatType` instead.")
 
-        return CThreadList(self.session.handler(
+        return ChatThreadList(self.session.handler(
             method = "GET",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=public-all&filterType={chatType.value if isinstance(chatType, ChatTypes) else chatType}&start={start}&size={size}"
             ))
@@ -2017,7 +2012,7 @@ class Community:
         wikiId: Optional[str] = None,
         start: int = 0,
         size: int = 25,
-        comId: Union[str, int] = None) -> CCommentList:
+        comId: Union[str, int] = None) -> CommentList:
         """
         Fetches the comments for the specified user, blog, or wiki.
 
@@ -2033,15 +2028,15 @@ class Community:
         :type size: int
         :param comId: The ID of the community to fetch the comments from. If not provided, the current community ID is used.
         :type comId: Union[str, int]
-        :return: A `CCommentList` object containing the comments for the specified user, blog, or wiki.
-        :rtype: CCommentList
+        :return: A `CommentList` object containing the comments for the specified user, blog, or wiki.
+        :rtype: CommentList
         :raises NoDataProvided: If none of `userId`, `blogId`, or `wikiId` is provided.
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
         The function sends a GET request to the API to fetch the comments for the specified user, blog, or wiki.
 
-        `CCommentList`:
+        `CommentList`:
 
         - `modifiedTime`: A list of the last modified time of each comment.
         - `ndcId`: A list of the NDC IDs of each comment.
@@ -2079,7 +2074,7 @@ class Community:
                 "wikiId": "item/{}"
             }.items():
                 if locals()[key]:
-                    return CCommentList(
+                    return CommentList(
                         self.session.handler(
                             method="GET",
                             url=f"/x{self.community_id if comId is None else comId}/s/{value.format(locals()[key])}/comment?sort=newest&start={start}&size={size}",
@@ -2639,7 +2634,7 @@ class Community:
         wikiId: Optional[str] = None,
         image: Optional[str] = None,
         comId: Union[str, int] = None
-        ) -> CComment:
+        ) -> Comment:
         """
         Creates a comment in the current or specified community, at a given location if provided.
 
@@ -2655,14 +2650,14 @@ class Community:
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
         :type comId: Union[str, int]
-        :return: A `CComment` object containing information about the newly created comment.
-        :rtype: CComment
+        :return: A `Comment` object containing information about the newly created comment.
+        :rtype: Comment
 
         This function sends a POST request to the API to create a comment in the specified location or in the current community.
 
-        `CComment`:
+        `Comment`:
 
-        The `CComment` object represents a comment, and has the following attributes:
+        The `Comment` object represents a comment, and has the following attributes:
 
         - `modifiedTime` (str or None): The time the comment was last modified, or None if not modified.
         - `ndcId` (int or None): The ndc ID of the comment, or None if not available.
@@ -2707,7 +2702,7 @@ class Community:
         if image:
             data["mediaList"] = [[100,self.__handle_media__(media=image, media_value=True), None, None, None, None]]
 
-        return CComment(self.session.handler(
+        return Comment(self.session.handler(
             method = "POST",
             url = endpoint,
             data = data
@@ -2715,7 +2710,7 @@ class Community:
 
 
     @community
-    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> Comment:
         """
         Creates a comment in the current or specified community, on a blog post with the given ID.
 
@@ -2727,8 +2722,8 @@ class Community:
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
         :type comId: Union[str, int]
-        :return: A `CComment` object containing information about the newly created comment.
-        :rtype: CComment
+        :return: A `Comment` object containing information about the newly created comment.
+        :rtype: Comment
 
         This function sends a POST request to the API to create a comment in the specified location or in the current community.
 
@@ -2744,7 +2739,7 @@ class Community:
 
 
     @community
-    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> Comment:
         """
         Creates a comment in the current or specified community, on a wiki page with the given ID.
         
@@ -2756,8 +2751,8 @@ class Community:
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
         :type comId: Union[str, int]
-        :return: A `CComment` object containing information about the newly created comment.
-        :rtype: CComment
+        :return: A `Comment` object containing information about the newly created comment.
+        :rtype: Comment
         
         This function sends a POST request to the API to create a comment in the specified location or in the current community.
         
@@ -2773,7 +2768,7 @@ class Community:
 
 
     @community
-    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> CComment:
+    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> Comment:
         """
         Creates a comment in the current or specified community, on a user profile with the given ID.
         
@@ -2785,8 +2780,8 @@ class Community:
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
         :type comId: Union[str, int]
-        :return: A `CComment` object containing information about the newly created comment.
-        :rtype: CComment
+        :return: A `Comment` object containing information about the newly created comment.
+        :rtype: Comment
         
         This function sends a POST request to the API to create a comment in the specified location or in the current community.
         
@@ -4702,7 +4697,7 @@ class Community:
         message: Optional[str] = None,
         content: Optional[str] = None,
         comId: Optional[Union[str, int]] = None
-    ) -> CThread:
+    ) -> ChatThread:
         """
         Creates a new chat with the given users.
 
@@ -4738,7 +4733,7 @@ class Community:
         ... else:
         ...     print("Failed to create chat.")
         """
-        return CThread(self.session.handler(
+        return ChatThread(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
             data = {
@@ -5788,6 +5783,7 @@ class Community:
             "timestamp": int(time() * 1000)
             }))
 
+
     @community
     def edit_chat(self,
                   chatId: str,
@@ -5908,7 +5904,7 @@ class Community:
                 method = "POST",
                 url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
                 data = {
-                    "media": [100, self.upload_media(open(backgroundImage, "rb").read(), "image/jpg"), None],
+                    "media": [100, self.__handle_media__(backgroundImage, "image/jpg", True), None],
                     "timestamp": int(time() * 1000)
                 }
             )).statuscode)
@@ -6038,22 +6034,20 @@ class Community:
 
         data = dict(timestamp = int(time() * 1000))
 
-        if captionList is not None: media.append([100,
-                                                  self.upload_media(open(image, "rb").read(),
-                                                                    "image/jpg"),
-                                                                    caption] for image,
-                                                                    caption in zip(imageList,
-                                                                                   captionList))
-        elif imageList is not None: media.append([100,
-                                                  self.upload_media(open(image, "rb").read(),
-                                                                    "image/jpg"),
-                                                                    None] for image in imageList)
+        if captionList is not None:
+            media.extend([[100, self.__handle_media__(image, "image/jpg", True), caption] for image, caption in zip(imageList, captionList)])
+        elif imageList is not None:
+            media.extend([[100, self.__handle_media__(image, "image/jpg", True), None] for image in imageList])
 
-        if imageList is not None or captionList is not None: data.update(dict(mediaList = media))
+        if imageList is not None or captionList is not None:
+            data.update(dict(mediaList=media))
 
-        if nickname: data.update(dict(nickname = nickname))
-        if icon: data.update(dict(icon = self.upload_media(open(icon, "rb").read(), "image/jpg")))
-        if content: data.update(dict(content = content))
+        if nickname:
+            data.update(dict(nickname = nickname))
+        if icon:
+            data.update(dict(icon = self.__handle_media__(icon, "image/jpg", True)))
+        if content:
+            data.update(dict(content = content))
 
         if chatRequestPrivilege:
             data["extensions"] = {
@@ -6066,9 +6060,11 @@ class Community:
                     "backgroundMediaList": [
                         [
                             100,
-                            self.upload_media(
-                                open(backgroundImage, "rb").read(), "image/jpg"
-                            ),
+                            self.__handle_media__(
+                                media=backgroundImage,
+                                content_type="image/jpg",
+                                media_value=True
+                                ),
                             None,
                             None,
                             None,

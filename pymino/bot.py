@@ -1,18 +1,13 @@
-from time import perf_counter, time
 from typing import Optional, Union
+from time import perf_counter, time
 
+from .ext.entities import *
 from .ext.socket import WSClient
 from .ext.account import Account
 from .ext.community import Community
-from .ext.entities.handlers import *
 from .ext.utilities.generate import device_id
-from .ext.entities.userprofile import UserProfile
 from .ext.utilities.request_handler import RequestHandler
-from .ext.entities.general import ApiResponse, CCommunity
-from .ext.entities.exceptions import (
-    LoginFailed, MissingEmailPasswordOrSid,
-    VerifyCommunityIdIsCorrect, PingFailed
-    )
+
 
 class Bot(WSClient):
     """
@@ -712,5 +707,5 @@ class Bot(WSClient):
             end = perf_counter()
             elapsed_time_ms = (end - start) * 1000
             return round(elapsed_time_ms, 2)
-        except Exception:
-            raise PingFailed
+        except Exception as e:
+            raise PingFailed from e

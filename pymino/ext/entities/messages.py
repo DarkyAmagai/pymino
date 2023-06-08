@@ -23,13 +23,7 @@ class MessageAuthor:
     def __init__(self, data: Union[dict, str]) -> None:
         self.data = data
 
-    def return_none(func):
-        def wrapper(*args, **kwargs):
-            return None if args[0].data is None else func(*args, **kwargs)
-        return wrapper
-    
     @property
-    @return_none
     def uid(self) -> Union[str, None]:
         """
         `uid` - returns the user id of the author.
@@ -40,7 +34,6 @@ class MessageAuthor:
         return self.data.get("uid")
     
     @property
-    @return_none
     def userId(self) -> Union[str, None]:
         """
         `userId` - returns the user id of the author.
@@ -51,7 +44,6 @@ class MessageAuthor:
         return self.uid
     
     @property
-    @return_none
     def status(self) -> Union[int, None]:
         """
         `status` - returns the status of the author.
@@ -62,7 +54,6 @@ class MessageAuthor:
         return self.data.get("status")
     
     @property
-    @return_none
     def icon(self) -> Union[str, None]:
         """
         `icon` - returns the icon of the author.
@@ -73,7 +64,6 @@ class MessageAuthor:
         return self.data.get("icon")
     
     @property
-    @return_none
     def avatar(self) -> Union[str, None]:
         """
         `avatar` - returns the icon of the author.
@@ -84,7 +74,6 @@ class MessageAuthor:
         return self.icon
     
     @property
-    @return_none
     def reputation(self) -> Union[int, None]:
         """
         `reputation` - returns the reputation of the author.
@@ -95,7 +84,6 @@ class MessageAuthor:
         return self.data.get("reputation")
     
     @property
-    @return_none
     def role(self) -> Union[int, None]:
         """
         `role` - returns the role of the author.
@@ -106,7 +94,6 @@ class MessageAuthor:
         return self.data.get("role")
     
     @property
-    @return_none
     def nickname(self) -> Union[str, None]:
         """
         `nickname` - returns the nickname of the author.
@@ -117,7 +104,6 @@ class MessageAuthor:
         return self.data.get("nickname")
     
     @property
-    @return_none
     def username(self) -> Union[str, None]:
         """
         `username` - returns the nickname of the author.
@@ -128,7 +114,6 @@ class MessageAuthor:
         return self.nickname
     
     @property
-    @return_none
     def level(self) -> Union[int, None]:
         """
         `level` - returns the level of the author.
@@ -139,7 +124,6 @@ class MessageAuthor:
         return self.data.get("level")
     
     @property
-    @return_none
     def accountMembershipStatus(self) -> Union[int, None]:
         """
         `accountMembershipStatus` - returns the account membership status of the author.
@@ -150,7 +134,6 @@ class MessageAuthor:
         return self.data.get("accountMembershipStatus")
     
     @property
-    @return_none
     def avatarFrame(self) -> Union[str, None]:
         """
         `avatarFrame` - returns the avatar frame of the author.
@@ -1283,61 +1266,5 @@ class Channel:
     def json(self) -> Union[dict, str]:
         """`JSON` - returns the raw data."""
         return self.data
-    
-class NNotification:
-    def __init__(self, data: dict):
-        """
-        `NNotification - This contains all attributes aor any notification event.
-        """
-        self.data: dict = data
 
-    @property
-    def __parser__(self) -> dict:
-        try:
-            return self.data.get("o")
-        except Exception:
-            print(self.data)
-            return self.data
-    
-    @property
-    def payload(self) -> dict:
-        return self.__parser__.get("payload")
-    
-    @property
-    def exp(self) -> int:
-        return self.payload.get("exp")
-    
-    @property
-    def ndcId(self) -> int:
-        return self.payload.get("ndcId")
-    
-    @property
-    def comId(self) -> int:
-        return self.ndcId
-    
-    @property
-    def chatId(self) -> str:
-        return self.payload.get("tid")
-    
-    @property
-    def aps(self) -> dict:
-        return self.payload.get("aps")
-    
-    @property
-    def sound(self) -> str:
-        return self.aps.get("sound")
-    
-    @property
-    def alert(self) -> str:
-        return self.aps.get("alert")
-    
-    @property
-    def notifType(self) -> int:
-        return self.payload.get("notifType")
-    
-    @property
-    def id(self) -> str:
-        return self.payload.get("id")
-    
-    def json(self) -> dict:
-        return self.data
+

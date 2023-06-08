@@ -376,7 +376,17 @@ class Account:
                 "deviceID": deviceId
             }))
 
-    def edit_profile(self, userId: str, nickname: str = None, content: str = None, icon: str = None, backgroundColor: str = None, backgroundImage: str = None, defaultBubbleId: str = None) -> UserProfile:
+
+    def edit_profile(
+        self,
+        userId: str,
+        nickname: str = None,
+        content: str = None,
+        icon: str = None,
+        backgroundColor: str = None,
+        backgroundImage: str = None,
+        defaultBubbleId: str = None
+        ) -> UserProfile:
         """
         `edit_profile` - Edits the user profile.
 
