@@ -10,6 +10,7 @@ from .ext.utilities.generate import device_id as generate_device_id
 from .ext.entities.exceptions import (
     LoginFailed, LoginRequired, MissingEmailPasswordOrSid, VerifyCommunityIdIsCorrect
     )
+from .ext.entities.threads import (CThread)
 from .ext.entities.general import (
     ApiResponse, Authenticate, CCommunity, CCommunityList, ResetPassword, Wallet, LinkInfo
     )
@@ -1203,3 +1204,46 @@ class Client:
                                          backgroundColor = backgroundColor,
                                          backgroundImage = backgroundImage,
                                          defaultBubbleId = defaultBubbleId)
+
+    @authenticated
+    def start_chat(self, userId: Union[str, list], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False):
+        """
+        Starts a chat thread.
+
+        :param userId: The ID or list of IDs of the users to invite to the chat.
+        :type userId: Union[str, list]
+        :param message: The initial message content.
+        :type message: str
+        :param title: The title of the chat thread (optional).
+        :type title: str, optional
+        :param content: Additional content for the message (optional).
+        :type content: str, optional
+        :param isGlobal: Indicates if the chat is global (optional, default: False).
+        :type isGlobal: bool, optional
+        :param publishToGlobal: Indicates if the chat should be published globally (optional, default: False).
+        :type publishToGlobal: bool, optional
+        :return: A `CThread` object representing the created chat thread.
+        :rtype: CThread
+        """
+        try:
+            userIds = [userId] if isinstance(userId, str) else userId
+        except Exception as e:
+            raise ValueError("Incorrect type for userId. <--- userId can be only a string or a list.") from e
+
+        data = dict(
+            title = title,
+            inviteeUids = userIds,
+            initialMessageContent = message,
+            content = content,
+            timestamp = int(time() * 1000),
+            publishToGlobal = 0
+        )
+
+        if isGlobal: data.update({"type": 2, "eventSource": "GlobalComposeMenu"})
+        else: data["type"] = 0
+
+        if publishToGlobal: data["publishToGlobal"] = 1
+
+        return CThread(
+            self.request.handler(method="POST", url="/g/s/chat/thread", data=data)
+        )

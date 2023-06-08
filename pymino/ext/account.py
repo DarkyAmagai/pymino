@@ -414,25 +414,25 @@ class Account:
         if nickname: data['nickname'] = nickname
         if icon: data['icon'] = self.upload_image(icon)
         if content: data['content'] = content
-        if backgroundColor: data |= {
-                "extensions": {
-                    "style": {
-                        "backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"
-                    }
-                }
-            }
-        if backgroundImage: data |= {
-            "extensions": {
+        if backgroundColor:
+            data["extensions"] = {
                 "style": {
-                    "backgroundMediaList": [[100, self.upload_image(backgroundImage), None, None, None]]
+                    "backgroundColor": backgroundColor
+                    if backgroundColor.startswith("#")
+                    else f"#{backgroundColor}"
                 }
             }
-        }
-        if defaultBubbleId: data |= {
-            "extensions": {
-                "defaultBubbleId": defaultBubbleId
+
+        if backgroundImage:
+            data["extensions"] = {
+                "style": {
+                    "backgroundMediaList": [
+                        [100, self.upload_image(backgroundImage), None, None, None]
+                    ]
+                }
             }
-        }
+        if defaultBubbleId:
+            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
 
         return UserProfile(self.session.handler(
             method = "POST", url = f"/g/s/user-profile/{userId}",

@@ -5873,15 +5873,15 @@ class Community:
         """
         data = dict(timestamp = int(time() * 1000))
 
-        if title: data               |= dict(title = title)
-        if content: data             |= dict(content = content)
-        if icon: data                |= dict(icon = self.upload_media(open(icon, "rb").read()), content_type = "image/jpg")
-        if keywords: data            |= dict(keywords = keywords)
-        if announcement: data        |= dict(extensions = dict(announcement = announcement))
-        if pinAnnouncement: data     |= dict(extensions = dict(pinAnnouncement = pinAnnouncement))
-        if fansOnly: data            |= dict(extensions = dict(fansOnly = fansOnly))
-        if publishToGlobal: data     |= dict(publishToGlobal = 0)
-        if not publishToGlobal: data |= dict(publishToGlobal = 1)
+        if title: data               .update(dict(title = title))
+        if content: data             .update(dict(content = content))
+        if icon: data                .update(dict(icon = self.upload_media(open(icon, "rb").read()), content_type = "image/jpg"))
+        if keywords: data            .update(dict(keywords = keywords))
+        if announcement: data        .update(dict(extensions = dict(announcement = announcement)))
+        if pinAnnouncement: data     .update(dict(extensions = dict(pinAnnouncement = pinAnnouncement)))
+        if fansOnly: data            .update(dict(extensions = dict(fansOnly = fansOnly)))
+        if publishToGlobal: data     .update(dict(publishToGlobal = 0))
+        if not publishToGlobal: data .update(dict(publishToGlobal = 1))
 
         responses = []
 
@@ -6049,46 +6049,48 @@ class Community:
                                                                     "image/jpg"),
                                                                     None] for image in imageList)
 
-        if imageList is not None or captionList is not None: data |= dict(mediaList = media)
+        if imageList is not None or captionList is not None: data.update(dict(mediaList = media))
 
-        if nickname: data |= dict(nickname = nickname)
-        if icon: data |= dict(icon = self.upload_media(open(icon, "rb").read(), "image/jpg"))
-        if content: data |= dict(content = content)
+        if nickname: data.update(dict(nickname = nickname))
+        if icon: data.update(dict(icon = self.upload_media(open(icon, "rb").read(), "image/jpg")))
+        if content: data.update(dict(content = content))
 
-        if chatRequestPrivilege: data |= {
-            "extensions": {
+        if chatRequestPrivilege:
+            data["extensions"] = {
                 "privilegeOfChatInviteRequest": chatRequestPrivilege
             }
-        }
-        
-        if backgroundImage: data |= {
-            "extensions": {
+
+        if backgroundImage:
+            data["extensions"] = {
                 "style": {
-                    "backgroundMediaList": [[100, self.upload_media(open(backgroundImage, "rb").read(), "image/jpg"), None, None, None]]
+                    "backgroundMediaList": [
+                        [
+                            100,
+                            self.upload_media(
+                                open(backgroundImage, "rb").read(), "image/jpg"
+                            ),
+                            None,
+                            None,
+                            None,
+                        ]
+                    ]
                 }
             }
-        }
-        
-        if backgroundColor: data |= {
-            "extensions": {
-                "style": {
-                    "backgroundColor": backgroundColor
-                }
+
+        if backgroundColor:
+            data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
+
+        if defaultBubbleId:
+            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
+
+        if titles or colors:
+            data["extensions"] = {
+                "customTitles": [
+                    {"title": title, "color": color}
+                    for title, color in zip(titles, colors)
+                ]
             }
-        }
-        
-        if defaultBubbleId: data |= {
-            "extensions": {
-                "defaultBubbleId": defaultBubbleId
-            }
-        }
-        
-        if titles or colors: data |= {
-            "extensions": {
-                "customTitles": [{"title": title, "color": color} for title, color in zip(titles, colors)]
-            }
-        }
-        
+
         return UserProfile(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
