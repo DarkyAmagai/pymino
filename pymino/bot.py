@@ -5,9 +5,8 @@ from .ext.entities import *
 from .ext.socket import WSClient
 from .ext.account import Account
 from .ext.community import Community
-from .ext.utilities.generate import device_id
 from .ext.utilities.request_handler import RequestHandler
-
+from .ext.utilities.generate import device_id as generate_device_id
 
 class Bot(WSClient):
     """
@@ -16,14 +15,10 @@ class Bot(WSClient):
     `**Parameters**``
     - `command_prefix` - The prefix to use for commands. `Defaults` to `!`.
     - `community_id` - The community id to use for the bot. `Defaults` to `None`.
+    - `device_id` - The device id to use for the bot. `Defaults` to `None`.
+    - `intents` - Avoids receiving events that you do not need. `Defaults` to `False`.
     - `online_status` - Whether to set the bot's online status to `online`. `Defaults` to `True`.
-    - `**kwargs` - Any other parameters to use for the bot.
-
-        - `device_id` - The device id to use for the bot.
-
-        - `proxy` - The proxy to use for the bot. `proxy` must be `str`.
-
-        - `disable_socket` - Whether to disable the socket.
+    - `proxy` - The proxy to use for the bot. `Defaults` to `None`.
 
     ----------------------------
     When should I use `Bot` instead of `Client`?
@@ -213,11 +208,14 @@ class Bot(WSClient):
         self,
         command_prefix: Optional[str] = "!",
         community_id: Union[str, int] = None,
-        online_status: bool = True, 
-        **kwargs):
+        device_id: str = None,
+        intents: bool = False,
+        online_status: bool = False,
+        proxy: str = None
+        ):
 
-        for key, value in kwargs.items(): setattr(self, key, value)
         self._debug:            bool = check_debugger()
+        self._intents:          bool = intents
         self._is_ready:         bool = False
         self._userId:           str = None
         self._sid:              str = None
@@ -226,10 +224,10 @@ class Bot(WSClient):
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
         self.online_status:     bool = online_status
-        self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
+        self.device_id:         Optional[str] = device_id or generate_device_id()
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
-                                proxy=kwargs.get("proxy")
+                                proxy=proxy
                                 )
         self.community:         Community = Community(
                                 bot = self,
@@ -243,6 +241,7 @@ class Bot(WSClient):
         if self.community_id:   self.set_community_id(community_id)
 
         WSClient.__init__(self)
+
 
     @property
     def debug(self) -> bool:
@@ -277,6 +276,40 @@ class Bot(WSClient):
         the debug mode state, use the `self.debug` property.
         """
         self._debug = value
+
+
+    @property
+    def intents(self) -> bool:
+        """
+        Whether or not intents are enabled.
+
+        :return: True if intents are enabled, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not intents are enabled. Intents allow the bot to use additional features such as
+        `ctx.wait_for_message()`.
+
+        **Note:** This property only returns the intents state and cannot be used to set the intents state. To set the intents
+        state, use the `self._intents` attribute directly.
+        """
+        return self._intents
+    
+
+    @intents.setter
+    def intents(self, value: bool) -> None:
+        """
+        Sets the intents state.
+
+        :param value: True to enable intents, False to disable them.
+        :type value: bool
+        :return: None
+
+        This setter sets the intents state. Intents allow the bot to use additional features such as `ctx.wait_for_message()`.
+
+        **Note:** This setter only sets the intents state and cannot be used to retrieve the intents state. To retrieve the
+        intents state, use the `self.intents` property.
+        """
+        self._intents = value
 
 
     @property
@@ -572,7 +605,7 @@ class Bot(WSClient):
         if hasattr(self.request, "email") and self._cached:
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
-        if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
+        if not self.is_ready:
             self.is_ready = True
             self.connect()
 

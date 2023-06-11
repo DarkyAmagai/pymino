@@ -18,7 +18,8 @@ class AsyncContext:
     - `session` - The session we will use to send requests.
 
     """
-    def __init__(self, message: Message, loop: AbstractEventLoop, session):
+    def __init__(self, message: Message, loop: AbstractEventLoop, session, intents: bool):
+        self.intents:   bool = intents
         self.request    = session
         self.loop:      AbstractEventLoop = loop
         self.message:   Message = message
@@ -131,6 +132,9 @@ class AsyncContext:
 
 
     async def wait_for_message(self, message: str, timeout: int = 10) -> Message:
+        if not self.intents:
+            raise IntentsNotEnabled
+
         start = time()
         cache = Cache("cache")
 

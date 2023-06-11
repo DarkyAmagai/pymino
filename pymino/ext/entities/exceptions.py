@@ -497,3 +497,9 @@ class PingFailed(Exception):
         super().__init__(
             "Ping failed. Please make sure you are logged in and try again."
             )
+        
+class IntentsNotEnabled(Exception):
+    def __init__(self):
+        super().__init__(
+            "Intents are not enabled. Please enable them in your Bot instance and try again."
+            )

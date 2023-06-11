@@ -6092,3 +6092,169 @@ class Community:
             url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
             data = data
         ))
+    
+
+    @community
+    def change_username(self, username: str, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile username.
+
+        :param username: The new username for the user profile.
+        :type username: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile username.
+
+        `UserProfile`:
+
+        - `username` (str): The username of the user.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_username("JohnDoe")
+        ... print(profile.username)
+        """
+        return self.edit_profile(username=username, comId=comId)
+    
+
+    @community
+    def change_icon(self, icon: str, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile icon.
+
+        :param icon: The new icon image file for the user profile.
+        :type icon: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile icon.
+
+        `UserProfile`:
+
+        - `icon` (str): The URL of the icon image.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_icon("path/to/icon.jpg")
+        ... print(profile.icon)
+        """
+        return self.edit_profile(icon=icon, comId=comId)
+    
+
+    @community
+    def edit_profile_background(self, backgroundImage: str, backgroundColor: str = None, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile background.
+
+        :param backgroundImage: The new background image file for the user profile.
+        :type backgroundImage: str
+        :param backgroundColor: The new background color for the user profile.
+        :type backgroundColor: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile background.
+
+        `UserProfile`:
+
+        - `backgroundImage` (str): The URL of the background image.
+        - `backgroundColor` (str): The background color of the user profile.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_background("path/to/background.jpg", "#FFFFFF")
+        ... print(profile.backgroundImage)
+        ... print(profile.backgroundColor)
+        """
+        return self.edit_profile(backgroundImage=backgroundImage, backgroundColor=backgroundColor, comId=comId)
+    
+
+    @community
+    def edit_profile_titles(self, titles: list, colors: list, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile custom titles.
+
+        :param titles: A list of custom titles to set.
+        :type titles: list
+        :param colors: A list of colors corresponding to the custom titles.
+        :type colors: list
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile custom titles.
+
+        `UserProfile`:
+
+        - `titles` (list): A list of custom titles.
+        - `colors` (list): A list of colors corresponding to the custom titles.
+
+        **Example usage:**
+
+        >>> titles = ["Title 1", "Title 2"]
+        ... colors = ["#FF0000", "#00FF00"]
+        ... profile = client.community.edit_profile_titles(titles, colors)
+        ... print(profile.titles)
+        ... print(profile.colors)
+        """
+        return self.edit_profile(titles=titles, colors=colors, comId=comId)
+    
+
+    @community
+    def edit_profile_default_bubble(self, defaultBubbleId: str, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile default bubble.
+
+        :param defaultBubbleId: The ID of the default bubble to set.
+        :type defaultBubbleId: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile default bubble.
+
+        `UserProfile`:
+
+        - `defaultBubbleId` (str): The ID of the default bubble.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_default_bubble("bubble123")
+        ... print(profile.defaultBubbleId)
+        """
+        return self.edit_profile(defaultBubbleId=defaultBubbleId, comId=comId)
+    
+
+    @community
+    def chat_request_privilege(self, privilege: bool, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile chat request privilege.
+
+        :param privilege: Whether or not to enable chat request privilege.
+        :type privilege: bool
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile chat request privilege.
+
+        `UserProfile`:
+
+        - `chatRequestPrivilege` (bool): Whether or not chat request privilege is enabled.
+
+        **Example usage:**
+
+        >>> profile = client.community.chat_request_privilege(True)
+        ... print(profile.chatRequestPrivilege)
+        """
+        return self.edit_profile(chatRequestPrivilege=1 if privilege else 2, comId=comId)

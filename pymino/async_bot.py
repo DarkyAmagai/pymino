@@ -5,7 +5,7 @@ from time import time, perf_counter
 from .ext.entities import *
 from .ext.async_socket import AsyncWSClient
 from .ext.async_community import AsyncCommunity
-from .ext.utilities.generate import device_id
+from .ext.utilities.generate import device_id as generate_device_id
 from .ext.utilities.async_request_handler import AsyncRequestHandler
 
 
@@ -14,15 +14,14 @@ class AsyncBot(AsyncWSClient):
         self,
         command_prefix: Optional[str] = "!",
         community_id: Union[str, int] = None,
-        online_status: bool = True,
-        **kwargs
+        device_id: Optional[str] = None,
+        intents: bool = False,
+        online_status: bool = False,
+        proxy: Optional[str] = None
         ):
-
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
         self.loop:              asyncio.AbstractEventLoop = asyncio.get_event_loop()
         self._debug:            bool = check_debugger()
+        self._intents:          bool = intents
         self._is_ready:         bool = False
         self._userId:           str = None
         self._sid:              str = None
@@ -31,11 +30,11 @@ class AsyncBot(AsyncWSClient):
         self.command_prefix:    Optional[str] = command_prefix
         self.community_id:      Union[str, int] = community_id
         self.online_status:     bool = online_status
-        self.device_id:         Optional[str] = kwargs.get("device_id") or device_id()
+        self.device_id:         Optional[str] = device_id or generate_device_id()
         self.request:           AsyncRequestHandler = AsyncRequestHandler(
                                 bot = self,
                                 loop = self.loop,
-                                proxy=kwargs.get("proxy")
+                                proxy=proxy
                                 )
         self.community:         AsyncCommunity = AsyncCommunity(
                                 bot = self,
@@ -49,7 +48,6 @@ class AsyncBot(AsyncWSClient):
     @property
     def debug(self) -> bool:
         return self._debug
-    
 
     @debug.setter
     def debug(self, value: bool) -> None:
@@ -57,10 +55,17 @@ class AsyncBot(AsyncWSClient):
 
 
     @property
+    def intents(self) -> bool:
+        return self._intents
+    
+    @intents.setter
+    def intents(self, value: bool) -> None:
+        self._intents = value
+
+    @property
     def is_ready(self) -> bool:
         return self._is_ready
     
-
     @is_ready.setter
     def is_ready(self, value: bool) -> None:
         self._is_ready = value
@@ -70,7 +75,6 @@ class AsyncBot(AsyncWSClient):
     def userId(self) -> str:
         return self._userId
 
-
     @userId.setter
     def userId(self, value: str) -> None:
         self._userId = value
@@ -79,7 +83,6 @@ class AsyncBot(AsyncWSClient):
     @property
     def sid(self) -> str:
         return self._sid
-
 
     @sid.setter
     def sid(self, value: str) -> None:
@@ -194,10 +197,9 @@ class AsyncBot(AsyncWSClient):
         self.is_authenticated: bool = True
 
         if hasattr(self.request, "email") and self._cached:
-            print("Caching login credentials...")
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
-        if all([not self.is_ready, not hasattr(self, "disable_socket") or not self.disable_socket]):
+        if not self.is_ready:
             self.is_ready = True
             await self.run_forever()
 

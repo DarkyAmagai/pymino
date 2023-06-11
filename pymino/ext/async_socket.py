@@ -113,28 +113,32 @@ class AsyncWSClient(AsyncEventHandler):
             await self.session.close()
             del self.session
 
-
-        async with create_client_session() as session:
-            self.session = session
-            ws_data = f"{device_id()}|{int(time() * 1000)}"
-            self.ws = await session.ws_connect(
-                url=f"{await self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
-                headers={
-                    "NDCDEVICEID": device_id(),
-                    "NDCAUTH": f"sid={self.sid}",
-                    "NDC-MSG-SIG": generate_signature(ws_data)
-                }
-            )
-
-            if not self.tasks:
-                await asyncio.gather(
-                    self._ready(),
-                    self.start_worker_pool(),
-                    alive_loop(self),
-                    self.websocket_forever()
+        try:
+            async with create_client_session() as session:
+                self.session = session
+                ws_data = f"{device_id()}|{int(time() * 1000)}"
+                self.ws = await session.ws_connect(
+                    url=f"{await self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
+                    headers={
+                        "NDCDEVICEID": device_id(),
+                        "NDCAUTH": f"sid={self.sid}",
+                        "NDC-MSG-SIG": generate_signature(ws_data)
+                    }
                 )
-                
-            
+
+                if not self.tasks:
+                    await asyncio.gather(
+                        self._ready(),
+                        self.start_worker_pool(),
+                        alive_loop(self),
+                        self.websocket_forever()
+                    )
+        except Exception as e:
+            await self.logger(f"Error: {e}")
+            await asyncio.sleep(5)
+            await self.reconnect()
+   
+
     async def _handle_message(self, message: dict) -> None:
         _message: Message = Message(message)
 
@@ -192,7 +196,6 @@ class AsyncWSClient(AsyncEventHandler):
 
             if self.online_status:
                 try:
-                    await self.community.online_status(comId=comId)
                     await self.community.send_active(comId=comId,
                     timers=[{"start": int(time()), "end": int(time()) + 300}]
                     )

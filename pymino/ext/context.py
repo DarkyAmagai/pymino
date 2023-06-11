@@ -20,7 +20,8 @@ class Context():
     - `session` - The session we will use to send requests.
 
     """
-    def __init__(self, message: Message, session):
+    def __init__(self, message: Message, session, intents: bool):
+        self.intents:   bool = intents
         self.message:   Message = message
         self.userId:    str = session.userId
         self.request    = session
@@ -87,7 +88,8 @@ class Context():
             "uid": self.userId
             } 
 
-    def __message__(self, **kwargs) -> dict: return PrepareMessage(**kwargs).json()
+    def __message__(self, **kwargs) -> dict:
+        return PrepareMessage(**kwargs).json()
 
     def __send_message__(self, **kwargs) -> CMessage:
         return CMessage(self.request.handler(
@@ -143,6 +145,9 @@ class Context():
                 ctx.send(content="You have been verified!", delete_after=TIMEOUT)
         ```
         """
+        if not self.intents:
+            raise IntentsNotEnabled
+
         start = time()
         cache = Cache("cache")
         
@@ -795,14 +800,12 @@ class EventHandler: #NEW.
     def _add_cache(self, chatId: str, userId: str, content: str):
         if self._wait_for.get(f"{chatId}_{userId}") is not None:
             self._wait_for.clear(f"{chatId}_{userId}")
-            print("Cleared cache.")
 
         self._wait_for.add(
             key=f"{chatId}_{userId}",
             value=content,
             expire=90
             )
-        print("Added cache.")
 
 
     def on_image_message(self):
@@ -1230,24 +1233,25 @@ class EventHandler: #NEW.
         `_handle_event` is a function that handles events.
         """
         with suppress(KeyError):
-            context = self.context(data, self.request)
-
-            if event == "text_message":
-                if not self.command_exists(
-                    command_name=data.content[len(self.command_prefix):].split(" ")[0]
-                    ):
-                    self._add_cache(data.chatId, data.author.userId, data.content)
-
-                return self._handle_command(data=data, context=context)
-
 
             if event in self._events:
-                if event in {
+                context = self.context(data, self.request, self.intents)
+
+                if event == "text_message":
+                    if all([self.intents, not self.command_exists(
+                        command_name=data.content[len(self.command_prefix):].split(" ")[0]
+                        )]):
+                            self._add_cache(data.chatId, data.author.userId, data.content)
+
+                    return self._handle_command(data=data, context=context)
+
+                elif event in {
                     "user_online",
                     "member_set_you_host",
                     "member_set_you_cohost",
                     "member_remove_your_cohost",
                 }:
                     return self._events[event](data)
+
                 else:
                     return self._handle_all_events(event=event, data=data, context=context)

@@ -31,8 +31,7 @@ class WSClient(EventHandler):
     `WSClient` is a class that handles the websocket.
     """
     def __init__(self):
-        self.ws:            WebSocketApp = None
-        self.online_status: bool = True        
+        self.ws:            WebSocketApp = None      
         self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
         self.notif_types:   dict =  NotifTypes().notifs
@@ -44,6 +43,7 @@ class WSClient(EventHandler):
         self.dispatcher.register(201, self._handle_agora_channel)
         self.dispatcher.register(400, self._handle_user_online)
         self.dispatcher.register(1000, self._handle_message)
+        print(self.online_status)
         EventHandler.__init__(self)
 
 
@@ -185,7 +185,6 @@ class WSClient(EventHandler):
 
             if self.online_status:
                 try:
-                    self.community.online_status(comId=comId)
                     self.community.send_active(comId=comId,
                     timers=[{"start": int(time()), "end": int(time()) + 300}]
                     )
