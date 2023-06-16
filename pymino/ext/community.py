@@ -4051,6 +4051,15 @@ class Community:
             method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(content=content).json()
             ))
+    
+
+    @community
+    def reply_message(self, chatId: str, messageId: str, content: str, comId: Union[str, int] = None) -> CMessage:
+        return CMessage(self.session.handler(
+            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+            data = PrepareMessage(content=content, replyMessageId=messageId
+            ).json()))
+
 
     @community
     def send_image(self, chatId: str, image: BinaryIO = None, comId: Union[str, int] = None) -> CMessage:

@@ -1,6 +1,8 @@
+from threading import Thread
 from typing import Optional, Union
 from time import perf_counter, time
 
+from .ext.console import *
 from .ext.entities import *
 from .ext.socket import WSClient
 from .ext.account import Account
@@ -15,6 +17,7 @@ class Bot(WSClient):
     `**Parameters**``
     - `command_prefix` - The prefix to use for commands. `Defaults` to `!`.
     - `community_id` - The community id to use for the bot. `Defaults` to `None`.
+    - `console_enabled` - Whether to enable the console. `Defaults` to `True`.
     - `device_id` - The device id to use for the bot. `Defaults` to `None`.
     - `intents` - Avoids receiving events that you do not need. `Defaults` to `False`.
     - `online_status` - Whether to set the bot's online status to `online`. `Defaults` to `True`.
@@ -208,6 +211,7 @@ class Bot(WSClient):
         self,
         command_prefix: Optional[str] = "!",
         community_id: Union[str, int] = None,
+        console_enabled: bool = False,
         device_id: str = None,
         intents: bool = False,
         online_status: bool = False,
@@ -215,6 +219,7 @@ class Bot(WSClient):
         ):
 
         self._debug:            bool = check_debugger()
+        self._console_enabled:  bool = console_enabled
         self._intents:          bool = intents
         self._is_ready:         bool = False
         self._userId:           str = None
@@ -276,6 +281,41 @@ class Bot(WSClient):
         the debug mode state, use the `self.debug` property.
         """
         self._debug = value
+
+    
+    @property
+    def console_enabled(self) -> bool:
+        """
+        Whether or not the CONSOLE is enabled.
+
+        :return: True if the CONSOLE is enabled, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not the CONSOLE is enabled. The CONSOLE can be used to interact with the bot and access
+        additional features such as the console.
+
+        **Note:** This property only returns the CONSOLE state and cannot be used to set the CONSOLE state. To set the CONSOLE state, use
+        the `self._console_enabled` attribute directly.
+        """
+        return self._console_enabled
+    
+
+    @console_enabled.setter
+    def console_enabled(self, value: bool) -> None:
+        """
+        Sets the CONSOLE state.
+
+        :param value: True to enable the CONSOLE, False to disable it.
+        :type value: bool
+        :return: None
+
+        This setter sets the CONSOLE state. The CONSOLE can be used to interact with the bot and access additional features such as
+        the console.
+
+        **Note:** This setter only sets the CONSOLE state and cannot be used to retrieve the CONSOLE state. To retrieve the CONSOLE state,
+        use the `self.console_enabled` property.
+        """
+        self._console_enabled = value
 
 
     @property
@@ -612,7 +652,14 @@ class Bot(WSClient):
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
+        Thread(target=self.__run_console__).start()
         return response
+
+    
+    def __run_console__(self) -> None:
+        if self.console_enabled:
+            self._debug = False
+            Console(self).fetch_menu()
 
 
     def fetch_account(self) -> dict:

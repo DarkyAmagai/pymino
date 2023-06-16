@@ -294,9 +294,12 @@ class Client:
         >>>     # Function code
         """
         def wrapper(*args, **kwargs) -> Any:
-            if not args[0].is_authenticated:
-                raise LoginRequired("You must be authenticated to use this function.")
-            return func(*args, **kwargs)
+            try:
+                if not args[0].is_authenticated:
+                    raise LoginRequired
+                return func(*args, **kwargs)
+            except AttributeError:
+                raise LoginRequired
         return wrapper
 
 

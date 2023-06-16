@@ -736,8 +736,13 @@ class EventHandler: #NEW.
                     data.content == f"{self.command_prefix}help"):
                 return context.reply(self._commands.__help__())
 
-            elif "text_message" in self._events:
-                return self._handle_all_events(event="text_message", data=data, context=context)
+            elif any(
+                event in self._events
+                for event in {"text_message", "_console_text_message"}
+            ):
+                for event in {"text_message", "_console_text_message"}:
+                    self._handle_all_events(event=event, data=data, context=context)
+                return None
 
             else:
                 return None
@@ -747,13 +752,13 @@ class EventHandler: #NEW.
 
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         command_name = dict(self._commands.__command_aliases__().copy()).get(command_name, command_name)
-        
+
         response = self._check_cooldown(command_name, data, context)
 
         if response  != 403:
             func = self._commands.fetch_command(command_name).func
             return func(*self._set_parameters(context=context, func=func, message=message))
-        
+
         return None
 
         
@@ -793,6 +798,12 @@ class EventHandler: #NEW.
     def on_text_message(self):
         def decorator(func: Callable) -> Callable:
             self._events["text_message"] = func
+            return func
+        return decorator
+    
+    def _console_on_text_message(self):
+        def decorator(func: Callable) -> Callable:
+            self._events["_console_text_message"] = func
             return func
         return decorator
 
@@ -1234,18 +1245,19 @@ class EventHandler: #NEW.
         """
         with suppress(KeyError):
 
+            if event == "text_message":
+                context = self.context(data, self.request, self.intents)
+                if all([self.intents, not self.command_exists(
+                    command_name=data.content[len(self.command_prefix):].split(" ")[0]
+                    )]):
+                        self._add_cache(data.chatId, data.author.userId, data.content)
+
+                self._handle_command(data=data, context=context)
+            
             if event in self._events:
                 context = self.context(data, self.request, self.intents)
 
-                if event == "text_message":
-                    if all([self.intents, not self.command_exists(
-                        command_name=data.content[len(self.command_prefix):].split(" ")[0]
-                        )]):
-                            self._add_cache(data.chatId, data.author.userId, data.content)
-
-                    return self._handle_command(data=data, context=context)
-
-                elif event in {
+                if event in {
                     "user_online",
                     "member_set_you_host",
                     "member_set_you_cohost",

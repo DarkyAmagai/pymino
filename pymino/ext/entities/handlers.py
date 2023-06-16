@@ -121,14 +121,15 @@ async def alive_loop(ws) -> None:
 
 
 def run_alive_loop(ws) -> None:
-    run_check = any([is_android(), is_repl()])
-
+    run_check = False if ws.console_enabled else any([is_android(), is_repl()])
+    
     start_time          = time()
     last_activity_time  = start_time
     last_message_time   = start_time
 
     while True:
         current_time = time()
+
         notify() if run_check else None
 
         with suppress(Exception):

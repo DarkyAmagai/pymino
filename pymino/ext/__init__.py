@@ -5,6 +5,7 @@ from .entities.wsevents import *
 from .utilities.generate import *
 from .entities.userprofile import *
 
+from .console import *
 from .socket import *
 from .account import *
 from .context import *

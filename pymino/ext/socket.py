@@ -43,7 +43,7 @@ class WSClient(EventHandler):
         self.dispatcher.register(201, self._handle_agora_channel)
         self.dispatcher.register(400, self._handle_user_online)
         self.dispatcher.register(1000, self._handle_message)
-        print(self.online_status)
+
         EventHandler.__init__(self)
 
 

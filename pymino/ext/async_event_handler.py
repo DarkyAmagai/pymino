@@ -700,27 +700,28 @@ class AsyncEventHandler:
         ) -> Union[AsyncContext, None]:
         """
         `_handle_event` is a function that handles events.
-        """
+        """      
         with suppress(KeyError):
 
+            if event == "text_message":
+                context = self.context(data, self.loop, self.request, self.intents)
+                if all([self.intents, not self.command_exists(
+                    command_name=data.content[len(self.command_prefix):].split(" ")[0]
+                    )]):
+                        self._add_cache(data.chatId, data.author.userId, data.content)
+
+                return await self._handle_command(data=data, context=context)
+            
             if event in self._events:
                 context = self.context(data, self.loop, self.request, self.intents)
 
-                if event == "text_message":
-                    if not self.command_exists(
-                        command_name=data.content[len(self.command_prefix):].split(" ")[0]
-                    ) and self.intents:
-                        self._add_cache(data.chatId, data.author.userId, data.content)
-
-                    return await self._handle_command(data=data, context=context)
-
-                elif event in {
+                if event in {
                     "user_online",
                     "member_set_you_host",
                     "member_set_you_cohost",
                     "member_remove_your_cohost",
                 }:
-                    return await self._events[event](data)
+                    return self._events[event](data)
 
                 else:
                     return await self._handle_all_events(event=event, data=data, context=context)
