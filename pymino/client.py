@@ -728,12 +728,14 @@ class Client:
 
 
     @authenticated
-    def join_community(self, community_id: int) -> ApiResponse:
+    def join_community(self, community_id: int, invitationId = None) -> ApiResponse:
         """
         Joins the user to a community with the provided community ID.
 
         :param community_id: The ID of the community to join.
         :type community_id: int
+        :param invitationId: The ID of the invitation link.
+        :type invitationId: str
         :return: An ApiResponse object containing the server response.
         :rtype: ApiResponse
         :raises LoginRequired: If the user is not logged in.
@@ -749,10 +751,16 @@ class Client:
         **Note:** This function can be used to join the user to a community with the provided community ID. Once joined,
         the user can make API calls related to the community, such as posting or retrieving posts.
         """
-        return ApiResponse(self.request.handler(
-            method="POST",
-            url=f"/x{community_id}/s/community/join"
-            ))
+        data = {"timestamp": int(time() * 1000)}
+        if invitationId:
+            data["invitationId"] = invitationId
+
+        return ApiResponse(
+            self.request.handler(
+                method="POST",
+                url=f"/x{community_id}/s/community/join",
+                data = data
+        ))
 
     @authenticated
     def leave_community(self, community_id: int) -> ApiResponse:

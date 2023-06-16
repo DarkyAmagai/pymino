@@ -2355,19 +2355,6 @@ class AsyncCommunity:
 
 
     @community
-    async def post_blog(self, title: str, content: str, comId: Union[str, int] = None) -> CBlog: #TODO: ADD DOCSTRING
-        return CBlog(
-            await self.session.handler(
-            method="POST",
-            url=f"/x{self.community_id if comId is None else comId}/s/blog",
-            data={
-                "content": content,
-                "title": title,
-                "timestamp": int(time() * 1000)
-                }))
-
-
-    @community
     async def delete_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Deletes the specified blog.
@@ -6197,8 +6184,465 @@ class AsyncCommunity:
                 ]
             }
 
-        return UserProfile(await self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
-            data = data
+        return UserProfile(
+            await self.session.handler(
+                method = "POST",
+                url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
+                data = data
+        ))
+
+
+    @community
+    async def change_username(self, username: str, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile username.
+
+        :param username: The new username for the user profile.
+        :type username: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile username.
+
+        `UserProfile`:
+
+        - `username` (str): The username of the user.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_username("JohnDoe")
+        ... print(profile.username)
+        """
+        return await self.edit_profile(username=username, comId=comId)
+    
+
+    @community
+    async def change_icon(self, icon: str, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile icon.
+
+        :param icon: The new icon image file for the user profile.
+        :type icon: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile icon.
+
+        `UserProfile`:
+
+        - `icon` (str): The URL of the icon image.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_icon("path/to/icon.jpg")
+        ... print(profile.icon)
+        """
+        return await self.edit_profile(icon=icon, comId=comId)
+    
+
+    @community
+    async def edit_profile_background(self, backgroundImage: str, backgroundColor: str = None, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile background.
+
+        :param backgroundImage: The new background image file for the user profile.
+        :type backgroundImage: str
+        :param backgroundColor: The new background color for the user profile.
+        :type backgroundColor: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile background.
+
+        `UserProfile`:
+
+        - `backgroundImage` (str): The URL of the background image.
+        - `backgroundColor` (str): The background color of the user profile.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_background("path/to/background.jpg", "#FFFFFF")
+        ... print(profile.backgroundImage)
+        ... print(profile.backgroundColor)
+        """
+        return await self.edit_profile(backgroundImage=backgroundImage, backgroundColor=backgroundColor, comId=comId)
+    
+
+    @community
+    async def edit_profile_titles(self, titles: list, colors: list, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile custom titles.
+
+        :param titles: A list of custom titles to set.
+        :type titles: list
+        :param colors: A list of colors corresponding to the custom titles.
+        :type colors: list
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile custom titles.
+
+        `UserProfile`:
+
+        - `titles` (list): A list of custom titles.
+        - `colors` (list): A list of colors corresponding to the custom titles.
+
+        **Example usage:**
+
+        >>> titles = ["Title 1", "Title 2"]
+        ... colors = ["#FF0000", "#00FF00"]
+        ... profile = client.community.edit_profile_titles(titles, colors)
+        ... print(profile.titles)
+        ... print(profile.colors)
+        """
+        return await self.edit_profile(titles=titles, colors=colors, comId=comId)
+    
+
+    @community
+    async def edit_profile_default_bubble(self, defaultBubbleId: str, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile default bubble.
+
+        :param defaultBubbleId: The ID of the default bubble to set.
+        :type defaultBubbleId: str
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile default bubble.
+
+        `UserProfile`:
+
+        - `defaultBubbleId` (str): The ID of the default bubble.
+
+        **Example usage:**
+
+        >>> profile = client.community.edit_profile_default_bubble("bubble123")
+        ... print(profile.defaultBubbleId)
+        """
+        return await self.edit_profile(defaultBubbleId=defaultBubbleId, comId=comId)
+    
+
+    @community
+    async def chat_request_privilege(self, privilege: bool, comId: Union[str, int] = None) -> UserProfile:
+        """
+        Edits the user profile chat request privilege.
+
+        :param privilege: Whether or not to enable chat request privilege.
+        :type privilege: bool
+        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `UserProfile` object containing the updated user profile information.
+        :rtype: UserProfile
+
+        This function sends a POST request to the API to edit the user profile chat request privilege.
+
+        `UserProfile`:
+
+        - `chatRequestPrivilege` (bool): Whether or not chat request privilege is enabled.
+
+        **Example usage:**
+
+        >>> profile = client.community.chat_request_privilege(True)
+        ... print(profile.chatRequestPrivilege)
+        """
+        return await self.edit_profile(chatRequestPrivilege=1 if privilege else 2, comId=comId)
+
+
+    @community
+    async def post_blog(self,
+                  title: str,
+                  content: str,
+                  imageList: list = None,
+                  captionList: list = None,
+                  categoriesList: list = None,
+                  backgroundColor: str = None,
+                  fansOnly: bool = False,
+                  extensions: dict = None,
+                  comId: Union[str, int] = None) -> CBlog:
+        """
+        Posts a blog in the community.
+
+        :param title: The title of the blog.
+        :type title: str
+        :param content: The content of the blog.
+        :type content: str
+        :param imageList: A list of image paths to include in the blog. (Optional)
+        :type imageList: list, optional
+        :param captionList: A list of captions corresponding to the images. (Optional)
+        :type captionList: list, optional
+        :param categoriesList: A list of category IDs to assign to the blog. (Optional)
+        :type categoriesList: list, optional
+        :param backgroundColor: The background color of the blog. (Optional)
+        :type backgroundColor: str, optional
+        :param fansOnly: Whether the blog is for fans only. (Default: False)
+        :type fansOnly: bool, optional
+        :param extensions: Additional extensions for the blog. (Optional)
+        :type extensions: dict, optional
+        :param comId: The ID of the community to post the blog in. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `CBlog` object representing the posted blog.
+        :rtype: CBlog
+
+        This function posts a blog in the specified community using the provided information.
+
+        `CBlog` represents a blog on the platform.
+
+        **Example usage:**
+
+        >>> blog = client.community.post_blog("My Blog", "This is the content of my blog.", imageList=["image1.jpg", "image2.jpg"])
+        ... print(blog.title)
+        ... print(blog.content)
+        """
+        media = []
+        if captionList is not None: media.append([100, await self.__handle_media__(image, "image/jpg", True), None] for image in captionList)
+        elif imageList is not None: media.append([100, await self.__handle_media__(image, "image/jpg", True), None] for image in imageList)
+
+        data = dict(address = None,
+                    content = content,
+                    title = title,
+                    mediaList = media,
+                    extensions = extensions,
+                    latitude = 0,
+                    longitude = 0,
+                    eventSource = "GlobalComposeMenu",
+                    timestamp = int(time() * 1000))
+        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+        if backgroundColor:
+            data["extensions"] = {
+                "style": {
+                    "backgroundColor": backgroundColor
+                    if backgroundColor.startswith("#")
+                    else f"#{backgroundColor}"
+                }
+            }
+        if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
+
+        return CBlog(
+            await self.session.handler(
+                method = "POST",
+                url = f"/x{comId or self.community_id}/s/blog",
+                data = data
+        ))
+
+
+    @community
+    async def fetch_invites(self, size: int = 25, status: str = "normal", start: int = 0, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Fetches generated invites for the community.
+
+        :param size: The number of invites to fetch. (Default: 25)
+        :type size: int, optional
+        :param status: The status of the invites to fetch. (Default: "normal")
+        :type status: str, optional
+        :param start: The index to start fetching invites from. (Default: 0)
+        :type start: int, optional
+
+        This function sends a GET request to the API to fetch generated invites for the community.
+
+        :returns: A `ApiResponse` object containing the API response.
+        :rtype: ApiResponse
+
+        `ApiResponse`:
+
+        - `code` (int): The status code of the API response.
+        - `api:status` (int): The status of the API response.
+        - `api:statuscode` (int): The status code of the API response.
+        - `api:message` (str): The message of the API response.
+        
+        **Example usage:**
+
+        >>> invites = client.community.fetch_invites()
+        ... print(invites.json()['communityInvitationList'])
+        ... for invite in invites.json()['communityInvitationList']:
+        ...     print(invite['invitationId'])
+        """
+        return ApiResponse(
+            await self.session.handler(
+                method = "GET",
+                url = f"http://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation?size={size}&status={status}&start={start}"
+        ))
+    
+
+    @community
+    async def revoke_invite(self, invitationId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Revokes an invite for the community.
+        
+        :param invitationId: The ID of the invite to revoke.
+        :type invitationId: str
+        :param comId: The ID of the community to revoke the invite in. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+        :return: A `ApiResponse` object containing the API response.
+        :rtype: ApiResponse
+        
+        This function sends a DELETE request to the API to revoke an invite for the community.
+        
+        :returns: A `ApiResponse` object containing the API response.
+        :rtype: ApiResponse
+        
+        `ApiResponse`:
+        
+        - `code` (int): The status code of the API response.
+        - `api:status` (int): The status of the API response.
+        - `api:statuscode` (int): The status code of the API response.
+        - `api:message` (str): The message of the API response.
+        
+        **Example usage:**
+        
+        >>> client.community.revoke_invite("invitationId")
+        """
+        return ApiResponse(
+            await self.session.handler(
+                method = "DELETE",
+                url = f"http://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation/{invitationId}"
+        ))
+
+
+    @community
+    async def fetch_membership_requests(self, size: int = 25, status: str = "pending", start: int = 0, comId: Union[str, int] = None) -> CommunityMembershipRequestList:
+        """
+        Fetches membership requests for the community.
+        Used for approving or declining membership requests into the community.
+        
+        :param size: The number of requests to fetch. (Default: 25)
+        :type size: int, optional
+        :param status: The status of the requests to fetch. (Default: "pending")
+        :type status: str, optional
+        :param start: The index to start fetching requests from. (Default: 0)
+        :type start: int, optional
+        :param comId: The ID of the community to fetch requests from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `CommunityMembershipRequestList` object containing the membership requests for the community.
+        :rtype: CommunityMembershipRequestList
+        
+        This function sends a GET request to the API to fetch membership requests for the community.
+        
+        :returns: A `CommunityMembershipRequestList` object containing the membership requests for the community.
+        :rtype: CommunityMembershipRequestList
+        >>> userIds = client.community.fetch_membership_requests().applicant.userId
+        ... for userId in userIds:
+        ...     client.community.approve_membership_request(userId)
+        """
+        return CommunityMembershipRequestList(
+            await self.session.handler(
+                method = "GET",
+                url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request?size={size}&status={status}&start={start}"
+        ))
+
+
+    @community
+    async def approve_membership_request(self, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Approves a membership request for the community.
+        
+        :param requestId: The ID of the request to approve.
+        :type requestId: str
+        :param comId: The ID of the community to approve the request in. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `ApiResponse` object containing the API response.
+        
+        This function sends a POST request to the API to approve a membership request for the community.
+        
+        :returns: A `ApiResponse` object containing the API response.
+        :rtype: ApiResponse
+        
+        `ApiResponse`:
+        
+        - `code` (int): The status code of the API response.
+        - `api:status` (int): The status of the API response.
+        - `api:statuscode` (int): The status code of the API response.
+        - `api:message` (str): The message of the API response.
+        
+        **Example usage:**
+        
+        >>> client.community.approve_membership_request("requestId")
+        """
+        return ApiResponse(
+            await self.session.handler(
+                method = "POST",
+                url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/approve"
+        ))
+
+
+    @community
+    async def decline_membership_request(self, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Declines a membership request for the community.
+        
+        :param requestId: The ID of the request to decline.
+        :type requestId: str
+        :param comId: The ID of the community to decline the request in. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `ApiResponse` object containing the API response.
+        
+        This function sends a POST request to the API to decline a membership request for the community.
+        
+        :returns: A `ApiResponse` object containing the API response.
+        :rtype: ApiResponse
+        
+        `ApiResponse`:
+            - `message` (str): The message of the API response.
+            - `status_code` (int): The status code of the API response.
+            - `duration` (float): The duration of the API response.
+            - `timestamp` (int): The timestamp of the API response.
+
+        **Example usage:**
+
+        >>> client.community.decline_membership_request("requestId")
+        ... client.community.decline_membership_request("requestId", comId="comId")
+        """
+        return ApiResponse(
+            await self.session.handler(
+                method = "POST",
+                url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/reject"
+        ))
+
+
+    @community
+    async def fetch_community_stats(self, comId: Union[str, int] = None) -> CommunityStats:
+        """
+        Fetches community statistics.
+        
+        :param comId: The ID of the community to fetch statistics from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `CommunityStats` object containing the community statistics.
+        :rtype: CommunityStats
+        
+        This function sends a GET request to the API to fetch community statistics.
+        
+        :returns: A `CommunityStats` object containing the community statistics.
+        :rtype: CommunityStats
+
+        `CommunityStats`:
+            - daily_active_members: The daily active members of the community.
+            - monthly_active_members: The monthly active members of the community.
+            - total_time_spent: The total time spent in the community.
+            - total_posts_created: The total posts created in the community.
+            - new_members_today: The new members today in the community.
+            - total_members: The total members in the community.
+
+        Example usage:
+
+        >>> community = client.fetch_community_stats()
+        ... print(community.daily_active_members)
+        ... print(community.monthly_active_members)
+        ... print(community.total_time_spent)
+        ... print(community.total_posts_created)
+        ... print(community.new_members_today)
+        ... print(community.total_members)
+        """
+        return CommunityStats(
+            await self.session.handler(
+                method = "GET",
+                url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
         ))

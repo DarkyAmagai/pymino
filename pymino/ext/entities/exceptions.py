@@ -1,5 +1,3 @@
-from contextlib import suppress
-
 class UnsupportedService(Exception):
     def __init__(self, response: str):
         super().__init__(response)
@@ -290,7 +288,7 @@ class PostedTooRecently(Exception):
 
 class APIException(Exception):
     def __init__(self, response: dict):
-        self.exception_map = {
+        exception_map = {
             100: UnsupportedService,
             101: InternalServerError,
             102: FileTooLarge,
@@ -365,26 +363,22 @@ class APIException(Exception):
             6002: InvalidAminoID,
             99001: InvalidName
         }
-    
-        self.url = None
-        self.message = None
-        self.status_code = None
 
-        with suppress(Exception):
-            self.status_code: int = response.get("api:statuscode", response)
-            self.message: str = response.get("api:message", response)
-            self.url: str = response.get("url")
-        
-            if not any([not isinstance(self.status_code, int), self.status_code not in self.exception_map]):
-                exception = self.exception_map.get(self.status_code)
+        status_code = response.get("api:statuscode")
+        message = response.get("api:message")
+        url = response.get("url")
 
-                if self.url is not None:
-                    self.message = f"{self.message} ({self.url})"
+        if status_code in exception_map:
+            exception = exception_map.get(status_code)
 
-                if exception is not None:
-                    raise exception(self.message)
-            
+            if url is not None:
+                message = f"{message} ({url})"
+
+            if exception:
+                raise exception(message)
+
         raise API_ERROR(response)
+
             
 class MissingCommunityId(Exception):
     def __init__(self):

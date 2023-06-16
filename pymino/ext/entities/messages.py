@@ -19,6 +19,7 @@ class PrepareMessage:
         """`JSON` - returns the raw data."""
         return self.base_message
 
+
 class MessageAuthor:
     def __init__(self, data: Union[dict, str]) -> None:
         self.data = data
@@ -146,6 +147,7 @@ class MessageAuthor:
     def json(self) -> Union[dict, str]:
         """`JSON` - returns the raw data."""
         return self.data
+
 
 class CMessage:
     def __init__(self, data: Union[dict, str]) -> None:

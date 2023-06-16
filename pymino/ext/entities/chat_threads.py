@@ -429,7 +429,7 @@ class ChatThread:
     @property
     def chatId(self) -> str:
         """Returns the thread id"""
-        return self.thread_id
+        return self.threadId
     
     @property
     def keywords(self) -> List[str]:

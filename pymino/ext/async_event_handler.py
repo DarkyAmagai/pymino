@@ -72,6 +72,7 @@ class AsyncEventHandler:
 
         potential_parameters = {
             "ctx": context,
+            "member": Member(context.author.json()),
             "message": message,
             "username": username,
             "userId": userId

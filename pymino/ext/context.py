@@ -29,7 +29,8 @@ class Context():
     @property
     def author(self) -> MessageAuthor:
         """The author of the message."""
-        with suppress(AttributeError): return self.message.author
+        with suppress(AttributeError):
+            return self.message.author
 
     @property
     def communityId(self) -> str:
@@ -605,6 +606,7 @@ class EventHandler: #NEW.
 
         potential_parameters = {
             "ctx": context,
+            "member": Member(context.author.json()),
             "message": message,
             "username": username,
             "userId": userId
@@ -641,6 +643,7 @@ class EventHandler: #NEW.
 
         `**Function Parameters**``
         - `ctx` - The context of the command.
+        - `member` - The Member(member) who called the command.
         - `message` - The message that called the command.
         - `username` - The username of the person who called the command.
         - `userId` - The userId of the person who called the command.
@@ -755,7 +758,7 @@ class EventHandler: #NEW.
 
         response = self._check_cooldown(command_name, data, context)
 
-        if response  != 403:
+        if response != 403:
             func = self._commands.fetch_command(command_name).func
             return func(*self._set_parameters(context=context, func=func, message=message))
 
