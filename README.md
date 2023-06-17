@@ -12,7 +12,7 @@
   <p style="font-size: 1.2em; color: #424242;">Easily create a bot for Amino Apps using a modern, easy-to-use, synchronous library.</p>
 
   <div style="border: 3px solid red; padding: 10px; margin: 15px 0;">
-    <h3 style="color: red;"><strong>⚠️ WARNING ⚠️</strong></h3>
+    <h3 style="color: red;"><strong> WARNING </strong></h3>
     <p><strong>Pymino is a fully reverse-engineered client. By using this client, you may be violating the Amino Apps' Terms of Service. This could lead to your account being suspended or permanently banned. Please use Pymino responsibly and at your own risk.</strong></p>
     <p><strong>Understand that the developers and maintainers of Pymino are not responsible for any actions taken against your account as a result of using this client. Proceed with caution.</strong></p>
   </div>
@@ -93,15 +93,15 @@
 
 >>> # The on_text_message event is called when a message is received.
 >>> @bot.on_text_message()
-... def message(ctx: Context):
-...     print(f"{ctx.author.username}: {ctx.message.content}")
-...     if ctx.message.content.startswith("hi"):
+... def message(ctx: Context, member: Member, message: str):
+...     print(f"{member.username}: {message}")
+...     if message.startswith("hi"):
 ...         ctx.reply("Hello!")
 
 >>> # The on_member_join event is called when a member joins a chat.
 >>> @bot.on_member_join()
-... def join(ctx: Context):
-...     ctx.reply(f"Welcome to the chat, {ctx.author.username}!")
+... def join(ctx: Context, member: Member):
+...     ctx.reply(f"Welcome to the chat, {member.username}!")
 
 >>> # The on_member_leave event is called when a member leaves a chat.
 >>> @bot.on_member_leave()
