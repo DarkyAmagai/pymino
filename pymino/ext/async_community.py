@@ -2396,7 +2396,7 @@ class AsyncCommunity:
 
 
     @community
-    async def post_wiki(self, title: str, content: str, fansOnly: bool=False, comId: Union[str, int] = None) -> ApiResponse:
+    async def post_wiki(self, title: str, content: str, icon: str = None, imageList: list = None, keywords: str = None, backgroundColor: str = None,fansOnly: bool=False, comId: Union[str, int] = None) -> ApiResponse:
         """
         Posts a new wiki article in the specified community.
 
@@ -2404,52 +2404,85 @@ class AsyncCommunity:
         :type title: str
         :param content: The content of the wiki article.
         :type content: str
-        :param fansOnly: Whether the wiki article should be for fans only. Must be either `True` or `False`.
-        :type fansOnly: bool
+        :param icon: The icon image file for the wiki article.
+        :type icon: str, optional
+        :param imageList: A list of image files to include in the wiki article.
+        :type imageList: list, optional
+        :param keywords: Keywords associated with the wiki article.
+        :type keywords: str, optional
+        :param backgroundColor: The background color for the wiki article.
+        :type backgroundColor: str, optional
+        :param fansOnly: Whether the wiki article should be for fans only. Default is False.
+        :type fansOnly: bool, optional
         :param comId: The ID of the community to post the wiki article in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Union[str, int], optional
         :return: An `ApiResponse` object representing the response from the server.
         :rtype: ApiResponse
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
 
-        The function sends a POST request to the API to post a new wiki article with the specified title, content, and fans-only setting.
+        This method allows the authenticated user to post a new wiki article in the specified community. The `title` parameter specifies
+        the title of the article, and the `content` parameter contains the content of the article.
+
+        Additional optional parameters can be provided to customize the wiki article. The `icon` parameter is used to specify an icon
+        image for the article, and the `imageList` parameter can be used to include multiple image files in the article.
+
+        The `keywords` parameter allows specifying keywords associated with the article, and the `backgroundColor` parameter sets the
+        background color of the article.
+
+        The `fansOnly` parameter determines whether the article should be accessible only to fans. By default, it is set to False.
+
+        The `comId` parameter is used to specify the ID of the community where the article should be posted. If not provided, the
+        current community ID is used.
 
         The response from the server is returned as an `ApiResponse` object.
-        
+
         `ApiResponse`:
 
-        - `message`: A message indicating whether the blog was successfully deleted.
+        - `message`: A message indicating the status of the wiki article posting.
         - `statuscode`: The status code of the API response.
         - `duration`: The duration of the API request.
         - `timestamp`: The timestamp of the API request.
-        - `mediaValue`: The media value of the deleted blog.
+        - `mediaValue`: The media value of the wiki article.
 
         **Example usage:**
 
         To post a new wiki article with the title "My First Wiki Article" and the content "This is my first wiki article.":
 
         >>> response = client.community.post_wiki(title="My First Wiki Article", content="This is my first wiki article.")
-        ... if response.statuscode == 0:
+        ... try:
         ...     print("Wiki article successfully posted!")
-        ... else:
+        ... except:
         ...     print("Wiki article could not be posted.")
         """
-        return ApiResponse(
-            await self.session.handler(
-            method="POST",
-            url=f"/x{self.community_id if comId is None else comId}/s/item",
-            data={
+        media = []
+
+        if imageList is not None:
+            media.append([100, await self.upload_media(open(image, "rb").read(), "image/jpg"), None] for image in imageList)
+
+
+        data = {
+            "mediaList": media,
+        }
+        if icon: data["icon"] = await self.upload_media(open(icon, "rb").read(), "image/jpg")
+        if keywords: data["keywords"] = keywords
+        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+        if backgroundColor: data["extensions"] = {"style":{"backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"}}
+
+        return ApiResponse(await self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/item",
+            data = {
             "extensions": {"fansOnly": fansOnly},
             "content": content,
             "latitude": 0,
             "longitude": 0,
-            "title": title,
+            "label": title,
             "type": 0,
             "contentLanguage": "en",
             "eventSource": "GlobalComposeMenu",
             "timestamp": int(time() * 1000),
-            }))
+            }.update(data)))
 
 
     @community
@@ -4788,12 +4821,10 @@ class AsyncCommunity:
         :type content: Optional[str]
         :param comId: The ID of the community where the chat will be created. If not provided, the current community ID is used.
         :type comId: Optional[Union[str, int]]
-        :return: An `ApiResponse` object containing information about the request status.
-        :rtype: ApiResponse
+        :return: An `ChatThread` object containing information about the request status.
+        :rtype: ChatThread
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
-
-        `ApiResponse`: TODO: Update this to reflect the new return type.
 
         - `message`: A message indicating whether the chat was successfully created.
         - `statuscode`: The status code of the API response.
@@ -4805,25 +4836,23 @@ class AsyncCommunity:
         To create a new chat with users "0000-0000-0000-0000" and "1111-1111-1111-1111":
 
         >>> response = client.community.start_chat(userIds=["0000-0000-0000-0000", "1111-1111-1111-1111"], title="New chat", message="Join my chat!", content="Hello, world!")
-        ... if response.statuscode == 0:
+        ... if response.status_code == 200:
         ...     print("Chat created successfully!")
         ... else:
         ...     print("Failed to create chat.")
         """
-        return ChatThread(
-            await self.session.handler(
-            method="POST",
-            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread",
-            data={
-                "title": title,
-                "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
-                "initialMessageContent": message,
-                "content": content,
-                "type": 0,
-                "publishToGlobal": 0,
-                "timestamp": int(time() * 1000)
-                }
-            ))
+        return ChatThread(await self.session.handler(
+            method = "POST",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
+            data = {
+            "title": title,
+            "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
+            "initialMessageContent": message,
+            "content": content,
+            "type": 0,
+            "publishToGlobal": 0,
+            "timestamp": int(time() * 1000)
+            })).status
 
 
     @community
@@ -6645,4 +6674,432 @@ class AsyncCommunity:
             await self.session.handler(
                 method = "GET",
                 url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
+        ))
+    
+    @community
+    async def edit_blog(self, blogId: str,
+                  title: str = None,
+                  content: str = None,
+                  imageList: list = None,
+                  categoriesList: list = None,
+                  backgroundColor: str = None,
+                  fansOnly: bool = False,
+                  comId: str = None) -> CBlog:
+        """
+        Edits a blog post.
+
+        :param blogId: The ID of the blog post to edit.
+        :type blogId: str
+        :param title: The new title for the blog post.
+        :type title: str, optional
+        :param content: The new content for the blog post.
+        :type content: str, optional
+        :param imageList: A list of image file paths to add as media to the blog post.
+        :type imageList: list, optional
+        :param categoriesList: A list of category IDs to tag the blog post with.
+        :type categoriesList: list, optional
+        :param backgroundColor: The new background color for the blog post.
+        :type backgroundColor: str, optional
+        :param fansOnly: Specifies whether the blog post should be available to fans only. Default is False.
+        :type fansOnly: bool, optional
+        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID will be used.
+        :type comId: str, optional
+        :return: The edited blog post as a `CBlog` object.
+        :rtype: CBlog
+
+        This method allows the user to edit a blog post. The `blogId` parameter specifies the ID of the blog post to edit.
+        The `title`, `content`, `imageList`, `categoriesList`, `backgroundColor`, `fansOnly`, and `comId` parameters are used to
+        update the corresponding properties of the blog post. Only the specified parameters will be updated.
+
+        The `imageList` parameter accepts a list of image file paths, which will be uploaded as media for the blog post.
+        The `categoriesList` parameter accepts a list of category IDs, which will be used to tag the blog post.
+
+        **Example usage:**
+
+        To edit a blog post with a new title, content, and image:
+
+        >>> response = client.edit_blog(
+        ...     blogId="blog123",
+        ...     title="New Title",
+        ...     content="New Content",
+        ...     imageList=["path/to/image1.jpg", "path/to/image2.jpg"]
+        ... )
+        ... if response.status == 200:
+        ...     print("Blog post edited successfully!")
+        ... else:
+        ...     print("Failed to edit blog post.")
+        """
+        media = []
+        if imageList is not None: media = [[100, await self.upload_media(open(image, "rb").read(), "image/jpg"), None] for image in imageList]
+        
+        data = {
+            "address": None,
+            "mediaList": media,
+            "latitude": 0,
+            "longitude": 0,
+            "eventSource": "PostDetailView",
+            "timestamp": int(time() * 1000)
+        }
+
+        if title: data["title"] = title
+        if content: data["content"] = content
+        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+        if backgroundColor: data["extensions"] = {"style0": {
+            "backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"
+        }}
+        if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
+        
+        return CBlog(await self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/blog/{blogId}",
+            data = data
+        ))
+    
+    @community
+    async def delete_notification(self, notificationId: str, comId: str = None) -> ApiResponse:
+        """
+        Deletes a notification.
+
+        :param notificationId: The ID of the notification to delete.
+        :type notificationId: str
+        :param comId: The ID of the community (optional). If not provided, the current community ID will be used.
+        :type comId: str, optional
+        :return: The response from the API after deleting the notification.
+        :rtype: ApiResponse
+
+        This method allows the authenticated user to delete a notification with the specified notification ID.
+        Optionally, you can provide the community ID (`comId`) if the notification belongs to a specific community.
+        If `comId` is not provided, the notification will be deleted from the current community.
+
+        The method sends a DELETE request to the API endpoint responsible for deleting the notification. The response
+        from the API is returned as an `ApiResponse` object.
+
+        **Example usage:**
+
+        To delete a notification with ID "notif123" from the current community:
+
+        >>> response = client.delete_notification(notificationId="notif123")
+        >>> try:
+        ...     print("Notification deleted successfully!")
+        ... except:
+        ...     print("Failed to delete notification.")
+        """
+        return ApiResponse(await self.session.handler(
+            method = "DELETE",
+            url = f"/x{comId or self.community_id}/s/notification/{notificationId}"
+        ))
+    
+    @community
+    async def flag(self,
+             reason: str,
+             flagType: int,
+             userId: str = None,
+             blogId: str = None,
+             wikiId: str = None,
+             asGuest: bool = False,
+             comId: str = None) -> ApiResponse:
+        """
+        Flags content in the community.
+
+        :param reason: The reason for flagging the content.
+        :type reason: str
+        :param flagType: The type of flag. (0: User, 1: Blog, 2: Wiki)
+        :type flagType: int
+        :param userId: The ID of the user to flag. Required if flagType is 0.
+        :type userId: str, optional
+        :param blogId: The ID of the blog to flag. Required if flagType is 1.
+        :type blogId: str, optional
+        :param wikiId: The ID of the wiki to flag. Required if flagType is 2.
+        :type wikiId: str, optional
+        :param asGuest: Flag as a guest user. Default is False.
+        :type asGuest: bool, optional
+        :param comId: The ID of the community where the flagging occurs.
+        :type comId: str, optional
+        :return: The API response from the flagging request.
+        :rtype: ApiResponse
+        :raises ValueError: If reason or flagType is None, or if none of the object IDs (userId, blogId, wikiId) is provided.
+
+        This method allows flagging content in the community with a specified reason and flag type. The reason parameter should provide
+        an explanation for flagging the content, and the flagType parameter determines the type of content being flagged (0: User, 1: Blog, 2: Wiki).
+        The appropriate object ID (userId, blogId, wikiId) must be provided based on the flagType. If asGuest is set to True, the flagging
+        is performed as a guest user. The comId parameter specifies the ID of the community where the flagging occurs.
+
+        **Example usage:**
+
+        To flag a user with a reason:
+
+        >>> response = client.flag(reason="Inappropriate behavior", flagType=0, userId="user123")
+        >>> try:
+        ...     print("Content flagged successfully!")
+        ... except:
+        ...     print("Failed to flag content.")
+        """
+        if reason is None: raise ValueError("Reason can't be None.")
+        if flagType is None: raise ValueError("flagType can't be None.")
+
+        data = {
+            "flagType": flagType,
+            "message": reason,
+            "timestamp": int(time() * 1000)
+        }
+
+        if userId: data.update({
+            "objectId": userId,
+            "objectType": 0
+        })
+
+        elif blogId: data.update({
+            "objectId": blogId,
+            "objectType": 1
+        })
+
+        elif wikiId: data.update({
+            "objectId": wikiId,
+            "objectType": 2
+        })
+
+        else: raise ValueError("There must be a value inside one of the following variables: userId, blogId, wikiId.")
+
+        flagMethod = "g-flag" if asGuest else "flag"
+
+        return ApiResponse(await self.session.handler(
+            method = "POST",
+            url = f"/x{comId}/s/{flagMethod}",
+            data = data
+        ))
+    
+    @community
+    async def promotion(self, noticeId: str, type: str = "accept", comId: str = None) -> ApiResponse:
+        """
+        Promotes or performs an action on a community notice.
+
+        :param noticeId: The ID of the community notice to promote or perform an action on.
+        :type noticeId: str
+        :param type: The type of action to perform. Options: "accept" (default), "reject", "cancel".
+        :type type: str, optional
+        :param comId: The ID of the community in which the notice is located. If not provided, the current community ID is used.
+        :type comId: str, optional
+        :return: The API response from the promotion action.
+        :rtype: ApiResponse
+
+        This method allows the user to promote or perform an action on a community notice. The `noticeId` parameter specifies the ID
+        of the notice to act upon. The `type` parameter determines the action to perform, with options being "accept" (default),
+        "reject", or "cancel". The `comId` parameter is used to specify the community ID in which the notice is located. If `comId`
+        is not provided, the current community ID associated with the client is used.
+
+        The method returns an `ApiResponse` object containing the response from the promotion action.
+
+        **Example usage:**
+
+        To accept a community notice promotion:
+
+        >>> response = client.promotion(noticeId="notice123", type="accept")
+        >>> if response.status_code == 200:
+        ...     print("Notice promotion accepted successfully!")
+        ... else:
+        ...     print("Failed to accept notice promotion.")
+        """
+        return ApiResponse(await self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/notice/{noticeId}/{type}"
+        ))
+    
+    @community
+    async def change_vc_permission(self, chatId: str, permission: int, comId: Union[str, int]) -> ApiResponse:
+        """
+        Changes the voice chat permission for a chat in the community.
+
+        :param chatId: The ID of the chat for which the voice chat permission will be changed.
+        :type chatId: str
+        :param permission: The new voice chat permission to set. Options: 1 (Open), 2 (Approval required), 3 (Invite only).
+        :type permission: int
+        :param comId: The ID of the community where the chat belongs. Defaults to the current community ID if not specified.
+        :type comId: Union[str, int]
+        :return: The API response from changing the voice chat permission.
+        :rtype: ApiResponse
+        :raises ValueError: If an incorrect permission type is provided.
+
+        This method allows changing the voice chat permission for a specific chat within a community. The `chatId` parameter specifies
+        the ID of the chat, while the `permission` parameter indicates the new permission to be set. The available permission options
+        are: 1 (Open), 2 (Approval required), and 3 (Invite only).
+
+        If the `permission` value is one of the valid options, the method sends a POST request to update the permission. The response
+        is returned as an `ApiResponse` object.
+
+        **Example usage:**
+
+        To change the voice chat permission to "Approval required" for a chat in the current community:
+
+        >>> response = client.change_vc_permission(chatId="chat123", permission=2)
+        >>> if response.status_code == 200:
+        ...     print("Voice chat permission changed successfully!")
+        ... else:
+        ...     print("Failed to change voice chat permission.")
+        """
+        if permission in {1, 2, 3}:
+            return ApiResponse(await self.session.handler(
+                method = "POST",
+                url = f"/x/{comId or self.community_id}/chat/thread/{chatId}/vvchat-permission",
+                data = {
+                    "vvChatJoinType": permission,
+                    "timestamp": int(time() * 1000)
+                }
+            ))
+        else:
+            raise ValueError("Incorrect permission type.")
+        
+    @community
+    async def fetch_blocked_users(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+        """
+        Fetches a list of blocked users in the community.
+
+        :param start: The starting index of the blocked users to fetch (pagination). Default is 0.
+        :type start: int, optional
+        :param size: The number of blocked users to fetch (pagination). Default is 25.
+        :type size: int, optional
+        :param comId: The ID of the community to fetch blocked users from. If not provided, the method uses the current community ID.
+        :type comId: Union[str, int], optional
+        :return: The list of blocked users in the community.
+        :rtype: UserProfileList
+
+        This method retrieves a list of blocked users in the community. The blocked users can be fetched in a paginated manner using
+        the `start` and `size` parameters. By default, it fetches the first 25 blocked users. If the `comId` parameter is not provided,
+        it uses the current community ID associated with the client instance.
+
+        **Example usage:**
+
+        To fetch the first 25 blocked users in the community:
+
+        >>> blocked_users = client.fetch_blocked_users()
+        >>> for user in blocked_users:
+        ...     print(user.username)
+        """
+        return UserProfileList(await self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/block?start={start}&size={size}"
+        ))
+    
+    @community
+    async def search_users(self, nickname: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+        """
+        Searches for users based on their nickname.
+
+        :param nickname: The nickname to search for.
+        :type nickname: str
+        :param start: The starting index of the search results (pagination). Default is 0.
+        :type start: int, optional
+        :param size: The number of search results to retrieve (pagination). Default is 25.
+        :type size: int, optional
+        :param comId: The ID or name of the community to search within. If not provided, the search will be performed within the current community.
+        :type comId: Union[str, int], optional
+        :return: The list of user profiles matching the search criteria.
+        :rtype: UserProfileList
+
+        This method allows searching for users based on their nickname. The `nickname` parameter specifies the nickname to search for.
+        The search results can be paginated using the `start` and `size` parameters. The `comId` parameter is used to specify the ID or name
+        of the community within which the search should be performed. If `comId` is not provided, the search will be conducted within the current
+        community.
+
+        The search results are returned as a `UserProfileList` object.
+
+        **Example usage:**
+
+        To search for users with the nickname "John" within the current community:
+
+        >>> results = client.search_users(nickname="John")
+        >>> for profile in results:
+        ...     print(profile.nickname)
+        """
+        return UserProfileList(await self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/user-profile?type=name&q={nickname}&start={start}&size={size}"
+        ))
+
+    @community
+    async def fetch_message(self, chatId: str, messageId: str, comId: Union[str, int] = None) -> Message:
+        """
+        Fetches a specific message from a chat thread.
+
+        :param chatId: The ID of the chat thread where the message is located.
+        :type chatId: str
+        :param messageId: The ID of the message to fetch.
+        :type messageId: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the default community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The fetched message.
+        :rtype: Message
+
+        This method fetches a specific message from a chat thread. The `chatId` parameter specifies the ID of the chat thread, while
+        the `messageId` parameter determines the ID of the message to retrieve. The `comId` parameter is the ID of the community where
+        the chat thread is located. If it is not provided, the default community ID is used.
+
+        The fetched message is returned as a `Message` object.
+
+        **Example usage:**
+
+        To fetch a specific message from a chat thread:
+
+        >>> message = client.fetch_message(chatId="chat123", messageId="message456")
+        >>> print(message.text)
+        """
+        return Message(await self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
+        ))
+
+    @community
+    async def purchase(self,
+                 objectId: str,
+                 objectType: int,
+                 aminoPlus: bool = True,
+                 autoRenew: bool = False,
+                 comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Purchases an object from the store.
+
+        :param objectId: The ID of the object to purchase.
+        :type objectId: str
+        :param objectType: The type of the object to purchase.
+        :type objectType: int
+        :param aminoPlus: Indicates whether the purchase includes Amino Plus subscription. Default is True.
+        :type aminoPlus: bool, optional
+        :param autoRenew: Indicates whether the purchase should be set to auto-renew. Default is False.
+        :type autoRenew: bool, optional
+        :param comId: The ID or alias of the community where the purchase will be made. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The response from the store's purchase endpoint.
+        :rtype: ApiResponse
+
+        This method allows the user to purchase an object from the store. The `objectId` parameter specifies the ID of the object
+        to purchase, while the `objectType` parameter indicates the type of the object. The `aminoPlus` parameter determines whether
+        the purchase includes an Amino Plus subscription. By default, it is set to True. The `autoRenew` parameter specifies whether
+        the purchase should be set to auto-renew, with a default value of False. The `comId` parameter can be used to specify a
+        different community where the purchase will be made. If not provided, the current community ID is used.
+
+        **Note:** The request is made to the store's purchase endpoint and the response is returned as an `ApiResponse` object.
+
+        **Example usage:**
+
+        To purchase an object with Amino Plus and auto-renewal disabled:
+
+        >>> response = client.purchase(objectId="object123", objectType=1, aminoPlus=True, autoRenew=False)
+        >>> try:
+        ...     print("Purchase successful!")
+        ... except:
+        ...     print("Failed to make the purchase.")
+        """
+        return ApiResponse(await self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/store/purchase",
+            data = {
+                "objectId": objectId,
+                "objectType": objectType,
+                "v": 1,
+                "timestamp": int(time() * 1000),
+                "paymentContext": {
+                    "discountStatus": 1 if aminoPlus else 0,
+                    "discountValue": 1,
+                    "isAutoRenew": autoRenew
+                }
+            }
         ))
