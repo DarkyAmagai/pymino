@@ -1261,8 +1261,10 @@ class Client:
         return ChatThread(
             self.request.handler(method="POST", url="/g/s/chat/thread", data=data)
         )
-
-
-
-
-
+    
+    @authenticated
+    def blocker_users(self, start: int = 0, size: int = 25):
+        return self.request.handler(
+            method = "GET",
+            url = f"/g/s/block/full-list?start={start}&size={size}"
+        )["blockerUidList"]
