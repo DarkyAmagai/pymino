@@ -1264,7 +1264,290 @@ class Client:
     
     @authenticated
     def blocker_users(self, start: int = 0, size: int = 25):
+        """
+        Retrieves a list of users what are blocking the logged account.
+        :param start: The index to start retrieving the list from (optional, default: 0).
+        :type start: int, optional
+        :param size: The number of users to retrieve (optional, default: 25).
+        :type size: int, optional
+        :return: A list of user IDs representing the blocker users.
+        :rtype: list
+        """
         return self.request.handler(
             method = "GET",
             url = f"/g/s/block/full-list?start={start}&size={size}"
         )["blockerUidList"]
+
+    def fetch_wall_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25) -> CommentList:
+        """
+        Fetches wall comments for a user.
+
+        :param userId: The ID of the user whose wall comments will be fetched.
+        :type userId: str
+        :param sorting: The sorting method for the comments. Options: "newest" (default), "oldest", "top".
+        :type sorting: str, optional
+        :param start: The starting index of the comments to fetch (pagination). Default is 0.
+        :type start: int, optional
+        :param size: The number of comments to fetch (pagination). Default is 25.
+        :type size: int, optional
+        :return: The list of wall comments for the specified user.
+        :rtype: CommentList
+        :raises ValueError: If an incorrect sorting method is provided.
+
+        This method retrieves wall comments for a specific user. The comments can be sorted by "newest" (default), "oldest", or "top".
+        The `start` parameter specifies the index of the first comment to fetch, while the `size` parameter determines the number of
+        comments to retrieve. The comments are returned as a `CommentList` object.
+
+        **Example usage:**
+
+        To fetch the newest 25 wall comments for a user:
+
+        >>> comments = client.fetch_wall_comments(userId="00000000-0000-0000-0000-000000000000")
+        >>> for comment in comments:
+        ...     print(comment.content)
+        """
+        if sorting.lower() == "newest": sorting = "newest"
+        elif sorting.lower() == "oldest": sorting = "oldest"
+        elif sorting.lower() == "top": sorting = "vote"
+        else: raise ValueError("Incorrect sorting method.")
+
+        return CommentList(self.request.handler(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}"
+        ))
+    
+    @authenticated
+    def delete_message(self, chatId: str, messageId: str):
+        """
+        Deletes a message in a chat thread.
+
+        :param chatId: The ID of the chat thread where the message is located.
+        :type chatId: str
+        :param messageId: The ID of the message to delete.
+        :type messageId: str
+        :return: The API response indicating the success or failure of the deletion.
+        :rtype: ApiResponse
+
+        This method allows the authenticated user to delete a specific message in a chat thread. The `chatId` parameter identifies the
+        chat thread, while the `messageId` parameter specifies the ID of the message to be deleted.
+
+        **Note:** Only authorized users can delete messages in a chat thread. If the deletion is successful, the API response will indicate
+        a successful deletion. Otherwise, an error message will be returned.
+
+        **Example usage:**
+
+        To delete a message with the ID "00000000-0000-0000-0000-000000000000" in a chat thread with the ID "00000000-0000-0000-0000-000000000000":
+
+        >>> response = client.delete_message(chatId="00000000-0000-0000-0000-000000000000", messageId="00000000-0000-0000-0000-000000000000")
+        >>> if response.success:
+        ...     print("Message deleted successfully!")
+        ... else:
+        ...     print("Failed to delete message.")
+        """
+        return ApiResponse(self.request.handler(
+            method = "DELETE",
+            url = f"/g/s/chat/thread/{chatId}/message/{messageId}"
+        ))
+    
+    @authenticated
+    def edit_chat(self,
+                  chatId: str,
+                  doNotDisturb: bool = None,
+                  pinChat: bool = None,
+                  title: str = None,
+                  icon: str = None,
+                  backgroundImage: str = None,
+                  content: str = None,
+                  announcement: str = None,
+                  coHosts: list = None,
+                  keywords: list = None,
+                  pinAnnouncement: bool = None,
+                  publishToGlobal: bool = None,
+                  canTip: bool = None,
+                  viewOnly: bool = None,
+                  canInvite: bool = None,
+                  fansOnly: bool = None) -> list:
+        """
+        Edits the settings of a chat.
+
+        :param chatId: The ID of the chat to be edited.
+        :type chatId: str
+        :param doNotDisturb: Set to True to enable "Do Not Disturb" mode for the chat, False to disable it. Default is None.
+        :type doNotDisturb: bool, optional
+        :param pinChat: Set to True to pin the chat, False to unpin it. Default is None.
+        :type pinChat: bool, optional
+        :param title: The new title for the chat.
+        :type title: str, optional
+        :param icon: The new icon image file for the chat.
+        :type icon: str, optional
+        :param backgroundImage: The new background image file for the chat.
+        :type backgroundImage: str, optional
+        :param content: The new content for the chat.
+        :type content: str, optional
+        :param announcement: The new announcement for the chat.
+        :type announcement: str, optional
+        :param coHosts: A list of user IDs to set as co-hosts for the chat.
+        :type coHosts: list, optional
+        :param keywords: A list of keywords to associate with the chat.
+        :type keywords: list, optional
+        :param pinAnnouncement: Set to True to pin the announcement, False to unpin it. Default is None.
+        :type pinAnnouncement: bool, optional
+        :param publishToGlobal: Set to True to publish the chat to the global feed, False to unpublish it. Default is None.
+        :type publishToGlobal: bool, optional
+        :param canTip: Set to True to enable tipping permissions for the chat, False to disable it. Default is None.
+        :type canTip: bool, optional
+        :param viewOnly: Set to True to enable view-only mode for the chat, False to disable it. Default is None.
+        :type viewOnly: bool, optional
+        :param canInvite: Set to True to allow members to invite others to the chat, False to disable it. Default is None.
+        :type canInvite: bool, optional
+        :param fansOnly: Set to True to enable "Fans Only" mode for the chat, False to disable it. Default is None.
+        :type fansOnly: bool, optional
+        :return: A list of HTTP status codes for each operation performed during the chat edit.
+        :rtype: list
+
+        This method allows the authenticated user to edit various settings of a chat, such as "Do Not Disturb" mode, pinning,
+        title, icon, background image, content, announcement, co-hosts, keywords, pinning the announcement, publishing to the
+        global feed, tipping permissions, view-only mode, allowing members to invite others, and "Fans Only" mode. Only the
+        specified parameters will be updated.
+
+        The function returns a list of HTTP status codes for each operation performed during the chat edit.
+
+        **Example usage:**
+
+        To edit the title and pin the chat:
+
+        >>> response_codes = client.edit_chat(chatId="chat123", title="New Chat Title", pinChat=True)
+        >>> if all(code == 200 for code in response_codes):
+        ...     print("Chat edited successfully!")
+        ... else:
+        ...     print("Failed to edit chat.")
+        """
+        data = {"timestamp": int(time() * 1000)}
+
+        if title: data["title"] = title
+        if content: data["content"] = content
+        if icon: data["icon"] = self.upload_image(icon)
+        if keywords: data["keywords"] = keywords
+        if announcement: data["extensions"] = {"announcement": announcement}
+        if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
+        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+        if publishToGlobal: data["publishToGlobal"] = 0
+        if not publishToGlobal: data["publishToGlobal"] = 1
+
+        responses = []
+
+        if doNotDisturb is not None:
+            responses.append(ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert",
+                data = {
+                    "alertOption": 2 if doNotDisturb else 1,
+                    "timestamp": int(time() * 1000)
+                }
+            )).status_code)
+        
+        if pinChat is not None:
+            responses.append(ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/{'pin' if pinChat else 'unpin'}"
+            )).status_code)
+        
+        if backgroundImage is not None:
+            responses.append(ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/member/{self.userId}/background",
+                data = {
+                    "media": [100, self.upload_image(backgroundImage), None],
+                    "timestamp": int(time() * 1000)
+                }
+            )).status_code)
+        
+        if coHosts is not None:
+            responses.append(ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/co-host",
+                data = {
+                    "uidList": coHosts,
+                    "timestamp": int(time() * 1000)
+                }
+            )).status_code)
+        
+        if viewOnly is not None:
+            responses.append(ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
+            )).status_code)
+        
+        if canInvite is not None:
+            responses.append(ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
+            )).status_code)
+        
+        if canTip is not None:
+            responses.append(ApiResponse(
+                method = "POST",
+                url = f"/g/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
+            ).status_code)
+        
+        responses.append(ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/chat/thread/{chatId}",
+            data = data
+        )).status_code)
+
+        return responses
+    
+    @authenticated
+    def follow(self, userId: Union[str, list]):
+        """
+        Follows a user or a list of users.
+
+        :param userId: The ID of the user or a list of user IDs to follow.
+        :type userId: Union[str, list]
+        :return: The status code of the API response.
+        :rtype: int
+
+        This method allows the authenticated user to follow another user or a list of users. The `userId` parameter can be a single
+        user ID (string) or a list of user IDs. If a single user ID is provided, the method will follow that user. If a list of user IDs
+        is provided, the method will follow all the users in the list.
+
+        If a single user ID is provided, the function will make a POST request to "/g/s/user-profile/{userId}/member" to follow the user.
+        If a list of user IDs is provided, the function will make a POST request to "/g/s/user-profile/{self.userId}/joined" with the
+        `targetUidList` parameter set to the list of user IDs and the `timestamp` parameter set to the current timestamp.
+
+        The function returns the status code of the API response.
+
+        **Example usage:**
+
+        To follow a single user:
+
+        >>> response_code = client.follow(userId="user123")
+        >>> if response_code == 200:
+        ...     print("User followed successfully!")
+        ... else:
+        ...     print("Failed to follow user.")
+
+        To follow multiple users:
+
+        >>> user_ids = ["user123", "user456", "user789"]
+        >>> response_code = client.follow(userId=user_ids)
+        >>> if response_code == 200:
+        ...     print("Users followed successfully!")
+        ... else:
+        ...     print("Failed to follow users.")
+        """
+        if isinstance(userId, str):
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/user-profile/{userId}/member"
+            )).status_code
+        if isinstance(userId, list):
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/user-profile/{self.userId}/joined",
+                data = {
+                    "targetUidList": userId,
+                    "timestamp": int(time() * 1000)
+                }
+            )).status_code
