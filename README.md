@@ -9,7 +9,7 @@
   </p>
 
   <p style="font-size: 1.2em; color: #424242;">A Python wrapper to communicate with the Amino Apps API.</p>
-  <p style="font-size: 1.2em; color: #424242;">Easily create a bot for Amino Apps using a modern, easy-to-use, synchronous library.</p>
+  <p style="font-size: 1.2em; color: #424242;">Easily create a bot for Amino Apps using a modern, easy-to-use library.</p>
 
   <div style="border: 3px solid red; padding: 10px; margin: 15px 0;">
     <h3 style="color: red;"><strong> WARNING </strong></h3>
