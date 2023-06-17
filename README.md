@@ -84,7 +84,12 @@
 >>> bot = Bot(
 ...     command_prefix="!",
 ...     community_id=00000000,
-... ) # You can set proxies and device_id here
+...     console_enabled=True,
+...     device_id=None,
+...     intents=True,
+...     online_status=True,
+...     proxy="http://127.0.0.1:8080" # Must be a string.
+... ) 
 
 >>> # The on_ready event is called when the bot has logged in.
 >>> @bot.on_ready()
