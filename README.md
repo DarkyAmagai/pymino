@@ -1,35 +1,41 @@
-
 <div align="center">
-  <h1>pymino</h1>
+  <h1 style="color: #0d47a1; font-size: 3em;">pymino</h1>
   
-  [![Discord](https://img.shields.io/discord/926853226152755280?color=blueviolet&label=discord%20server)](https://discord.gg/JMJpzpsMNJ)
-  [![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/forevercynical/pymino?color=blueviolet)](https://libraries.io/github/forevercynical/pymino)
-  [![GitHub last commit](https://img.shields.io/github/last-commit/forevercynical/pymino?label=last%20updated&color=blueviolet)](https://github.com/forevercynical/pymino/commits/main)
-  [![PyPI - Downloads](https://img.shields.io/pypi/dw/pymino?color=blueviolet)](https://pypi.org/project/pymino/)
-  
-  <p>A Python wrapper to communicate with the Amino Apps API.</p>
-  <p>Easily create a bot for Amino Apps using a modern, easy-to-use, synchronous library.</p>
-  
-  <p>If you have any questions or need help, feel free to join the Discord server.</p>
-  
+  <p>
+    <a href="https://discord.gg/JMJpzpsMNJ"><img src="https://img.shields.io/discord/926853226152755280?color=blueviolet&label=discord%20server" alt="Discord"></a>
+    <a href="https://libraries.io/github/forevercynical/pymino"><img src="https://img.shields.io/librariesio/github/forevercynical/pymino?color=blueviolet" alt="Libraries.io dependency status for GitHub repo"></a>
+    <a href="https://github.com/forevercynical/pymino/commits/main"><img src="https://img.shields.io/github/last-commit/forevercynical/pymino?label=last%20updated&color=blueviolet" alt="GitHub last commit"></a>
+    <a href="https://pypi.org/project/pymino/"><img src="https://img.shields.io/pypi/dw/pymino?color=blueviolet" alt="PyPI - Downloads"></a>
+  </p>
+
+  <p style="font-size: 1.2em; color: #424242;">A Python wrapper to communicate with the Amino Apps API.</p>
+  <p style="font-size: 1.2em; color: #424242;">Easily create a bot for Amino Apps using a modern, easy-to-use, synchronous library.</p>
+
+  <div style="border: 3px solid red; padding: 10px; margin: 15px 0;">
+    <h3 style="color: red;"><strong>⚠️ WARNING ⚠️</strong></h3>
+    <p><strong>Pymino is a fully reverse-engineered client. By using this client, you may be violating the Amino Apps' Terms of Service. This could lead to your account being suspended or permanently banned. Please use Pymino responsibly and at your own risk.</strong></p>
+    <p><strong>Understand that the developers and maintainers of Pymino are not responsible for any actions taken against your account as a result of using this client. Proceed with caution.</strong></p>
+  </div>
+
+  <p style="font-size: 1.2em; color: #424242;">If you have any questions or need help, feel free to join the Discord server.</p>
   
   <a href="https://discord.gg/JMJpzpsMNJ">
     <img src="https://cdn.discordapp.com/attachments/965797874791223317/1081754594977267833/discord-button.png" alt="Join Our Discord Server" width="150" height="50">
   </a>
   
-  <h2>Installation</h2>
+  <h2 style="color: #0d47a1; font-size: 2em;">Installation</h2>
   
-  <p>Recommended installation method is through pip:</p>
+  <p style="font-size: 1.2em; color: #424242;">Recommended installation method is through pip:</p>
   
-  <pre><code>pip install pymino</code></pre>
+  <pre style="background-color: #f5f5f5; padding: 10px;"><code style="color: #f44336;">pip install pymino</code></pre>
   
-  <p>Alternatively, you can clone the repository and install it manually:</p>
+  <p style="font-size: 1.2em; color: #424242;">Alternatively, you can clone the repository and install it manually:</p>
   
-  <pre><code>git clone https://github.com/forevercynical/pymino.git
+  <pre style="background-color: #f5f5f5; padding: 10px;"><code style="color: #f44336;">git clone https://github.com/forevercynical/pymino.git
   cd pymino
   python setup.py install</code></pre>
   
-  <p>For more detailed documentation and usage examples, check out the project's <a href="https://pymino.info/index.html">official documentation</a>.</p>
+  <p style="font-size: 1.2em; color: #424242;">For more detailed documentation and usage examples, check out the project's <a href="https://pymino.info/index.html">official documentation</a>.</p>
 </div>
 
 <div>
