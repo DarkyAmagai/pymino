@@ -1255,7 +1255,7 @@ class EventHandler: #NEW.
                     )]):
                         self._add_cache(data.chatId, data.author.userId, data.content)
 
-                self._handle_command(data=data, context=context)
+                return self._handle_command(data=data, context=context)
             
             if event in self._events:
                 context = self.context(data, self.request, self.intents)
