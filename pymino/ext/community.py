@@ -4773,7 +4773,7 @@ class Community:
             "type": 0,
             "publishToGlobal": 0,
             "timestamp": int(time() * 1000)
-            })).status
+            }))
 
 
     @community
@@ -7020,3 +7020,243 @@ class Community:
                 }
             }
         ))
+    
+    @community
+    def fetch_store_bubbles(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> BubbleList:
+        """
+        Fetches a list of chat bubbles from the store.
+
+        :param start: The starting index of the bubbles to fetch. (Default: 0)
+        :type start: int, optional
+        :param size: The number of bubbles to fetch. (Default: 25)
+        :type size: int, optional
+        :param comId: The ID of the community to fetch the bubbles from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `BubbleList` object containing the fetched chat bubbles.
+        :rtype: BubbleList
+
+        This function sends a GET request to the API to fetch a list of chat bubbles from the store.
+
+        `BubbleList` represents a list of chat bubbles.
+
+        **Example usage:**
+
+        >>> bubbles = client.community.fetch_store_bubbles(start=0, size=10)
+        ... for bubble in bubbles.name:
+        ...     print(bubble)
+        """
+        return Bubble(self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}"
+        ))
+
+    @community
+    def fetch_store_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> StickerList:
+        """
+        Fetches a list of stickers from the community store.
+
+        :param start: The index of the first sticker to retrieve. (Default: 0)
+        :type start: int, optional
+        :param size: The number of stickers to retrieve. (Default: 25)
+        :type size: int, optional
+        :param comId: The ID of the community to fetch stickers from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `StickerList` object containing the fetched stickers.
+        :rtype: StickerList
+
+        This function sends a GET request to the API to fetch a list of stickers from the community store.
+
+        `StickerList` represents a list of stickers in the community store.
+
+        **Example usage:**
+
+        >>> stickers = client.community.fetch_store_stickers(start=0, size=10)
+        ... for sticker in stickers.name:
+        ...     print(sticker)
+        """
+        return StickerList(self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=sticker&start={start}&size={size}"
+        ))
+    
+    @community
+    def fetch_community_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CommunityStickerList:
+        """
+        Fetches a list of community stickers.
+
+        :param start: The starting index of the sticker list to fetch. (Default: 0)
+        :type start: int, optional
+        :param size: The number of stickers to fetch. (Default: 25)
+        :type size: int, optional
+        :param comId: The ID of the community to fetch stickers from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A `CommunityStickerList` object containing the fetched community stickers.
+        :rtype: CommunityStickerList
+
+        This function sends a GET request to the API to fetch a list of community stickers. The fetched stickers are returned
+        as a `CommunityStickerList` object.
+
+        `CommunityStickerList` represents a list of community stickers.
+
+        **Example usage:**
+
+        >>> stickers = client.community.fetch_community_stickers(start=0, size=10)
+        ... for sticker in stickers.name:
+        ...     print(sticker)
+        """
+        return CommunityStickerList(self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/sticker-collection?type=community-shared"
+        ))
+    
+    @community
+    def reorder_featured_users(self, userIds: list[str], comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Reorders the featured users in the community.
+
+        :param userIds: A list of user IDs representing the desired order of the featured users.
+        :type userIds: list[str]
+        :param comId: The ID of the community to reorder the featured users in. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: An `ApiResponse` object representing the result of the reorder operation.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to reorder the featured users in the specified community.
+
+        `ApiResponse` represents the response received from the API.
+
+        **Example usage:**
+
+        >>> response = client.community.reorder_featured_users(["user1", "user2", "user3"])
+        ... print(response.status_code)
+        ... print(response.json())
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/user-profile/featured/reorder",
+            data = {
+                "uidList": userIds,
+                "timestamp": int(time() * 1000)
+            }
+        ))
+    
+    @community
+    def add_to_favorites(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Adds a user to yout favorite users list in the community.
+
+        :param userId: The ID of the user to add to the favorites list.
+        :type userId: str
+        :param comId: The ID of the community to add the user to the favorites list in.
+                    If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: An `ApiResponse` object representing the response of the API request.
+        :rtype: ApiResponse
+
+        This function sends a POST request to the API to add a user to your favorite users in the community.
+
+        `ApiResponse` represents the response from the API.
+
+        **Example usage:**
+
+        >>> response = client.community.add_to_favorites("123456789")
+        ... print(response.status_code)
+        ... print(response.json())
+        """
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/user-group/quick-access/{userId}"
+        ))
+    
+    @community
+    def fetch_admin_log(self,
+                  userId: str = None,
+                  blogId: str = None,
+                  wikiId: str = None,
+                  quizId: str = None,
+                  fileId: str = None,
+                  pageToken: str = None,
+                  size: int = 25,
+                  comId: Union[str, int] = None):
+        """
+        Fetches the admin log entries for the specified parameters.
+
+        :param userId: The ID of the user to filter the admin log by. (Optional)
+        :type userId: str, optional
+        :param blogId: The ID of the blog to filter the admin log by. (Optional)
+        :type blogId: str, optional
+        :param wikiId: The ID of the wiki to filter the admin log by. (Optional)
+        :type wikiId: str, optional
+        :param quizId: The ID of the quiz to filter the admin log by. (Optional)
+        :type quizId: str, optional
+        :param fileId: The ID of the file to filter the admin log by. (Optional)
+        :type fileId: str, optional
+        :param pageToken: The token for pagination. (Optional)
+        :type pageToken: str, optional
+        :param size: The number of log entries to fetch per page. (Default: 25)
+        :type size: int, optional
+        :param comId: The ID of the community to fetch the admin log from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The admin log entries matching the specified parameters.
+        :rtype: response object
+
+        This function fetches the admin log entries for the specified parameters in the community.
+
+        Note: The response object may vary based on the implementation.
+
+        **Example usage:**
+
+        >>> admin_log = client.community.fetch_admin_log(userId="12345")
+        ... for entry in admin_log:
+        ...     print(entry.action)
+        ...     print(entry.timestamp)
+        """
+        if pageToken is None:
+            if userId: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}"
+            )
+            elif blogId: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={blogId}&objectType=1&pagingType=t&size={size}"
+            )
+            elif wikiId: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={wikiId}&objectType=2&pagingType=t&size={size}"
+            )
+            elif quizId: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={quizId}&objectType=1&pagingType=t&size={size}"
+            )
+            elif fileId: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={fileId}&objectType=109&pagingType=t&size={size}"
+            )
+            else: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?pagingType=t&size={size}"
+            )
+        elif userId: return self.session.handler(
+                method = "GET",
+                url =  f"/x{comId or self.community_id}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}&pageToken={pageToken}"
+            )
+        elif blogId: return self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={blogId}&objectType=1&pagingType=t&size={size}&pageToken={pageToken}"
+        )
+        elif wikiId: return self.session.hadler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={wikiId}&objectType=2&pagingType=t&size={size}&pageToken={pageToken}"
+        )
+        elif quizId: return self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={quizId}&objectType=1&pagingType=t&size={size}&pageToken={pageToken}"
+        )
+        elif fileId: return self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={fileId}&objectType=109&pagingType=t&size={size}&pageToken={pageToken}"
+        )
+        else: return self.session.handler(
+                method = "GET",
+                url = f"/x{comId or self.community_id}/s/admin/operation?pagingType=t&size={size}&pageToken={pageToken}"
+            )
