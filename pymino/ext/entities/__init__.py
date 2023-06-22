@@ -14,3 +14,4 @@ from .acm import *
 from .member import *
 from .bubble import *
 from .sticker import *
+from .admin_log import *

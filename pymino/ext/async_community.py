@@ -7278,7 +7278,8 @@ class AsyncCommunity:
                   fileId: str = None,
                   pageToken: str = None,
                   size: int = 25,
-                  comId: Union[str, int] = None):
+                  comId: Union[str, int] = None
+                  ) -> AdminLogList:
         """
         Fetches the admin log entries for the specified parameters.
 
@@ -7313,51 +7314,129 @@ class AsyncCommunity:
         ...     print(entry.timestamp)
         """
         if pageToken is None:
-            if userId: return await self.session.handler(
+            if userId: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}"
-            )
-            elif blogId: return await self.session.handler(
+            ))
+            elif blogId: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?objectId={blogId}&objectType=1&pagingType=t&size={size}"
-            )
-            elif wikiId: return await self.session.handler(
+            ))
+            elif wikiId: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?objectId={wikiId}&objectType=2&pagingType=t&size={size}"
-            )
-            elif quizId: return await self.session.handler(
+            ))
+            elif quizId: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?objectId={quizId}&objectType=1&pagingType=t&size={size}"
-            )
-            elif fileId: return await self.session.handler(
+            ))
+            elif fileId: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?objectId={fileId}&objectType=109&pagingType=t&size={size}"
-            )
-            else: return await self.session.handler(
+            ))
+            else: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?pagingType=t&size={size}"
-            )
-        elif userId: return await self.session.handler(
+            ))
+        elif userId: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url =  f"/x{comId or self.community_id}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}&pageToken={pageToken}"
-            )
-        elif blogId: return await self.session.handler(
+            ))
+        elif blogId: return AdminLogList(await self.session.handler(
             method = "GET",
             url = f"/x{comId or self.community_id}/s/admin/operation?objectId={blogId}&objectType=1&pagingType=t&size={size}&pageToken={pageToken}"
-        )
-        elif wikiId: return await self.session.hadler(
+        ))
+        elif wikiId: return AdminLogList(await self.session.hadler(
             method = "GET",
             url = f"/x{comId or self.community_id}/s/admin/operation?objectId={wikiId}&objectType=2&pagingType=t&size={size}&pageToken={pageToken}"
-        )
-        elif quizId: return await self.session.handler(
+        ))
+        elif quizId: return AdminLogList(await self.session.handler(
             method = "GET",
             url = f"/x{comId or self.community_id}/s/admin/operation?objectId={quizId}&objectType=1&pagingType=t&size={size}&pageToken={pageToken}"
-        )
-        elif fileId: return await self.session.handler(
+        ))
+        elif fileId: return AdminLogList(await self.session.handler(
             method = "GET",
             url = f"/x{comId or self.community_id}/s/admin/operation?objectId={fileId}&objectType=109&pagingType=t&size={size}&pageToken={pageToken}"
-        )
-        else: return await self.session.handler(
+        ))
+        else: return AdminLogList(await self.session.handler(
                 method = "GET",
                 url = f"/x{comId or self.community_id}/s/admin/operation?pagingType=t&size={size}&pageToken={pageToken}"
-            )
+            ))
+        
+
+    @community
+    async def fetch_user_moderation_history(
+        self,
+        userId: str,
+        pageToken: str = None,
+        size: int = 25,
+        comId: Union[str, int] = None
+    ) -> AdminLogList:
+        """
+        Fetches the moderation history for the specified user.
+
+        :param userId: The ID of the user to fetch the moderation history for.
+        :type userId: str
+        :param pageToken: The token for pagination. (Optional)
+        :type pageToken: str, optional
+        :param size: The number of log entries to fetch per page. (Default: 25)
+        :type size: int, optional
+        :param comId: The ID of the community to fetch the moderation history from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The moderation history for the specified user.
+        :rtype: response object
+
+        This function fetches the moderation history for the specified user in the community.
+
+        Note: The response object may vary based on the implementation.
+
+        **Example usage:**
+
+        >>> moderation_history = client.community.fetch_user_moderation_history("12345")
+        ... for entry in moderation_history:
+        ...     print(entry.action)
+        ...     print(entry.timestamp)
+        """
+        return await self.fetch_admin_log(userId=userId, pageToken=pageToken, size=size, comId=comId)
+
+
+    @community
+    async def fetch_leader_log(
+        self,
+        userId: str,
+        size: int = 25,
+        pageToken: str = None,
+        comId: Union[str, int] = None
+    ) -> AdminLogList:
+        """
+        Fetches the admin log entries for the specified parameters.
+
+        :param userId: The ID of the user to filter the admin log by.
+        :type userId: str
+        :param size: The number of log entries to fetch per page. (Default: 25)
+        :type size: int, optional
+        :param pageToken: The token for pagination. (Optional)
+        :type pageToken: str, optional
+        :param comId: The ID of the community to fetch the admin log from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The admin log entries matching the specified parameters.
+        :rtype: response object
+
+        This function fetches the admin log entries for the specified parameters in the community.
+
+        Note: The response object may vary based on the implementation.
+
+        **Example usage:**
+
+        >>> admin_log = client.community.fetch_admin_log(userId=client.userId)
+        ... for penalty_type, ban_reason, userId in zip(adminLog.operation_name, adminLog.ext_data.note, adminLog.objectId):
+        ...     print(f"{penalty_type} - {ban_reason} - {userId}")
+        """
+        if pageToken: return AdminLogList(await self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/admin/operation?size={size}&operatorUid={userId}&pageToken={pageToken}&pagingType=t"
+        ))
+        else: return AdminLogList(await self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/admin/operation?size={size}&operatorUid={userId}&pagingType=t"
+        ))
