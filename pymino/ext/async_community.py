@@ -6675,7 +6675,8 @@ class AsyncCommunity:
                 method = "GET",
                 url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
         ))
-    
+
+
     @community
     async def edit_blog(self, blogId: str,
                   title: str = None,
@@ -6754,7 +6755,8 @@ class AsyncCommunity:
             url = f"/x{comId or self.community_id}/s/blog/{blogId}",
             data = data
         ))
-    
+
+
     @community
     async def delete_notification(self, notificationId: str, comId: str = None) -> ApiResponse:
         """
@@ -6788,7 +6790,8 @@ class AsyncCommunity:
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/notification/{notificationId}"
         ))
-    
+
+
     @community
     async def flag(self,
              reason: str,
@@ -6867,7 +6870,8 @@ class AsyncCommunity:
             url = f"/x{comId}/s/{flagMethod}",
             data = data
         ))
-    
+
+
     @community
     async def promotion(self, noticeId: str, type: str = "accept", comId: str = None) -> ApiResponse:
         """
@@ -6903,7 +6907,8 @@ class AsyncCommunity:
             method = "POST",
             url = f"/x{comId or self.community_id}/s/notice/{noticeId}/{type}"
         ))
-    
+
+
     @community
     async def change_vc_permission(self, chatId: str, permission: int, comId: Union[str, int]) -> ApiResponse:
         """
@@ -6947,7 +6952,8 @@ class AsyncCommunity:
             ))
         else:
             raise ValueError("Incorrect permission type.")
-        
+
+
     @community
     async def fetch_blocked_users(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
@@ -6978,7 +6984,8 @@ class AsyncCommunity:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/block?start={start}&size={size}"
         ))
-    
+
+
     @community
     async def search_users(self, nickname: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
@@ -7015,6 +7022,7 @@ class AsyncCommunity:
             url = f"/x{comId or self.community_id}/s/user-profile?type=name&q={nickname}&start={start}&size={size}"
         ))
 
+
     @community
     async def fetch_message(self, chatId: str, messageId: str, comId: Union[str, int] = None) -> Message:
         """
@@ -7046,6 +7054,7 @@ class AsyncCommunity:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
         ))
+
 
     @community
     async def purchase(self,
@@ -7103,7 +7112,8 @@ class AsyncCommunity:
                 }
             }
         ))
-    
+
+
     @community
     async def fetch_store_bubbles(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> BubbleList:
         """
@@ -7133,6 +7143,7 @@ class AsyncCommunity:
             url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}"
         ))
 
+
     @community
     async def fetch_store_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> StickerList:
         """
@@ -7161,7 +7172,8 @@ class AsyncCommunity:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=sticker&start={start}&size={size}"
         ))
-    
+
+
     @community
     async def fetch_community_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CommunityStickerList:
         """
@@ -7191,9 +7203,10 @@ class AsyncCommunity:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/sticker-collection?type=community-shared"
         ))
-    
+
+
     @community
-    async def reorder_featured_users(self, userIds: list[str], comId: Union[str, int] = None) -> ApiResponse:
+    async def reorder_featured_users(self, userIds: List[str], comId: Union[str, int] = None) -> ApiResponse:
         """
         Reorders the featured users in the community.
 
@@ -7222,7 +7235,8 @@ class AsyncCommunity:
                 "timestamp": int(time() * 1000)
             }
         ))
-    
+
+
     @community
     async def add_to_favorites(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -7250,7 +7264,8 @@ class AsyncCommunity:
             method = "POST",
             url = f"/x{comId or self.community_id}/s/user-group/quick-access/{userId}"
         ))
-    
+
+
     @community
     async def fetch_admin_log(self,
                   userId: str = None,

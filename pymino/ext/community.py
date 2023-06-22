@@ -6592,7 +6592,8 @@ class Community:
             ))
         except AccessDenied as e:
             raise AccessDenied("You must be a leader to fetch community statistics.") from e
-    
+
+
     @community
     def edit_blog(self, blogId: str,
                   title: str = None,
@@ -6672,6 +6673,7 @@ class Community:
             data = data
         ))
 
+
     @community
     def delete_notification(self, notificationId: str, comId: Union[str, int]= None) -> ApiResponse:
         """
@@ -6705,7 +6707,8 @@ class Community:
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/notification/{notificationId}"
         ))
-    
+
+
     @community
     def flag(self,
              reason: str,
@@ -6784,7 +6787,8 @@ class Community:
             url = f"/x{comId}/s/{flagMethod}",
             data = data
         ))
-    
+
+
     @community
     def promotion(self, noticeId: str, type: str = "accept", comId: Union[str, int]= None) -> ApiResponse:
         """
@@ -6820,6 +6824,7 @@ class Community:
             method = "POST",
             url = f"/x{comId or self.community_id}/s/notice/{noticeId}/{type}"
         ))
+
 
     @community
     def change_vc_permission(self, chatId: str, permission: int, comId: Union[str, int]) -> ApiResponse:
@@ -6864,7 +6869,8 @@ class Community:
             ))
         else:
             raise ValueError("Incorrect permission type.")
-    
+
+
     @community
     def fetch_blocked_users(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
         """
@@ -6895,6 +6901,7 @@ class Community:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/block?start={start}&size={size}"
         ))
+
 
     @community
     def search_users(self, nickname: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
@@ -6932,6 +6939,7 @@ class Community:
             url = f"/x{comId or self.community_id}/s/user-profile?type=name&q={nickname}&start={start}&size={size}"
         ))
 
+
     @community
     def fetch_message(self, chatId: str, messageId: str, comId: Union[str, int] = None) -> Message:
         """
@@ -6963,6 +6971,7 @@ class Community:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
         ))
+
 
     @community
     def purchase(self,
@@ -7020,7 +7029,8 @@ class Community:
                 }
             }
         ))
-    
+
+
     @community
     def fetch_store_bubbles(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> BubbleList:
         """
@@ -7050,6 +7060,7 @@ class Community:
             url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}"
         ))
 
+
     @community
     def fetch_store_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> StickerList:
         """
@@ -7078,7 +7089,8 @@ class Community:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=sticker&start={start}&size={size}"
         ))
-    
+
+
     @community
     def fetch_community_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CommunityStickerList:
         """
@@ -7106,11 +7118,12 @@ class Community:
         """
         return CommunityStickerList(self.session.handler(
             method = "GET",
-            url = f"/x{comId or self.community_id}/s/sticker-collection?type=community-shared"
+            url = f"/x{comId or self.community_id}/s/sticker-collection?type=community-shared&start={start}&size={size}"
         ))
-    
+
+
     @community
-    def reorder_featured_users(self, userIds: list[str], comId: Union[str, int] = None) -> ApiResponse:
+    def reorder_featured_users(self, userIds: List[str], comId: Union[str, int] = None) -> ApiResponse:
         """
         Reorders the featured users in the community.
 
@@ -7139,7 +7152,8 @@ class Community:
                 "timestamp": int(time() * 1000)
             }
         ))
-    
+
+
     @community
     def add_to_favorites(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
@@ -7167,7 +7181,8 @@ class Community:
             method = "POST",
             url = f"/x{comId or self.community_id}/s/user-group/quick-access/{userId}"
         ))
-    
+
+
     @community
     def fetch_admin_log(self,
                   userId: str = None,
