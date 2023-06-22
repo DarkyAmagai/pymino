@@ -4407,19 +4407,23 @@ class Community:
         ... else:
         ...     print("Failed to delete message.")
         """
-        return ApiResponse(
-            self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin",
+        if asStaff:
+            request_method = "POST"
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin"
             data = {
-            "adminOpName": 102,
-            "adminOpNote": {"content": reason},
-            "timestamp": int(time() * 1000)
+                "adminOpName": 102,
+                "adminOpNote": {"content": reason},
+                "timestamp": int(time() * 1000)
+            } if reason is not None else {
+                "adminOpName": 102,
+                "timestamp": int(time() * 1000)
             }
-            )) if asStaff else ApiResponse(self.session.handler(
-            method = "DELETE",
+        else:
+            request_method = "DELETE"
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
-            ))
+            data = None
+
+        return ApiResponse(self.session.handler(method=request_method, url=url, data=data))
 
 
     @community

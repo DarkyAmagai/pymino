@@ -4477,20 +4477,23 @@ class AsyncCommunity:
         ... else:
         ...     print("Failed to delete message.")
         """
-        return ApiResponse(
-            await self.session.handler(
-                method="POST",
-                url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin",
-                data={
+        if asStaff:
+            request_method = "POST"
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin"
+            data = {
                 "adminOpName": 102,
                 "adminOpNote": {"content": reason},
                 "timestamp": int(time() * 1000)
-                }
-            )) if asStaff else ApiResponse(
-            await self.session.handler(
-                method="DELETE",
-                url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
-            ))
+            } if reason is not None else {
+                "adminOpName": 102,
+                "timestamp": int(time() * 1000)
+            }
+        else:
+            request_method = "DELETE"
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
+            data = None
+
+        return ApiResponse(await self.session.handler(method=request_method, url=url, data=data))
 
 
     @community
