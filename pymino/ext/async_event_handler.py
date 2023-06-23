@@ -40,6 +40,13 @@ class AsyncEventHandler:
         self.context:           AsyncContext = AsyncContext
 
 
+    def register_event(self, event_name: str) -> Callable:
+        def decorator(event_handler: Callable) -> Callable:
+            self._events[event_name] = event_handler
+            return event_handler
+        return decorator
+
+
     async def _handle_task(self, func: Callable, interval: int):
         """
         `_handle_task` - This handles the task.
@@ -211,17 +218,15 @@ class AsyncEventHandler:
         """Handles commands."""
         command_name = next(iter(data.content[len(self.command_prefix):].split(" ")))
 
-        if data.content[:len(self.command_prefix)] != self.command_prefix:
-            return None
-
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         command = self._commands.fetch_command(command_name)
 
         if command is None:
             if command_name == "help" and data.content == f"{self.command_prefix}help":
                 return await context.reply(self._commands.__help__())
-
-            return None
+            
+            if self._events.get("text_message"):
+                return await self._handle_all_events(event="text_message", data=data, context=context)
 
         if data.content[:len(self.command_prefix)] != self.command_prefix:
             return None
@@ -266,428 +271,378 @@ class AsyncEventHandler:
                 )
 
 
-    @event_handler("error")
     def on_error(self):
         """
         `on_error` - This is an event that is called when an error occurs.
         """
-        pass
+        return self.register_event("error")
 
 
-    @event_handler("ready")
     def on_ready(self):
         """
         `on_ready` - This is an event that is called when the bot is ready to start handling events.
         """
-        pass
+        return self.register_event("ready")
 
 
-    @event_handler("text_message")
     def on_text_message(self):
         """
         `on_text_message` - This is an event that is called when a text message is received in the chat.
         """
-        pass
+        return self.register_event("text_message")
 
 
-    @event_handler("_console_text_message")
     def _console_on_text_message(self):
-        pass
+        """
+        `_console_on_text_message` - This is an event that is called when a text message is received in the console.
+        """
+        return self.register_event("_console_text_message")
 
 
-    @event_handler("image_message")
     def on_image_message(self):
         """
         `on_image_message` - This is an event that is called when an image message is received in the chat.
         """
-        pass
+        return self.register_event("image_message")
+        
 
-
-    @event_handler("youtube_message")
     def on_youtube_message(self):
         """
         `on_youtube_message` - This is an event that is called when a YouTube message is received in the chat.
         """
-        pass
+        return self.register_event("youtube_message")
 
 
-    @event_handler("strike_message")
     def on_strike_message(self):
         """
         `on_strike_message` - This is an event that is called when a strike message is received in the chat.
         """
-        pass
+        return self.register_event("strike_message")
 
 
-    @event_handler("voice_message")
     def on_voice_message(self):
         """
         `on_voice_message` - This is an event that is called when a voice message is received in the chat.
         """
-        pass
+        return self.register_event("voice_message")
 
 
-    @event_handler("sticker_message")
     def on_sticker_message(self):
         """
         `on_sticker_message` - This is an event that is called when a sticker message is received in the chat.
         """
-        pass
+        return self.register_event("sticker_message")
 
 
-    @event_handler("vc_not_answered")
     def on_vc_not_answered(self):
         """
         `on_vc_not_answered` - This is an event that is called when a voice chat request is not answered.
         """
-        pass
+        return self.register_event("vc_not_answered")
 
 
-    @event_handler("vc_not_cancelled")
     def on_vc_not_cancelled(self):
         """
         `on_vc_not_cancelled` - This is an event that is called when a voice chat request is not cancelled.
         """
-        pass
+        return self.register_event("vc_not_cancelled")
 
 
-    @event_handler("vc_not_declined")
+
     def on_vc_not_declined(self):
         """
         `on_vc_not_declined` - This is an event that is called when a voice chat request is not declined.
         """
-        pass
+        return self.register_event("vc_not_declined")
 
 
-    @event_handler("video_chat_not_answered")
     def on_video_chat_not_answered(self):
         """
         `on_video_chat_not_answered` - This is an event that is called when a video chat request is not answered.
         """
-        pass
+        return self.register_event("video_chat_not_answered")
 
 
-    @event_handler("video_chat_not_cancelled")
     def on_video_chat_not_cancelled(self):
         """
         `on_video_chat_not_cancelled` - This is an event that is called when a video chat request is not cancelled.
         """
-        pass
+        return self.register_event("video_chat_not_cancelled")
 
 
-    @event_handler("video_chat_not_declined")
     def on_video_chat_not_declined(self):
         """
         `on_video_chat_not_declined` - This is an event that is called when a video chat request is not declined.
         """
-        pass
+        return self.register_event("video_chat_not_declined")
 
 
-    @event_handler("avatar_chat_not_answered")
     def on_avatar_chat_not_answered(self):
         """
         `on_avatar_chat_not_answered` - This is an event that is called when an avatar chat request is not answered.
         """
-        pass
+        return self.register_event("avatar_chat_not_answered")
 
 
-    @event_handler("avatar_chat_not_cancelled")
     def on_avatar_chat_not_cancelled(self):
         """
         `on_avatar_chat_not_cancelled` - This is an event that is called when an avatar chat request is not cancelled.
         """
-        pass
+        return self.register_event("avatar_chat_not_cancelled")
 
 
-    @event_handler("avatar_chat_not_declined")
     def on_avatar_chat_not_declined(self):
         """
         `on_avatar_chat_not_declined` - This is an event that is called when an avatar chat request is not declined.
         """
-        pass
+        return self.register_event("avatar_chat_not_declined")
 
 
-    @event_handler("delete_message")
     def on_delete_message(self):
         """
         `on_delete_message` - This is an event that is called when a message is deleted in the chat.
         """
-        pass
+        return self.register_event("delete_message")
 
 
-    @event_handler("member_join")
     def on_member_join(self):
         """
         `on_member_join` - This is an event that is called when a member joins the chat.
         """
-        pass
+        return self.register_event("member_join")
 
 
-    @event_handler("member_leave")
     def on_member_leave(self):
         """
         `on_member_leave` - This is an event that is called when a member leaves the chat.
         """
-        pass
+        return self.register_event("member_leave")
 
 
-    @event_handler("chat_invite")
     def on_chat_invite(self):
         """
         `on_chat_invite` - This is an event that is called when an invite is sent to the chat.
         """
-        pass
+        return self.register_event("chat_invite")
 
 
-    @event_handler("chat_background_changed")
     def on_chat_background_changed(self):
         """
         `on_chat_background_changed` - This is an event that is called when the chat background is changed.
         """
-        pass
+        return self.register_event("chat_background_changed")
 
 
-    @event_handler("chat_title_changed")
     def on_chat_title_changed(self):
         """
         `on_chat_title_changed` - This is an event that is called when the chat title is changed.
         """
-        pass
+        return self.register_event("chat_title_changed")
 
 
-    @event_handler("chat_icon_changed")
     def on_chat_icon_changed(self):
         """
         `on_chat_icon_changed` - This is an event that is called when the chat icon is changed.
         """
-        pass
+        return self.register_event("chat_icon_changed")
 
 
-    @event_handler("vc_start")
     def on_vc_start(self):
         """
         `on_vc_start` - This is an event that is called when a voice chat starts.
         """
-        pass
+        return self.register_event("vc_start")
 
 
-    @event_handler("video_chat_start")
     def on_video_chat_start(self):
         """
         `on_video_chat_start` - This is an event that is called when a video chat starts.
         """
-        pass
+        return self.register_event("video_chat_start")
 
 
-    @event_handler("avatar_chat_start")
     def on_avatar_chat_start(self):
         """
         `on_avatar_chat_start` - This is an event that is called when an avatar chat starts.
         """
-        pass
+        return self.register_event("avatar_chat_start")
 
 
-    @event_handler("vc_end")
     def on_vc_end(self):
         """
         `on_vc_end` - This is an event that is called when a voice chat ends.
         """
-        pass
+        return self.register_event("vc_end")
 
 
-    @event_handler("video_chat_end")
     def on_video_chat_end(self):
         """
         `on_video_chat_end` - This is an event that is called when a video chat ends.
         """
-        pass
+        return self.register_event("video_chat_end")
 
 
-    @event_handler("avatar_chat_end")
     def on_avatar_chat_end(self):
         """
         `on_avatar_chat_end` - This is an event that is called when an avatar chat ends.
         """
-        pass
+        return self.register_event("avatar_chat_end")
 
 
-    @event_handler("chat_content_changed")
     def on_chat_content_changed(self):
         """
         `on_chat_content_changed` - This is an event that is called when the chat content is changed.
         """
-        pass
+        return self.register_event("chat_content_changed")
 
 
-    @event_handler("screen_room_start")
     def on_screen_room_start(self):
         """
         `on_screen_room_start` - This is an event that is called when a screen room starts.
         """
-        pass
+        return self.register_event("screen_room_start")
 
 
-    @event_handler("screen_room_end")
     def on_screen_room_end(self):
         """
         `on_screen_room_end` - This is an event that is called when a screen room ends.
         """
-        pass
+        return self.register_event("screen_room_end")
 
 
-    @event_handler("chat_host_transfered")
     def on_chat_host_transfered(self):
         """
         `on_chat_host_transfered` - This is an event that is called when the chat host is transferred.
         """
-        pass
+        return self.register_event("chat_host_transfered")
 
 
-    @event_handler("text_message_force_removed")
     def on_text_message_force_removed(self):
         """
         `on_text_message_force_removed` - This is an event that is called when a text message is forcefully removed.
         """
-        pass
+        return self.register_event("text_message_force_removed")
 
 
-    @event_handler("chat_removed_message")
     def on_chat_removed_message(self):
         """
         `on_chat_removed_message` - This is an event that is called when a chat message is removed.
         """
-        pass
+        return self.register_event("chat_removed_message")
 
 
-    @event_handler("mod_deleted_message")
     def on_mod_deleted_message(self):
         """
         `on_mod_deleted_message` - This is an event that is called when a moderator deletes a message.
         """
-        pass
+        return self.register_event("mod_deleted_message")
 
 
-    @event_handler("chat_tip")
     def on_chat_tip(self):
         """
         `on_chat_tip` - This is an event that is called when a tip is received in the chat.
         """
-        pass
+        return self.register_event("chat_tip")
 
 
-    @event_handler("chat_pin_announcement")
     def on_chat_pin_announcement(self):
         """
         `on_chat_pin_announcement` - This is an event that is called when an announcement is pinned in the chat.
         """
-        pass
+        return self.register_event("chat_pin_announcement")
 
 
-    @event_handler("vc_permission_open_to_everyone")
     def on_vc_permission_open_to_everyone(self):
         """
         `on_vc_permission_open_to_everyone` - This is an event that is called when voice chat permissions are set to open to everyone.
         """
-        pass
+        return self.register_event("vc_permission_open_to_everyone")
 
 
-    @event_handler("vc_permission_invited_and_requested")
     def on_vc_permission_invited_and_requested(self):
         """
         `on_vc_permission_invited_and_requested` - This is an event that is called when voice chat permissions are set to invited and requested.
         """
-        pass
+        return self.register_event("vc_permission_invited_and_requested")
 
 
-    @event_handler("vc_permission_invite_only")
     def on_vc_permission_invite_only(self):
         """
         `on_vc_permission_invite_only` - This is an event that is called when voice chat permissions are set to invite only.
         """
-        pass
+        return self.register_event("vc_permission_invite_only")
 
 
-    @event_handler("chat_view_only_enabled")
     def on_chat_view_only_enabled(self):
         """
         `on_chat_view_only_enabled` - This is an event that is called when chat view only mode is enabled.
         """
-        pass
+        return self.register_event("chat_view_only_enabled")
 
 
-    @event_handler("chat_view_only_disabled")
     def on_chat_view_only_disabled(self):
         """
         `on_chat_view_only_disabled` - This is an event that is called when chat view only mode is disabled.
         """
-        pass
+        return self.register_event("chat_view_only_disabled")
 
 
-    @event_handler("chat_unpin_announcement")
     def on_chat_unpin_announcement(self):
         """
         `on_chat_unpin_announcement` - This is an event that is called when an announcement is unpinned in the chat.
         """
-        pass
+        return self.register_event("chat_unpin_announcement")
 
 
-    @event_handler("chat_tipping_enabled")
     def on_chat_tipping_enabled(self):
         """
         `on_chat_tipping_enabled` - This is an event that is called when chat tipping is enabled.
         """
-        pass
+        return self.register_event("chat_tipping_enabled")
 
 
-    @event_handler("chat_tipping_disabled")
     def on_chat_tipping_disabled(self):
         """
         `on_chat_tipping_disabled` - This is an event that is called when chat tipping is disabled.
         """
-        pass
+        return self.register_event("chat_tipping_disabled")
 
 
-    @event_handler("timestamp_message")
     def on_timestamp_message(self):
         """
         `on_timestamp_message` - This is an event that is called when a timestamp message is received in the chat.
         """
-        pass
+        return self.register_event("timestamp_message")
 
 
-    @event_handler("welcome_message")
     def on_welcome_message(self):
         """
         `on_welcome_message` - This is an event that is called when a welcome message is received in the chat.
         """
-        pass
+        return self.register_event("welcome_message")
 
 
-    @event_handler("share_exurl_message")
     def on_share_exurl_message(self):
         """
         `on_share_exurl_message` - This is an event that is called when a shared external URL message is received in the chat.
         """
-        pass
+        return self.register_event("share_exurl_message")
 
 
-    @event_handler("invite_message")
     def on_invite_message(self):
         """
         `on_invite_message` - This is an event that is called when an invite message is received in the chat.
         """
-        pass
+        return self.register_event("invite_message")
 
 
-    @event_handler("user_online")
     def on_user_online(self):
         """
         `on_user_online` - This is an event that is called when a user comes online.
         """
-        pass
+        return self.register_event("user_online")
 
 
-    @event_handler("member_set_you_host")
     def on_member_set_you_host(self):
         """
         `on_member_set_you_host` - This is an event that is called when you are set as the host of the chat.
@@ -704,10 +659,9 @@ class AsyncEventHandler:
                 bot.community.send_message(chatId=chatId, content="I am now the host", comId=notification.comId)
         ```
         """
-        pass
+        return self.register_event("member_set_you_host")
 
 
-    @event_handler("member_set_you_cohost")
     def on_member_set_you_cohost(self):
         """
         `on_member_set_you_cohost` - This is an event that is called when you are set as a cohost of the chat.
@@ -724,10 +678,9 @@ class AsyncEventHandler:
                 bot.community.send_message(chatId=chatId, content="I am now a cohost", comId=notification.comId)
         ```
         """
-        pass
+        return self.register_event("member_set_you_cohost")
 
 
-    @event_handler("member_remove_your_cohost")
     def on_member_remove_your_cohost(self):
         """
         `on_member_remove_your_cohost` - This is an event that is called when you are removed as a cohost of the chat.
@@ -744,7 +697,7 @@ class AsyncEventHandler:
                 bot.community.send_message(chatId=chatId, content="I am no longer a cohost", comId=notification.comId)
         ```
         """
-        pass
+        return self.register_event("member_remove_your_cohost")
 
 
     async def _handle_all_events(self, event: str, data: Message, context: AsyncContext) -> None:
