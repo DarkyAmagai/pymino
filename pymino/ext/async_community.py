@@ -137,7 +137,7 @@ class AsyncCommunity:
             if not args[0].userId:
                 raise NotLoggedIn("You are not logged in. Please login before using this function.")
             if not any([args[0].community_id, kwargs.get("comId")]):
-                raise MissingCommunityId("Please provide a community id to the bot before running it or add it to the function call.")
+                raise MissingCommunityId()
             return await func(*args, **kwargs)
         community_func.__annotations__ = func.__annotations__
         return community_func

@@ -58,6 +58,12 @@ class AsyncContext:
 
 
     @property
+    def cache(self) -> Cache:
+        """The cache."""
+        return Cache("cache")
+
+
+    @property
     def __message_endpoint__(self) -> str:
         """The message endpoint."""
         return f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message"
@@ -131,31 +137,68 @@ class AsyncContext:
             ))
 
 
-    async def wait_for_message(self, message: str, timeout: int = 10) -> Message:
+    async def wait_for_message(self, message: str, timeout: int = 10) -> int:
+        """
+        `wait_for_message` - This waits for a specific message within a certain timeout period. 
+        
+        `**Parameters**`
+        - `message` : str
+            The specific message to wait for in the cache.
+        - `timeout` : int, optional
+            The maximum time to wait for the message in seconds. Default is 10.
+        
+        `**Returns**`
+        - `int` 
+            The method returns a status code indicating the result of the operation:
+            200 - If the desired message is found within the timeout.
+            404 - If a different message is found within the timeout.
+            500 - If the timeout is reached without finding the desired message.
+        
+        `**Example**`
+        ```py
+        @bot.on_member_join()
+        async def on_member_join(ctx: Context):
+            if ctx.comId != bot.community.community_id:
+                return
+                
+            TIMEOUT = 15
+
+            await ctx.send(content="Welcome to the chat! Please verify yourself by typing `$verify` in the chat.", delete_after=TIMEOUT)
+
+            response = await ctx.wait_for_message(message="$verify", timeout=15)
+
+            if response == 500:
+                await ctx.send(content="You took too long to verify yourself. You have been kicked from the chat.", delete_after=TIMEOUT)
+                return await bot.community.kick(userId=ctx.author.userId, chatId=ctx.chatId, allowRejoin=True, comId=ctx.comId)
+
+            elif response == 404:
+                return await ctx.send(content="Invalid verification code. You have been kicked from the chat.", delete_after=TIMEOUT)
+
+            else:
+                return await ctx.send(content="You have been verified!", delete_after=TIMEOUT)
+        ```
+        """
         if not self.intents:
             raise IntentsNotEnabled
 
         start = time()
-        cache = Cache("cache")
 
-        while time() - start < timeout:
-            cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
+        with self.cache as cache:
+            while time() - start < timeout:
+                cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
 
-            if cached_message == message:
-                print("Message found!")
-                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
-                return self.message
+                if cached_message == message:
+                    cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                    return 200
 
-            if all([cached_message is not None, cached_message != message]):
-                print("Message not found!")
-                cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
-                return None
+                if all([cached_message is not None, cached_message != message]):
+                    cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                    return 404
 
-            print("No message found!")
-            await asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)
 
-        cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
-        return None
+            cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+            return 500
 
 
     @_run

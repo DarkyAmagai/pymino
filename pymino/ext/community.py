@@ -99,11 +99,17 @@ class Community:
     def __init__(self, bot, session, community_id: Union[str, int] = None) -> None:
         self.bot = bot
         self.session = session
-        self.cache = Cache("cache")
         self.community_id: Union[str, int] = community_id
         self.userId: Optional[str] = None
         if self.userId is None: return
 
+
+    @property
+    def cache(self) -> Cache:
+        """
+        The cache object used by the client.
+        """
+        return self.bot.cache
 
     def community(func: F) -> F:
         """
@@ -130,10 +136,11 @@ class Community:
         >>>     # Function code
         """
         def community_func(*args, **kwargs) -> Any:
+            
             if not args[0].userId:
                 raise NotLoggedIn("You are not logged in. Please login before using this function.")
             if not any([args[0].community_id, kwargs.get("comId")]):
-                raise MissingCommunityId("Please provide a community id to the bot before running it or add it to the function call.")
+                raise MissingCommunityId()
             return func(*args, **kwargs)
         community_func.__annotations__ = func.__annotations__
         return community_func
@@ -181,18 +188,18 @@ class Community:
     @community
     def fetch_object(
         self,
-        objectId: str,
-        objectType: ObjectTypes = ObjectTypes.USER,
+        object_id: str,
+        object_type: ObjectTypes = ObjectTypes.USER,
         comId: Union[str, int] = None,
         **kwargs
         ) -> LinkInfo:
         """
         Fetches the link information of an object given its ID.
 
-        :param objectId: The ID of the object whose link information is to be fetched.
-        :type objectId: str
-        :param objectType: The type of the object, defaults to ObjectTypes.USER.
-        :type objectType: ObjectTypes, optional
+        :param object_id: The ID of the object whose link information is to be fetched.
+        :type object_id: str
+        :param object_type: The type of the object, defaults to ObjectTypes.USER.
+        :type object_type: ObjectTypes, optional
         :param comId: The ID of the community, defaults to None.
         :type comId: Union[str, int], optional
         :raises NotLoggedIn: If the user is not logged in.
@@ -230,23 +237,25 @@ class Community:
         >>> link_info = client.community.fetch_object(objectId="0000-00000-00000-0000", objectType=ObjectTypes.BLOG, comId=123456)
         >>> print(link_info.fullPath)
         """
-        if "object_type" in kwargs: #TODO: Remove this in the near future.
-            objectType = kwargs["object_type"]
-            print("Warning: The 'object_type' parameter is deprecated. Please use 'objectType' instead.")
+        if "objectType" in kwargs:
+            object_type = kwargs["objectType"]
+            print("Warning: The 'objectType' parameter is deprecated. Please use 'object_type' instead.")
 
-        KEY = str((objectId, self.community_id if comId is None else comId))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "POST",
-                url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
-                data = {
-                    "objectId": objectId,
-                    "targetCode": 1,
-                    "objectType": objectType.value if isinstance(objectType, ObjectTypes) else objectType,
-                    "timestamp": int(time() * 1000)
-                    }
-                ))
-        return LinkInfo(self.cache.get(KEY))
+        KEY = str((object_id, self.community_id if comId is None else comId))
+
+        with self.cache as cache:
+            if not cache.get(KEY):
+                cache.set(KEY, self.session.handler(
+                    method = "POST",
+                    url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
+                    data = {
+                        "objectId": object_id,
+                        "targetCode": 1,
+                        "objectType": object_type.value if isinstance(object_type, ObjectTypes) else object_type,
+                        "timestamp": int(time() * 1000)
+                        }
+                    ))
+            return LinkInfo(cache.get(KEY))
 
 
     def fetch_object_id(self, link: str) -> str:
@@ -270,12 +279,13 @@ class Community:
         """
 
         KEY = str((link, "OBJECT_ID"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "GET",
-                url = f"/g/s/link-resolution?q={link}"
-                ))
-        return LinkInfo(self.cache.get(KEY)).objectId
+        with self.cache as cache:
+            if not cache.get(KEY):
+                cache.set(KEY, self.session.handler(
+                    method = "GET",
+                    url = f"/g/s/link-resolution?q={link}"
+                    ))
+            return LinkInfo(cache.get(KEY)).objectId
 
 
     def fetch_object_info(self, link: str) -> LinkInfo:
@@ -314,12 +324,13 @@ class Community:
         """
 
         KEY = str((link, "OBJECT_INFO"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "GET",
-                url = f"/g/s/link-resolution?q={link}"
-                ))
-        return LinkInfo(self.cache.get(KEY))
+        with self.cache as cache:
+            if not cache.get(KEY):
+                cache.set(KEY, self.session.handler(
+                    method = "GET",
+                    url = f"/g/s/link-resolution?q={link}"
+                    ))
+            return LinkInfo(cache.get(KEY))
 
 
     def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
@@ -470,12 +481,12 @@ class Community:
             ))
 
 
-    def fetch_invitationId(self, inviteCode: str, **kwargs) -> str:
+    def fetch_invitationId(self, invite_code: str, **kwargs) -> str:
         """
         Fetches the invitation ID for a given invite code.
 
-        :param inviteCode: The invite code to fetch the invitation ID for.
-        :type inviteCode: str
+        :param invite_code: The invite code to fetch the invitation ID for.
+        :type invite_code: str
         :return: The invitation ID.
         :rtype: str
 
@@ -490,9 +501,9 @@ class Community:
         >>> invitation_id = client.fetch_invitationId(invite_code="ABCD1234")
         >>> print(invitation_id)
         """
-        if "invite_code" in kwargs: #TODO: Remove this in the near future.
-            inviteCode = kwargs["invite_code"]
-            print("The 'invite_code' parameter has been deprecated. Please use 'inviteCode' instead.")
+        if "inviteCode" in kwargs: #TODO: Remove this in the near future.
+            inviteCode = kwargs["inviteCode"]
+            print("The 'inviteCode' parameter has been deprecated. Please use 'invite_code' instead.")
 
         return InvitationId(self.session.handler(
             method = "GET",
@@ -501,12 +512,12 @@ class Community:
 
 
     @community
-    def join_community_by_code(self, inviteCode: str, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
+    def join_community_by_code(self, invite_code: str, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
         """
         Joins a community using the invite code.
 
-        :param inviteCode: The invite code of the community.
-        :type inviteCode: str
+        :param invite_code: The invite code of the community.
+        :type invite_code: str
         :param comId: The ID of the community to join. If not provided, the current community ID is used.
         :type comId: Union[str, int]
         :raises NotLoggedIn: If the user is not logged in.
@@ -532,15 +543,15 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Joined community successfully!")
         """
-        if "invite_code" in kwargs: #TODO: Remove this in the near future.
-            inviteCode = kwargs["invite_code"]
-            print("The 'invite_code' parameter has been deprecated. Please use 'inviteCode' instead.")
+        if "inviteCode" in kwargs: #TODO: Remove this in the near future.
+            invite_code = kwargs["inviteCode"]
+            print("The 'inviteCode' parameter has been deprecated. Please use 'invite_code' instead.")
 
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/community/join",
             data = {
-                "invitationId": self.fetch_invitationId(inviteCode=inviteCode),
+                "invitationId": self.fetch_invitationId(inviteCode=invite_code),
                 "timestamp": int(time() * 1000)
                 }
             ))

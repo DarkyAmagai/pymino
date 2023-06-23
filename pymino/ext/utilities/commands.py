@@ -1,5 +1,7 @@
 from time import time
 from typing import Callable
+from collections import defaultdict
+
 
 class Command:
     """
@@ -22,10 +24,12 @@ class Command:
         self.aliases:        list = [] if aliases is None else aliases
         self.cooldown:       int = cooldown
 
+
 class Commands:
     def __init__(self):
-        self.commands: list[Command] = []
-        self.cooldowns: dict = {}
+        self.commands: dict[str, Command] = {}
+        self.cooldowns: defaultdict[dict] = defaultdict(dict)
+
 
     def add_command(self, command: Command) -> Command:
         """
@@ -38,8 +42,9 @@ class Commands:
         - `Command` - The command that was added.
         
         """
-        self.commands.append(command)
+        self.commands[command.name] = command
         return command
+
 
     def fetch_command(self, command_name: str) -> Command:
         """
@@ -52,7 +57,10 @@ class Commands:
         - `Command` - The command that was fetched.
         
         """
-        return next((command for command in self.commands if command.name == command_name or command_name in command.aliases), None)
+        return self.commands.get(command_name) or next(
+            (command for command in self.commands.values() if command_name in command.aliases), None
+        )
+
 
     def fetch_commands(self) -> Command:
         """
@@ -62,7 +70,8 @@ class Commands:
         - `list[Command]` - The commands that were fetched.
         
         """
-        return self.commands
+        return list(self.commands.values())
+
 
     def __command_functions__(self) -> list:
         """
@@ -74,6 +83,7 @@ class Commands:
         """
         return {command.name: command.func for command in self.commands}
 
+
     def __command_names__(self) -> list:
         """
         `__command_names__` - Fetches all command names from the command list.
@@ -82,7 +92,8 @@ class Commands:
         - `list[str]` - The command names that were fetched.
         
         """
-        return [command.name for command in self.commands]
+        return [command.name for command in self.commands.values()]
+
 
     def __command_aliases__(self) -> list:
         """
@@ -93,10 +104,11 @@ class Commands:
         
         """
         aliases = {}
-        for command in self.commands:
+        for command in self.commands.values():
             for alias in command.aliases:
                 aliases[alias] = command.name
         return aliases
+
 
     def __command_descriptions__(self) -> list:
         """
@@ -107,7 +119,8 @@ class Commands:
         
         """
         return {command.name: command.description for command in self.commands}
-    
+
+
     def __command_usages__(self) -> list:
         """
         `__command_usages__` - Fetches all command usages from the command list.
@@ -118,6 +131,7 @@ class Commands:
         """
         return {command.name: command.usage for command in self.commands}
 
+
     def __command_cooldowns__(self) -> list:
         """
         `__command_cooldowns__` - Fetches all command cooldowns from the command list.
@@ -127,6 +141,7 @@ class Commands:
         
         """
         return {command.name: command.cooldown for command in self.commands}
+
 
     def set_cooldown(self, command_name: str, cooldown: int, userId: str) -> None:
         """
@@ -143,6 +158,7 @@ class Commands:
         """
         self.cooldowns[command_name][userId] = time() + cooldown
 
+
     def fetch_cooldown(self, command_name: str, userId: str) -> int:
         """
         `fetch_cooldown` - Fetches the cooldown of a command for a user.
@@ -155,11 +171,9 @@ class Commands:
         - `int` - The cooldown that was fetched.
         
         """
-        if command_name not in self.cooldowns:
-            self.cooldowns[command_name] = {}
-        if userId not in self.cooldowns[command_name]:
-            self.cooldowns[command_name][userId] = 0
+        self.cooldowns[command_name].setdefault(userId, 0)
         return self.cooldowns[command_name][userId]
+
 
     def __help__(self):
         """
@@ -171,11 +185,7 @@ class Commands:
         """
         help_message = "[bcu]Commands\n" + "\n[ic]This is a list of all the commands available on this bot.\n"
 
-        for command in self.commands:
+        for command in self.commands.values():
             help_message += f"\n[uc]{command.name}\n[ic]{command.description}\n[uc]Usage: {command.usage}\n"
         help_message += "\n\n[ic]This message was generated automatically. If you have any questions, please contact the bot owner."
         return help_message
-
-    def __repr__(self):
-        """`__repr__` - Generates a string representation of the commands."""
-        return f"Commands({self.commands})"

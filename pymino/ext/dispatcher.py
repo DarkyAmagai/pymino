@@ -1,5 +1,5 @@
 from typing import Callable
-
+from threading import Thread
 
 class MessageDispatcher:
     """
@@ -29,8 +29,10 @@ class MessageDispatcher:
     def handle(self, message: dict):
         message_type = message.get("t")
         if message_type not in self.dispatch_table:
-            return
-        self.dispatch_table[message_type](message)
+            return None
+        return Thread(
+            target=self.dispatch_table[message_type],args=(message,)
+            ).start()
 
 
 class AsyncMessageDispatcher:

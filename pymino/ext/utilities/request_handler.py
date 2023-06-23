@@ -1,3 +1,4 @@
+from time import sleep
 from uuid import uuid4
 from ujson import loads, dumps
 from colorama import Fore, Style
@@ -123,7 +124,7 @@ class RequestHandler:
         """
         try:
             response: HttpResponse = self.fetch_request(method)(
-                url, data=data, headers=headers, proxies=self.proxy
+                url, data=data, headers=headers, proxies=self.proxy, timeout=10 if self.proxy else 2
             )
             return response.status_code, response.text
         except (
@@ -133,6 +134,7 @@ class RequestHandler:
             ProxyError,
             ConnectTimeout,
         ):
+            sleep(1.5)
             self.handler(method, url, data, content_type)
     
     def handler(

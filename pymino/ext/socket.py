@@ -110,15 +110,14 @@ class WSClient(EventHandler):
 
         key = self.event_types.get(f"{_message.type}:{_message.mediaType}")
         if key != None:
-            return Thread(target=self._handle_event, args=(key, _message)).start()
+            return self._handle_event(key, _message)
 
 
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
         notification: Notification = Notification(message)
         key = self.notif_types.get(notification.notification_type)
-        if key != None:
-            return Thread(target=self._handle_event, args=(key, notification)).start()
+        return self._handle_event(key, notification) if key else None
 
 
     def _handle_agora_channel(self, message: dict) -> None:
