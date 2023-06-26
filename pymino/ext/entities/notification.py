@@ -52,7 +52,7 @@ class Notification:
     @property
     def notification_type(self) -> int:
         """Returns the notification type of the notification."""
-        return self.payload.get("notification_type")
+        return self.payload.get("notifType")
     
     @property
     def id(self) -> str:

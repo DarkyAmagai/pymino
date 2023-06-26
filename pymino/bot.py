@@ -789,3 +789,81 @@ class Bot(WSClient):
             return round(elapsed_time_ms, 2)
         except Exception as e:
             raise PingFailed from e
+
+    def edit_profile(
+        self,
+        nickname: str = None,
+        content: str = None,
+        icon: str = None,
+        backgroundColor: str = None,
+        backgroundImage: str = None,
+        defaultBubbleId: str = None
+        ) -> UserProfile:
+        """
+        Edits the user's profile.
+
+        :param nickname: The new nickname for the user.
+        :type nickname: str
+        :param content: The new content for the user's profile.
+        :type content: str
+        :param icon: The new icon image file for the user.
+        :type icon: str
+        :param backgroundColor: The new background color for the user's profile.
+        :type backgroundColor: str
+        :param backgroundImage: The new background image file for the user's profile.
+        :type backgroundImage: str
+        :param defaultBubbleId: The ID of the default bubble for the user's profile.
+        :type defaultBubbleId: str
+        :return: The response from the account's `edit_profile` method.
+        :rtype: Response
+
+        This method allows the authenticated user to edit their profile settings. Different aspects of the profile can be modified,
+        such as the nickname, content, icon, background color, background image, and default bubble. Only the specified parameters will
+        be updated. The `userId` parameter is set to the authenticated user's ID automatically.
+
+        **Example usage:**
+
+        To change the nickname and icon for the user:
+
+        >>> response = client.edit_profile(nickname="New Nickname", icon="path/to/icon.jpg")
+        ... if response.status == 200:
+        ...     print("Profile edited successfully!")
+        ... else:
+        ...     print("Failed to edit profile.")
+        """
+        data = {
+                "address": None,
+                "latitude": 0,
+                "longitude": 0,
+                "mediaList": None,
+                "eventSource": "UserProfileView",
+                "timestamp": int(time() * 1000),
+        }
+
+        if nickname: data['nickname'] = nickname
+        if icon: data['icon'] = self.upload_image(icon)
+        if content: data['content'] = content
+        if backgroundColor:
+            data["extensions"] = {
+                "style": {
+                    "backgroundColor": backgroundColor
+                    if backgroundColor.startswith("#")
+                    else f"#{backgroundColor}"
+                }
+            }
+
+        if backgroundImage:
+            data["extensions"] = {
+                "style": {
+                    "backgroundMediaList": [
+                        [100, self.upload_image(backgroundImage), None, None, None]
+                    ]
+                }
+            }
+        if defaultBubbleId:
+            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
+
+        return UserProfile(self.request.handler(
+            method = "POST", url = f"/g/s/user-profile/{self.userId}",
+            data = data
+        ))

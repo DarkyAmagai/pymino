@@ -124,7 +124,7 @@ class RequestHandler:
         """
         try:
             response: HttpResponse = self.fetch_request(method)(
-                url, data=data, headers=headers, proxies=self.proxy, timeout=10 if self.proxy else 2
+                url, data=data, headers=headers, proxies=self.proxy
             )
             return response.status_code, response.text
         except (

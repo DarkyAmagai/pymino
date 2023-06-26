@@ -22,7 +22,8 @@ setup(
         "colorama==0.4.6",
         "websocket-client==1.5.2",
         "diskcache==5.4.0",
-        "aiohttp==3.8.4"
+        "aiohttp==3.8.4",
+        "wsaccel==0.6.4"
     ],
     keywords=[
         "amino",

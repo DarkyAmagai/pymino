@@ -1202,14 +1202,42 @@ class Client:
         ... else:
         ...     print("Failed to edit profile.")
         """
-        return self.account.edit_profile(userId = self.userId,
-                                         nickname = nickname,
-                                         content = content,
-                                         icon = icon,
-                                         backgroundColor = backgroundColor,
-                                         backgroundImage = backgroundImage,
-                                         defaultBubbleId = defaultBubbleId
-                                         )
+        data = {
+                "address": None,
+                "latitude": 0,
+                "longitude": 0,
+                "mediaList": None,
+                "eventSource": "UserProfileView",
+                "timestamp": int(time() * 1000),
+        }
+
+        if nickname: data['nickname'] = nickname
+        if icon: data['icon'] = self.upload_image(icon)
+        if content: data['content'] = content
+        if backgroundColor:
+            data["extensions"] = {
+                "style": {
+                    "backgroundColor": backgroundColor
+                    if backgroundColor.startswith("#")
+                    else f"#{backgroundColor}"
+                }
+            }
+
+        if backgroundImage:
+            data["extensions"] = {
+                "style": {
+                    "backgroundMediaList": [
+                        [100, self.upload_image(backgroundImage), None, None, None]
+                    ]
+                }
+            }
+        if defaultBubbleId:
+            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
+
+        return UserProfile(self.request.handler(
+            method = "POST", url = f"/g/s/user-profile/{self.userId}",
+            data = data
+        ))
 
 
     @authenticated
@@ -1263,7 +1291,7 @@ class Client:
         )
     
     @authenticated
-    def blocker_users(self, start: int = 0, size: int = 25):
+    def blocker_users(self, start: int = 0, size: int = 25) -> List[str]:
         """
         Retrieves a list of users what are blocking the logged account.
         :param start: The index to start retrieving the list from (optional, default: 0).
@@ -1317,7 +1345,7 @@ class Client:
         ))
     
     @authenticated
-    def delete_message(self, chatId: str, messageId: str):
+    def delete_message(self, chatId: str, messageId: str) -> ApiResponse:
         """
         Deletes a message in a chat thread.
 
@@ -1499,7 +1527,7 @@ class Client:
         return responses
     
     @authenticated
-    def follow(self, userId: Union[str, list]):
+    def follow(self, userId: Union[str, list]) -> ApiResponse:
         """
         Follows a user or a list of users.
 
@@ -1541,7 +1569,7 @@ class Client:
             return ApiResponse(self.request.handler(
                 method = "POST",
                 url = f"/g/s/user-profile/{userId}/member"
-            )).status_code
+            ))
         if isinstance(userId, list):
             return ApiResponse(self.request.handler(
                 method = "POST",
@@ -1550,4 +1578,618 @@ class Client:
                     "targetUidList": userId,
                     "timestamp": int(time() * 1000)
                 }
-            )).status_code
+            ))
+    
+    @authenticated
+    def fetch_chats(self, start: int = 0, size: int = 25) -> ChatThreadList:
+        """
+        Fetches the chat threads for the authenticated user.
+
+        :param start: The starting index of the chat threads to fetch. (Default: 0)
+        :type start: int, optional
+        :param size: The number of chat threads to fetch. (Default: 25)
+        :type size: int, optional
+        :return: A `ChatThreadList` object containing the fetched chat threads.
+        :rtype: ChatThreadList
+
+        This function sends a GET request to the API to fetch the chat threads that the authenticated user has joined.
+
+        `ChatThreadList` represents a list of chat threads.
+
+        **Example usage:**
+
+        >>> threads = client.fetch_chats(start=0, size=10)
+        ... for thread in threads:
+        ...     print(thread.title)
+        """
+        return ChatThreadList(self.request.handler(
+            method = "GET",
+            url = f"/g/s/chat/thread?type=joined-me&start={start}&size={size}"
+        ))
+    
+    @authenticated
+    def fetch_chat(self, chatId: str) -> ChatThread:
+        """
+        Fetches a chat thread by its ID.
+
+        :param chatId: The ID of the chat thread to fetch.
+        :type chatId: str
+        :return: A `ChatThread` object representing the fetched chat thread.
+        :rtype: ChatThread
+
+        This function sends a GET request to the API to fetch a chat thread based on its ID.
+
+        `ChatThread` represents a thread of messages in a chat.
+
+        **Example usage:**
+
+        >>> chat = client.fetch_chat("123456789")
+        ... print(chat.thread_id)
+        ... print(chat.messages)
+        """
+        return ChatThread(self.request.handler(
+            method = "GET",
+            url = f"/g/s/chat/thread/{chatId}"
+        ))
+    
+    @authenticated
+    def fetch_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> CChatMembers.members:
+        """
+        Fetches the users in a chat.
+
+        :param chatId: The ID of the chat.
+        :type chatId: str
+        :param start: The start index for fetching the users. (Default: 0)
+        :type start: int, optional
+        :param size: The number of users to fetch. (Default: 25)
+        :type size: int, optional
+        :return: A `CChatMembers` object containing the chat members.
+        :rtype: CChatMembers
+
+        This function retrieves the users who are members of the specified chat.
+
+        `CChatMembers` represents the members of a chat.
+
+        **Example usage:**
+
+        >>> chat_members = client.fetch_chat_users("chat123")
+        ... for member in chat_members.nickname:
+        ...     print(member)
+        """
+        return CChatMembers(self.request.handler(
+            method = "GET",
+            url = f"/g/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
+        ))
+    
+    @authenticated
+    def invite_to_chat(self, chatId: str, userId: Union[str, list]) -> ApiResponse:
+        """
+        Invites user(s) to a chat.
+
+        :param chatId: The ID of the chat to invite users to.
+        :type chatId: str
+        :param userId: The ID(s) of the user(s) to invite. It can be a string or a list of strings.
+        :type userId: Union[str, list]
+        :return: An `ApiResponse` object representing the response of the invitation request.
+        :rtype: ApiResponse
+        :raises TypeError: If userId is neither a string nor a list of strings.
+
+        This function sends a POST request to invite user(s) to a chat.
+
+        The user(s) specified by userId will be invited to join the chat identified by chatId.
+
+        `ApiResponse` represents the response of an API request.
+
+        **Example usage:**
+
+        >>> response = client.invite_to_chat("chat123", "user456")
+        ... print(response.status_code)
+        """
+        if isinstance(userId, str): userIds = [userId]
+        elif isinstance(userId, list): userIds = userId
+        else: raise TypeError("UserId must be a string or a list of strings.")
+
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/chat/thread/{chatId}/member/invite",
+            data = {
+                "timestamp": int(time() * 1000),
+                "uids": userIds
+            }
+        ))
+    
+    @authenticated
+    def kick(self, chatId: str, userId: str, allowRejoin: bool = True) -> ApiResponse:
+        """
+        Kicks a user from a chat.
+
+        :param chatId: The ID of the chat.
+        :type chatId: str
+        :param userId: The ID of the user to be kicked.
+        :type userId: str
+        :param allowRejoin: Whether to allow the user to rejoin the chat. (Default: True)
+        :type allowRejoin: bool, optional
+        :return: An `ApiResponse` object representing the API response.
+        :rtype: ApiResponse
+
+        This function sends a DELETE request to the API to kick the specified user from the chat.
+
+        `ApiResponse` represents the response from the API.
+
+        **Example usage:**
+
+        >>> response = client.kick("chat123", "user456")
+        ... print(response.status_code)
+        ... print(response.json())
+        """
+        return ApiResponse(self.request.handler(
+            method = "DELETE",
+            url = f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={allowRejoin}"
+        ))
+
+    @authenticated
+    def fetch_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> CMessages:
+        """
+        Fetches messages from a chat.
+
+        :param chatId: The ID of the chat to fetch messages from.
+        :type chatId: str
+        :param size: The number of messages to fetch. (Default: 25)
+        :type size: int, optional
+        :param pageToken: The page token for pagination. (Optional)
+        :type pageToken: str, optional
+        :return: A `CMessages` object representing the fetched messages.
+        :rtype: CMessages
+
+        This function retrieves messages from the specified chat using the provided parameters.
+
+        `CMessages` represents a collection of messages in the chat.
+
+        **Example usage:**
+
+        >>> messages = client.fetch_messages("chat123", size=50, pageToken="token123")
+        ... for message in messages:
+        ...     print(message.text)
+        """
+        if pageToken is not None:
+            return CMessages(self.request.handler(
+                method = "GET",
+                url = f"/g/s/chat/thread/{chatId}/message?v=2&pagingType=t&pageToken={pageToken}&size={size}"
+            ))
+        return CMessages(self.request.handler(
+            method = "GET",
+            url = f"/g/s/chat/thread/{chatId}/message?v=2&pagingType=t&size={size}"
+        ))
+    
+    @authenticated
+    def fetch_message(self, chatId: str, messageId: str) -> Message:
+        """
+        Fetches a specific message from a chat thread.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param messageId: The ID of the message to fetch.
+        :type messageId: str
+        :return: A `Message` object representing the fetched message.
+        :rtype: Message
+
+        This function retrieves a specific message with the given `messageId` from the chat thread specified by `chatId`.
+
+        `Message` represents a message in a chat thread.
+
+        **Example usage:**
+
+        >>> message = client.fetch_message("chat123", "message456")
+        ... print(message.text)
+        ... print(message.timestamp)
+        """
+        return Message(self.request.handler(
+            method = "GET",
+            url = f"/g/s/chat/thread/{chatId}/message/{messageId}"
+        ))
+    
+    @authenticated
+    def search_community(self, aminoId: str) -> dict:
+        """
+        Search for a community by Amino ID or link.
+
+        :param aminoId: The Amino ID or link of the community to search for.
+        :type aminoId: str
+        :return: A dictionary containing the search results.
+        :rtype: dict
+
+        This function sends a GET request to search for a community using the specified Amino ID or link.
+
+        **Example usage:**
+
+        >>> search_results = client.search_community("example_community").title
+        ... print(search_results)
+        """
+        return self.request.handler(
+            method = "GET",
+            url = f"/g/s/search/amino-id-and-link?q={aminoId}"
+        )
+    
+    @authenticated
+    def fetch_followers(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
+        """
+        Fetches the followers of a user.
+
+        :param userId: The ID of the user to fetch the followers for.
+        :type userId: str
+        :param start: The starting index of the followers list. (Default: 0)
+        :type start: int, optional
+        :param size: The number of followers to fetch. (Default: 25)
+        :type size: int, optional
+        :return: A `UserProfileList` object containing the fetched followers.
+        :rtype: UserProfileList
+
+        This function sends a GET request to the API to fetch the followers of a user.
+
+        `UserProfileList` represents a list of user profiles.
+
+        **Example usage:**
+
+        >>> followers = client.fetch_followers("user123", start=0, size=10)
+        ... for follower in followers.userId:
+        ...     print(follower)
+        """
+        return UserProfileList(self.request.handler(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/member?start={start}&size={size}"
+        ))
+    
+    @authenticated
+    def fetch_following(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
+        """
+        Fetches the user profiles of the users that the specified user is following.
+
+        :param userId: The ID of the user.
+        :type userId: str
+        :param start: The index to start fetching from. (Default: 0)
+        :type start: int, optional
+        :param size: The number of user profiles to fetch. (Default: 25)
+        :type size: int, optional
+        :return: A `UserProfileList` object containing the user profiles.
+        :rtype: UserProfileList
+
+        This function sends a GET request to the API to fetch the user profiles of the users that the specified user is following.
+
+        `UserProfileList` represents a list of user profiles.
+
+        **Example usage:**
+
+        >>> following = client.fetch_following("user123")
+        ... for profile in following.userId:
+        ...     print(profile)
+        """
+        return UserProfileList(self.request.handler(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/joined?start={start}&size={size}"
+        ))
+    
+    @authenticated
+    def fetch_visitors(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
+        """
+        Fetches the visitors of a user profile.
+
+        :param userId: The ID of the user profile to fetch visitors for.
+        :type userId: str
+        :param start: The index of the first visitor to retrieve. (Default: 0)
+        :type start: int, optional
+        :param size: The maximum number of visitors to retrieve. (Default: 25)
+        :type size: int, optional
+        :return: A `UserProfileList` object containing the retrieved user profiles.
+        :rtype: UserProfileList
+
+        This function sends a GET request to the API to fetch the visitors of a user profile.
+
+        `UserProfileList` represents a list of user profiles.
+
+        **Example usage:**
+
+        >>> visitors = client.fetch_visitors("123456", start=0, size=10)
+        ... for visitor in visitors.userId:
+        ...     print(visitor)
+        """
+        return UserProfileList(self.request.handler(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/visitors?start={start}&size={size}"
+        ))
+    
+    @authenticated
+    def blocked_users(self, start: int = 0, size: int = 25):
+        """
+        Retrieves a list of blocked users.
+
+        :param start: The index of the first blocked user to retrieve. (Default: 0)
+        :type start: int, optional
+        :param size: The maximum number of blocked users to retrieve. (Default: 25)
+        :type size: int, optional
+        :return: A `UserProfileList` object containing the list of blocked users.
+        :rtype: UserProfileList
+
+        This function sends a GET request to the API to retrieve a list of blocked users.
+
+        `UserProfileList` represents a list of user profiles.
+
+        **Example usage:**
+
+        >>> blocked_users = client.blocked_users(start=0, size=10)
+        ... for user in blocked_users.userId:
+        ...     print(user)
+        """
+        return UserProfileList(self.request.handler(
+            method = "GET",
+            url = f"/g/s/block?start={start}&size={size}"
+        ))
+
+    @authenticated
+    def mark_as_read(self, chatId: str, messageId: str) -> ApiResponse:
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/chat/thread/{chatId}/mark-as-read",
+            data = {
+                "messageId": messageId,
+                "timestamp": int(time() * 1000)
+            }
+        ))
+    
+    @authenticated
+    def visit(self, userId: str) -> ApiResponse:
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/user-profile/{userId}?action=visit"
+        ))
+
+    @authenticated
+    def block(self, userId: str) -> ApiResponse:
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/block/{userId}"
+        ))
+    
+    @authenticated
+    def unblock(self, userId: str) -> ApiResponse:
+        return ApiResponse(self.request.handler(
+            method = "DELETE",
+            url = f"/g/s/block/{userId}"
+        ))
+
+    @authenticated
+    def join_request(self, comId: str, message: str = None):
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/x{comId}/s/community/membership-request",
+            data = {
+                "message": message,
+                "timestamp": int(time() * 1000)
+            }
+        ))
+
+    @authenticated
+    def flag_community(self, comId: str, reason: str, flagType: int, isGuest: False):
+        if reason is None: raise ValueError("Reason must be specified.")
+        if flagType is None: raise ValueError("Flag type must be specified.")
+
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/x{comId}/s/item-flag",
+            data = {
+                "flagType": flagType,
+                "reason": reason,
+                "timestamp": int(time() * 1000),
+                "isGuest": "g-flag" if isGuest else "flag"
+            }
+        ))
+    
+    def fetch_linked_communities(self, userId: str):
+        return self.request.handler(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/linked-community"
+        )["linkedCommunityList"]
+    
+    def fetch_unlinked_communities(self, userId: str):
+        return self.request.handler(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/unlinked-community"
+        )["unlinkedCommunityList"]
+
+    @authenticated
+    def reorder_linked_communities(self, comIds: list):
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/user-profile/{self.userId}/linked-community/reorder",
+            data = {
+                "timestamp": int(time() * 1000),
+                "comIds": comIds
+            }
+        ))
+    
+    @authenticated
+    def add_linked_community(self, comId: str):
+        return ApiResponse(self.request.handler(
+            method = "POST",
+            url = f"/g/s/user-profile/{self.userId}/linked-community/{comId}"
+        ))
+    
+    @authenticated
+    def remove_linked_community(self, comId: str):
+        return ApiResponse(self.request.handler(
+            method = "DELETE",
+            url = f"/g/s/user-profile/{self.userId}/linked-community/{comId}"
+        ))
+    
+    @authenticated
+    def comment(self, message: str, userId: str = None, blogId: str = None, wikiId: str = None, replyTo: str = None) -> ApiResponse:
+        if message is None: raise ValueError("Message must be specified.")
+
+        data = {
+            "content": message,
+            "stickerId": None,
+            "type": 0,
+            "timestamp": int(time() * 1000)
+        }
+
+        if replyTo: data["respondTo"] = replyTo
+
+        if userId:
+            data["eventSource"] = "UserProfileView"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/user-profile/{userId}/g-comment",
+                data = data
+            ))
+
+        elif blogId:
+            data["eventSource"] = "PostDetailView"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/blog/{blogId}/g-comment",
+                data = data
+            ))
+        
+        elif wikiId:
+            data["eventSource"] = "PostDetailView"
+            url = f"/g/s/item/{wikiId}/g-comment"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/item/{wikiId}/g-comment"
+            ))
+        
+        else:
+            raise ValueError("Either userId, blogId or wikiId must be specified.")
+    
+    @authenticated
+    def delete_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> ApiResponse:
+        if userId:
+            return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/user-profile/{userId}/g-comment/{commentId}"
+            ))
+        elif blogId:
+            return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/blog/{blogId}/g-comment/{commentId}"
+            ))
+        elif wikiId:
+            return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/item/{wikiId}/g-comment/{commentId}"
+            ))
+        else:
+            raise ValueError("Either userId, blogId or wikiId must be specified.")
+    
+    @authenticated
+    def like_blog(self, blogId: Union[str, list] = None, wikiId: str = None) -> ApiResponse:
+        data = {
+            "value": 4,
+            "timestamp": int(time() * 1000)
+        }
+
+        if blogId:
+            if isinstance(blogId, str):
+                data["eventSource"] = "UserProfileView",
+                return ApiResponse(self.request.handler(
+                    method = "POST",
+                    url = f"/g/s/blog/{blogId}/g-vote?cv=1.2",
+                    data = data
+                ))
+            elif isinstance(blogId, list):
+                data["targetIdList"] = blogId,
+                return ApiResponse(
+                    self.request.handler(
+                        method = "POST", url="/g/s/feed/g-vote",
+                        data = data
+                    )
+                )
+            else: raise TypeError("blogId must be a string or a list.")
+
+        elif wikiId:
+            data["eventSource"] = "PostDetailView"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/item/{wikiId}/g-vote?cv=1.2",
+                data = data
+            ))
+        else:
+            raise ValueError("Either blogId or wikiId must be specified.")
+    
+    @authenticated
+    def unlike_blog(self, blogId: str = None, wikiId: str = None) -> ApiResponse:
+        if blogId: return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"{self.api}/g/s/blog/{blogId}/g-vote?eventSource=UserProfileView"
+            ))
+        elif wikiId: return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/item/{wikiId}/g-vote?eventSource=PostDetailView"
+            ))
+        else:
+            raise ValueError("Either blogId or wikiId must be specified.")
+    
+    @authenticated
+    def like_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> ApiResponse:
+        data = {
+            "value": 4,
+            "timestamp": int(time() * 1000)
+        }
+
+        if userId:
+            data["eventSource"] = "UserProfileView"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/user-profile/{userId}/comment/{commentId}/g-vote?cv=1.2&value=1",
+                data = data
+                ))
+        
+        elif blogId:
+            data["eventSource"] = "PostDetailView"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/blog/{blogId}/comment/{commentId}/g-vote?cv=1.2&value=1",
+                data = data
+            ))
+        
+        elif wikiId:
+            data["eventSource"] = "PostDetailView"
+            return ApiResponse(self.request.handler(
+                method = "POST",
+                url = f"/g/s/item/{wikiId}/comment/{commentId}/g-vote?cv=1.2&value=1",
+                data = data
+            ))
+        
+        else: raise ValueError("Either userId, blogId or wikiId must be specified.")
+    
+    @authenticated
+    def unlike_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> ApiResponse:
+        if userId:
+            return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/user-profile/{userId}/comment/{commentId}/g-vote?eventSource=UserProfileView"
+            ))
+        elif blogId:
+            return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/blog/{blogId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
+            ))
+        elif wikiId:
+            return ApiResponse(self.request.handler(
+                method = "DELETE",
+                url = f"/g/s/item/{wikiId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
+            ))
+        else: raise ValueError("Either userId, blogId or wikiId must be specified.")
+    
+    def fetch_supported_languages(self) -> List[str]:
+        return self.request.handler(
+            method="GET",
+            url="/g/s/community-collection/supported-languages?start=0&size=100",
+        )["supportedLanguages"]
+
+    @authenticated
+    def fetch_ta_announcement(self, language: str = "en", start: int = 0, size: int = 25) -> dict:
+        if language not in self.fetch_supported_languages(): raise ValueError("Invalid language.")
+        return self.request.handler(
+            method = "GET",
+            url = f"/g/s/announcement?language={language}&start={start}&size={size}"
+        )
