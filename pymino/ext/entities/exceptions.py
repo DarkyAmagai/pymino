@@ -497,3 +497,28 @@ class IntentsNotEnabled(Exception):
         super().__init__(
             "Intents are not enabled. Please enable them in your Bot instance and try again."
             )
+
+class MissingEventParameter(Exception):
+    def __init__(self):
+        super().__init__("""
+Missing parameter in function: 
+- `notification` for `member_set_you_host`, `member_set_you_cohost`, or `member_remove_your_cohost`.
+- `online_members` for `user_online`.
+
+Examples of the correct usage:
+
+For `member_set_you_host`:
+```
+@bot.on_member_set_you_host()
+def member_set_you_host(ctx: Context, notification: Notification):
+    print("You are now the host")
+```
+
+For `user_online`:
+```
+@bot.on_user_online()
+def user_online(ctx: Context, online_members: OnlineMembers):
+    print("A user has come online")
+```
+"""
+)
