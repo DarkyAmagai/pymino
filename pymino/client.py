@@ -1633,7 +1633,7 @@ class Client:
         ))
     
     @authenticated
-    def fetch_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> CChatMembers.members:
+    def fetch_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> CChatMembers:
         """
         Fetches the users in a chat.
 
