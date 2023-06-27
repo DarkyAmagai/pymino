@@ -9,6 +9,7 @@ from .console import *
 from .socket import *
 from .account import *
 from .context import *
+from .global_client import *
 from .community import *
 from .async_community import *
 from .dispatcher import *

@@ -22,7 +22,7 @@ try:
     from websocket import WebSocket, WebSocketApp
 except ImportError as e:
     system("pip uninstall websocket -y")
-    system("pip install websocket-client==1.5.2")
+    system("pip install websocket-client==1.6.1")
     raise WrongWebSocketPackage from e
 
 
