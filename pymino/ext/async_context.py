@@ -1,4 +1,5 @@
 import asyncio
+from functools import wraps
 import aiohttp
 from diskcache import Cache
 from base64 import b64encode
@@ -18,12 +19,13 @@ class AsyncContext:
     - `session` - The session we will use to send requests.
 
     """
-    def __init__(self, message: Message, loop: AbstractEventLoop, session, intents: bool):
-        self.intents:   bool = intents
-        self.request    = session
-        self.loop:      AbstractEventLoop = loop
+    def __init__(self, message: Message, bot):
+        self.bot = bot
         self.message:   Message = message
-        self.userId:    str = session.userId
+        self.loop:      AbstractEventLoop = self.bot.loop
+        self.intents:   bool = self.bot.intents
+        self.request    = self.bot.request
+        self.userId:    str = self.request.userId
 
 
     @property
@@ -67,6 +69,14 @@ class AsyncContext:
     def __message_endpoint__(self) -> str:
         """The message endpoint."""
         return f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message"
+
+
+    def __typing__(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            args[0].loop.create_task(args[0].__rt__(args[0].comId, args[0].chatId))
+            return func(*args, **kwargs)
+        return wrapper
 
 
     def _run(func: Callable) -> Callable:
@@ -126,6 +136,38 @@ class AsyncContext:
                 url = self.__message_endpoint__,
                 data = await self.__message__(**kwargs)
             ))
+
+
+    async def __st__(self, comId: str, chatId: str):
+        return await self.bot.send_websocket_message({
+            "o":{
+                "actions":["Typing"],
+                "target":f"ndc://x{comId}/chat-thread/{chatId}",
+                "ndcId":comId,
+                "params":{"topicIds":[],"threadType":2},
+                "id":randint(0, 100)},
+                "t":304
+                })
+
+
+    async def __et__(self, comId: str, chatId: str):
+        async def wrapper():
+            return await self.bot.send_websocket_message({
+                "o":{
+                    "actions":["Typing"],
+                    "target":f"ndc://x{comId}/chat-thread/{chatId}",
+                    "ndcId":comId,
+                    "params":{"duration":0,"topicIds":[],"threadType":2},
+                    "id":randint(0, 100)},
+                    "t":306
+                    })
+        await asyncio.sleep(2.5)
+        return await wrapper()
+
+
+    async def __rt__(self, comId: str, chatId: str):
+        await self.__st__(comId, chatId)
+        await self.__et__(comId, chatId)
 
 
     async def _delete(self, delete_message: CMessage, delete_after: int = 5) -> ApiResponse:
@@ -202,6 +244,7 @@ class AsyncContext:
 
 
     @_run
+    @__typing__
     async def send(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
         `send` - This sends a message.
@@ -235,6 +278,7 @@ class AsyncContext:
 
 
     @_run
+    @__typing__
     async def reply(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
         `reply` - This replies to the message.
@@ -293,6 +337,7 @@ class AsyncContext:
 
 
     @_run
+    @__typing__
     async def send_link_snippet(self, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None) -> CMessage:
         """
         `send_link_snippet` - This sends a link snippet.
@@ -338,6 +383,7 @@ class AsyncContext:
 
 
     @_run
+    @__typing__
     async def send_embed(
         self,
         message: str,
@@ -427,6 +473,7 @@ class AsyncContext:
 
 
     @_run
+    @__typing__
     async def send_sticker(self, sticker_id: str) -> CMessage:
         """
         `send_sticker` - This sends a sticker.

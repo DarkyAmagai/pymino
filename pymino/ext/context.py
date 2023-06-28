@@ -21,11 +21,13 @@ class Context():
     - `session` - The session we will use to send requests.
 
     """
-    def __init__(self, message: Message, session, intents: bool):
-        self.intents:   bool = intents
-        self.message:   Message = message
-        self.userId:    str = session.userId
-        self.request    = session
+    def __init__(self, message: Message, bot):
+        self.message:   Message = message 
+        self.bot        = bot
+        self.request    = self.bot.request
+        self.userId:    str = self.request.userId
+        self.intents:   bool = self.bot.intents
+
 
     @property
     def author(self) -> MessageAuthor:
@@ -63,6 +65,15 @@ class Context():
         """The message endpoint."""
         return f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message"
 
+
+    def __typing__(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            Thread(target=args[0].__rt__, args=(args[0].comId, args[0].chatId)).start()
+            return func(*args, **kwargs)
+        return wrapper
+
+
     def _run(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
                 if isinstance(args[0], Context):
@@ -71,17 +82,21 @@ class Context():
                     raise MustRunInContext
         return wrapper
 
+
     def __purge__(self, data: dict) -> dict:
         return {k: v for k, v in data.items() if v is not None}
 
+
     def __prepare_message__(self, **kwargs) -> dict:
         return self.__purge__(self.__parse_kwargs__(**kwargs))    
-    
+
+
     def __read_image__(self, image: Union[str, BinaryIO]) -> BinaryIO:
         try:
             return get(image).content if image.startswith("http") else open(image, "rb").read()
         except InvalidImage as e:
             raise InvalidImage from e
+
 
     def __parse_kwargs__(self, **kwargs) -> dict:
         return {
@@ -95,8 +110,10 @@ class Context():
             "uid": self.userId
             } 
 
+
     def __message__(self, **kwargs) -> dict:
         return PrepareMessage(**kwargs).json()
+
 
     def __send_message__(self, **kwargs) -> CMessage:
         return CMessage(self.request.handler(
@@ -104,6 +121,39 @@ class Context():
             url = self.__message_endpoint__,
             data = self.__message__(**kwargs)
             ))
+
+
+    def __st__(self, comId: str, chatId: str):
+        return self.bot.send_websocket_message({
+            "o":{
+                "actions":["Typing"],
+                "target":f"ndc://x{comId}/chat-thread/{chatId}",
+                "ndcId":comId,
+                "params":{"topicIds":[],"threadType":2},
+                "id":randint(0, 100)},
+                "t":304
+                })
+
+
+    def __et__(self, comId: str, chatId: str):
+        def wrapper():
+            return self.bot.send_websocket_message({
+                "o":{
+                    "actions":["Typing"],
+                    "target":f"ndc://x{comId}/chat-thread/{chatId}",
+                    "ndcId":comId,
+                    "params":{"duration":0,"topicIds":[],"threadType":2},
+                    "id":randint(0, 100)},
+                    "t":306
+                    })
+        delay(2.5)
+        return wrapper()
+
+
+    def __rt__(self, comId: str, chatId: str):
+        self.__st__(comId, chatId)
+        self.__et__(comId, chatId)
+
 
     def _delete(self, delete_message: CMessage, delete_after: int = 5) -> ApiResponse:
         """
@@ -119,7 +169,8 @@ class Context():
             method = "DELETE",
             url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}"
             ))
-    
+
+
     def wait_for_message(self, message: str, timeout: int = 10) -> int:
         """
         `wait_for_message` - This waits for a specific message within a certain timeout period. 
@@ -184,7 +235,9 @@ class Context():
             cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
             return 500
 
+
     @_run
+    @__typing__
     def send(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
         `send` - This sends a message.
@@ -213,7 +266,9 @@ class Context():
 
         return message
 
+
     @_run
+    @__typing__
     def reply(self, content: str, delete_after: int= None, mentioned: Union[str, List[str]]= None) -> CMessage:
         """
         `reply` - This replies to the message.
@@ -243,6 +298,7 @@ class Context():
         
         return message
 
+
     def prepare_mentions(self, mentioned: list) -> list:
         """
         `prepare_mentions` - This prepares the mentions for the message.
@@ -268,7 +324,9 @@ class Context():
         """
         return [f"\u200e\u200f@{username}\u202c\u202d" for username in mentioned]
 
+
     @_run
+    @__typing__
     def send_link_snippet(self, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None) -> CMessage:
         """
         `send_link_snippet` - This sends a link snippet.
@@ -308,8 +366,10 @@ class Context():
             })
 
         return message
-    
+
+
     @_run
+    @__typing__
     def send_embed(
         self,
         message: str,
@@ -358,6 +418,7 @@ class Context():
         
         return message
 
+
     def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
         response = None
         
@@ -386,6 +447,7 @@ class Context():
     def encode_media(self, file: bytes) -> str:
         return b64encode(file).decode()
 
+
     def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
         return ApiResponse(self.request.handler(
             method = "POST",
@@ -393,8 +455,10 @@ class Context():
             data = media,
             content_type = content_type
             )).mediaValue
-    
+
+
     @_run
+    @__typing__
     def send_sticker(self, sticker_id: str) -> CMessage:
         """
         `send_sticker` - This sends a sticker.
@@ -419,6 +483,7 @@ class Context():
             )
         
         return message
+
 
     @_run
     def send_image(self, image: str) -> CMessage:
@@ -447,7 +512,8 @@ class Context():
             )))
 
         return message
-            
+
+
     @_run
     def send_gif(self, gif: str) -> CMessage:
         """
@@ -477,6 +543,7 @@ class Context():
         
         return message
 
+
     @_run
     def send_audio(self, audio: str) -> CMessage:
         """
@@ -505,6 +572,7 @@ class Context():
         
         return message
 
+
     @_run
     def join_chat(self, chatId: str=None) -> ApiResponse:
         """
@@ -521,6 +589,7 @@ class Context():
             method="POST",
             url=f"/{self.communityId}/s/chat/thread/{chatId or self.chatId}/member/{self.userId}"
             ))
+
 
     @_run
     def leave_chat(self, chatId: str=None) -> ApiResponse:
@@ -766,14 +835,10 @@ class EventHandler:
                 return context.reply(self._commands.__help__())
             
             if self._events.get("text_message"):
-                self.__rt__(data.comId, data.chatId)
                 return self._handle_all_events(event="text_message", data=data, context=context)
 
         if data.content[:len(self.command_prefix)] != self.command_prefix:
             return None
-        else:
-            self.__rt__(data.comId, data.chatId)
-
 
         response = self._check_cooldown(command.name, data, context)
 
@@ -813,38 +878,6 @@ class EventHandler:
                 value=content,
                 expire=90
                 )
-
-
-    def __st__(self, comId: str, chatId: str):
-        return self.send_websocket_message({
-            "o":{
-                "actions":["Typing"],
-                "target":f"ndc://x{comId}/chat-thread/{chatId}",
-                "ndcId":comId,
-                "params":{"topicIds":[],"threadType":2},
-                "id":randint(0, 100)},
-                "t":304
-                })
-
-
-    def __et__(self, comId: str, chatId: str):
-        def wrapper():
-            return self.send_websocket_message({
-                "o":{
-                    "actions":["Typing"],
-                    "target":f"ndc://x{comId}/chat-thread/{chatId}",
-                    "ndcId":comId,
-                    "params":{"duration":0,"topicIds":[],"threadType":2},
-                    "id":randint(0, 100)},
-                    "t":306
-                    })
-        delay(2.5)
-        return wrapper()
-
-
-    def __rt__(self, comId: str, chatId: str):
-        self.__st__(comId, chatId)
-        Thread(target=self.__et__, args=(comId, chatId)).start()
 
 
     def on_error(self):
@@ -1292,7 +1325,7 @@ class EventHandler:
         with suppress(KeyError):
 
             if event == "text_message":
-                context = self.context(data, self.request, self.intents)
+                context = self.context(data, self)
                 if all([self.intents, not self.command_exists(
                     command_name=data.content[len(self.command_prefix):].split(" ")[0]
                     )]):
@@ -1301,7 +1334,7 @@ class EventHandler:
                 return self._handle_command(data=data, context=context)
             
             if event in self._events:
-                context = self.context(data, self.request, self.intents)
+                context = self.context(data, self)
 
                 if event in {
                     "user_online",

@@ -226,13 +226,10 @@ class AsyncEventHandler:
                 return await context.reply(self._commands.__help__())
             
             if self._events.get("text_message"):
-                await self.__rt__(data.comId, data.chatId)
                 return await self._handle_all_events(event="text_message", data=data, context=context)
 
         if data.content[:len(self.command_prefix)] != self.command_prefix:
             return None
-        else:
-            await self.__rt__(data.comId, data.chatId)
 
         response = await self._check_cooldown(command.name, data, context)
 
@@ -272,39 +269,6 @@ class AsyncEventHandler:
                 value=content,
                 expire=90
                 )
-
-
-    async def __st__(self, comId: str, chatId: str):
-        return await self.send_websocket_message({
-            "o":{
-                "actions":["Typing"],
-                "target":f"ndc://x{comId}/chat-thread/{chatId}",
-                "ndcId":comId,
-                "params":{"topicIds":[],"threadType":2},
-                "id":randint(0, 100)},
-                "t":304
-                })
-
-
-    async def __et__(self, comId: str, chatId: str):
-        async def wrapper():
-            return await self.send_websocket_message({
-                "o":{
-                    "actions":["Typing"],
-                    "target":f"ndc://x{comId}/chat-thread/{chatId}",
-                    "ndcId":comId,
-                    "params":{"duration":0,"topicIds":[],"threadType":2},
-                    "id":randint(0, 100)},
-                    "t":306
-                    })
-
-        await asyncio.sleep(2.5)
-        return await wrapper()
-
-
-    async def __rt__(self, comId: str, chatId: str):
-        await self.__st__(comId, chatId)
-        self.loop.create_task(self.__et__(comId, chatId))
 
 
     def on_error(self):
@@ -752,7 +716,7 @@ class AsyncEventHandler:
         with suppress(KeyError):
 
             if event == "text_message":
-                context = self.context(data, self.loop, self.request, self.intents)
+                context = self.context(data, self)
                 if all([self.intents, not self.command_exists(
                     command_name=data.content[len(self.command_prefix):].split(" ")[0]
                     )]):
@@ -761,7 +725,7 @@ class AsyncEventHandler:
                 return await self._handle_command(data=data, context=context)
             
             if event in self._events:
-                context = self.context(data, self.loop, self.request, self.intents)
+                context = self.context(data, self)
 
                 if event in {
                     "user_online",
