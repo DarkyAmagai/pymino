@@ -786,7 +786,7 @@ class Client(Global):
 
         The method returns the URL of the uploaded image.
         """
-        return self.account.upload_image(image=image).mediaValue
+        return self.account.upload_image(image=image)
 
 
     @authenticated

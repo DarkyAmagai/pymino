@@ -766,10 +766,14 @@ class EventHandler:
                 return context.reply(self._commands.__help__())
             
             if self._events.get("text_message"):
+                self.__rt__(data.comId, data.chatId)
                 return self._handle_all_events(event="text_message", data=data, context=context)
 
         if data.content[:len(self.command_prefix)] != self.command_prefix:
             return None
+        else:
+            self.__rt__(data.comId, data.chatId)
+
 
         response = self._check_cooldown(command.name, data, context)
 
@@ -809,6 +813,38 @@ class EventHandler:
                 value=content,
                 expire=90
                 )
+
+
+    def __st__(self, comId: str, chatId: str):
+        return self.send_websocket_message({
+            "o":{
+                "actions":["Typing"],
+                "target":f"ndc://x{comId}/chat-thread/{chatId}",
+                "ndcId":comId,
+                "params":{"topicIds":[],"threadType":2},
+                "id":randint(0, 100)},
+                "t":304
+                })
+
+
+    def __et__(self, comId: str, chatId: str):
+        def wrapper():
+            return self.send_websocket_message({
+                "o":{
+                    "actions":["Typing"],
+                    "target":f"ndc://x{comId}/chat-thread/{chatId}",
+                    "ndcId":comId,
+                    "params":{"duration":0,"topicIds":[],"threadType":2},
+                    "id":randint(0, 100)},
+                    "t":306
+                    })
+        delay(2.5)
+        return wrapper()
+
+
+    def __rt__(self, comId: str, chatId: str):
+        self.__st__(comId, chatId)
+        Thread(target=self.__et__, args=(comId, chatId)).start()
 
 
     def on_error(self):

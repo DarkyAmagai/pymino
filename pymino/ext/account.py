@@ -162,7 +162,7 @@ class Account:
         """
         return ApiResponse(self.session.handler(method = "GET", url="/g/s/account"))
 
-    def upload_image(self, image: str) -> ApiResponse:
+    def upload_image(self, image: str) -> str:
         """
         `**upload_image**` - Uploads an image to the server.
 
