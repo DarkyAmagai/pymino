@@ -220,7 +220,7 @@ class Context():
 
         start = time()
 
-        with self.cache as cache:
+        with self.bot.cache as cache:
             while time() - start < timeout:
                 cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
 
@@ -620,7 +620,6 @@ class EventHandler:
     def __init__(self):
         self.command_prefix:    str = self.command_prefix
         self._events:           dict = {}
-        self._wait_for:         Cache = Cache("cache")
         self._commands:         Commands = Commands()
         self.context:           Context = Context
 
@@ -829,10 +828,11 @@ class EventHandler:
 
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         command = self._commands.fetch_command(command_name)
-
+    
         if command is None:
             if command_name == "help" and data.content == f"{self.command_prefix}help":
-                return context.reply(self._commands.__help__())
+                cooldown_message = self._cooldown_message or self._commands.__help__()
+                return context.reply(content=cooldown_message)
             
             if self._events.get("text_message"):
                 return self._handle_all_events(event="text_message", data=data, context=context)
@@ -869,9 +869,9 @@ class EventHandler:
 
 
     def _add_cache(self, chatId: str, userId: str, content: str):
-        with self._wait_for as cache:
+        with self.cache as cache:
             if cache.get(f"{chatId}_{userId}") is not None:
-                self._wait_for.clear(f"{chatId}_{userId}")
+                self.cache.clear(f"{chatId}_{userId}")
 
             cache.add(
                 key=f"{chatId}_{userId}",

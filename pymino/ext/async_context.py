@@ -225,7 +225,7 @@ class AsyncContext:
 
         start = time()
 
-        with self.cache as cache:
+        with self.bot.cache as cache:
             while time() - start < timeout:
                 cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
 

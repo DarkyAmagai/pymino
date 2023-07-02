@@ -497,3 +497,9 @@ class IntentsNotEnabled(Exception):
         super().__init__(
             "Intents are not enabled. Please enable them in your Bot instance and try again."
             )
+
+class InvalidCommandPrefix(Exception):
+    def __init__(self):
+        super().__init__(
+            "Invalid command prefix. Please provide a valid command prefix."
+            )

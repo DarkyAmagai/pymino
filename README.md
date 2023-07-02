@@ -12,7 +12,7 @@
   <p style="font-size: 1.2em; color: #424242;">Easily create a bot for Amino Apps using a modern, easy-to-use library.</p>
 
   <div style="border: 3px solid red; padding: 10px; margin: 15px 0;">
-    <h3 style="color: red;"><strong>⚠️ WARNING ⚠️</strong></h3>
+    <h3 style="color: red;"><strong>WARNING</strong></h3>
     <p><strong>Pymino is a fully reverse-engineered client. By using this client, you may be violating the Amino Apps' Terms of Service. This could lead to your account being suspended or permanently banned. Please use Pymino responsibly and at your own risk.</strong></p>
     <p><strong>Understand that the developers and maintainers of Pymino are not responsible for any actions taken against your account as a result of using this client. Proceed with caution.</strong></p>
   </div>

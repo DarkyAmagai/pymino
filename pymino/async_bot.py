@@ -20,6 +20,7 @@ class AsyncBot(AsyncWSClient):
         proxy: Optional[str] = None
         ):
         self.loop:              asyncio.AbstractEventLoop = asyncio.get_event_loop()
+        self._cooldown_message  = None
         self._debug:            bool = check_debugger()
         self._intents:          bool = intents
         self._is_ready:         bool = False
@@ -27,7 +28,11 @@ class AsyncBot(AsyncWSClient):
         self._sid:              str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
+
         self.command_prefix:    Optional[str] = command_prefix
+        if self.command_prefix == "":
+            raise InvalidCommandPrefix()
+
         self.community_id:      Union[str, int] = community_id
         self.online_status:     bool = online_status
         self.device_id:         Optional[str] = device_id or generate_device_id()
@@ -52,7 +57,6 @@ class AsyncBot(AsyncWSClient):
     @debug.setter
     def debug(self, value: bool) -> None:
         self._debug = value
-
 
     @property
     def intents(self) -> bool:
@@ -87,6 +91,21 @@ class AsyncBot(AsyncWSClient):
     @sid.setter
     def sid(self, value: str) -> None:
         self._sid = value
+
+
+    def set_cooldown_message(self, message: str) -> None:
+        """
+        Changes the default cooldown message.
+        
+        :param message: The message to set as the default cooldown message.
+        :type message: str
+        :return: None
+        
+        This method changes the default cooldown message. The default cooldown message is used when a command is on cooldown
+        
+        **Note:** This method only sets the default cooldown message and cannot be used to retrieve the default cooldown message.
+        """
+        self._cooldown_message = message
 
 
     async def authenticate(self, email: str, password: str, device_id: str=None) -> dict:

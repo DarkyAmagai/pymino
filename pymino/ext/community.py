@@ -4267,12 +4267,12 @@ class Community:
 
 
     @community
-    def leave_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def leave_chat(self, chatId: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
         """
-        Leaves a chat.
+        Leaves a chat or multiple chats.
 
-        :param chatId: The ID of the chat to leave.
-        :type chatId: str
+        :param chatId: A list of chat thread IDs to leave or a single chat thread ID to leave.
+        :type chatId: Union[str, List[str]]
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
         :type comId: Union[str, int]
         :return: An `ApiResponse` object containing information about the request status.
@@ -4291,15 +4291,16 @@ class Community:
 
         To leave a chat with ID "0000-0000-0000-0000" in the current community:
 
-        >>> response = client.community.leave_chat(chatId="0000-0000-0000-0000")
+        >>> response = client.community.leave_chat(chatId=["0000-0000-0000-0000", "1111-1111-1111-1111"])
         ... if response.statuscode == 0:
         ...     print("Left chat successfully!")
         ... else:
         ...     print("Failed to leave chat.")
         """
+
         return ApiResponse(self.session.handler(
             method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/leave?threadIds={','.join(chatId) if isinstance(chatId, list) else chatId}"
             ))
 
 

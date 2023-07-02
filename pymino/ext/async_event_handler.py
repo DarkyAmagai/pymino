@@ -35,7 +35,6 @@ class AsyncEventHandler:
     def __init__(self):
         self.command_prefix:    str = self.command_prefix
         self._events:           dict = {}
-        self._wait_for:         Cache = Cache("cache")
         self._commands:         Commands = Commands()
         self.context:           AsyncContext = AsyncContext
 
@@ -68,9 +67,10 @@ class AsyncEventHandler:
 
     def task(self, interval: int = 10):
         def decorator(func: Callable) -> Callable:
-            async def wrapper(interval: int):
+            async def wrapper():
                 await self._handle_task(func, interval)
-            self.loop.create_task(wrapper(interval=interval))
+            self.loop.create_task(wrapper())
+            return func
         return decorator
 
 
@@ -217,13 +217,14 @@ class AsyncEventHandler:
     async def _handle_command(self, data: Message, context: AsyncContext):
         """Handles commands."""
         command_name = next(iter(data.content[len(self.command_prefix):].split(" ")))
-
+        
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
         command = self._commands.fetch_command(command_name)
 
         if command is None:
             if command_name == "help" and data.content == f"{self.command_prefix}help":
-                return await context.reply(self._commands.__help__())
+                cooldown_message = self._cooldown_message or self._commands.__help__()
+                return context.reply(content=cooldown_message)
             
             if self._events.get("text_message"):
                 return await self._handle_all_events(event="text_message", data=data, context=context)
@@ -260,9 +261,9 @@ class AsyncEventHandler:
 
 
     def _add_cache(self, chatId: str, userId: str, content: str):
-        with self._wait_for as cache:
+        with self.cache as cache:
             if cache.get(f"{chatId}_{userId}") is not None:
-                self._wait_for.clear(f"{chatId}_{userId}")
+                self.cache.clear(f"{chatId}_{userId}")
 
             cache.add(
                 key=f"{chatId}_{userId}",

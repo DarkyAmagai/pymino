@@ -156,7 +156,7 @@ class AsyncRequestHandler:
             ClientHttpProxyError,
             WSServerHandshakeError,
         ):
-            await self.handler(method, url, data, content_type)
+            return await self.handler(method, url, data, content_type)
 
 
     async def handler(
@@ -195,7 +195,7 @@ class AsyncRequestHandler:
 
         self.print_response(method=method, url=url, status_code=status_code)
 
-        return self.handle_response(status_code=status_code, response=content)
+        return await self.handle_response(status_code=status_code, response=content)
 
 
     async def service_handler(
@@ -290,7 +290,7 @@ class AsyncRequestHandler:
         return headers, data
 
 
-    def raise_error(self, response: dict) -> None:
+    async def raise_error(self, response: dict) -> None:
         """
         `raise_error` - Raises an error if an error is in the response
 
@@ -308,13 +308,13 @@ class AsyncRequestHandler:
                     hasattr(self, "password"),
                 ]
         ):
-            return self.bot.run(self.email, self.password, use_cache=False)
+            return await self.bot.run(self.email, self.password, use_cache=False)
 
         else:
             raise APIException(response)
 
 
-    def handle_response(self, status_code: int, response: str) -> dict:
+    async def handle_response(self, status_code: int, response: str) -> dict:
         """
         `handle_response` - Handles the response and returns the response as a dict
 
@@ -344,7 +344,7 @@ class AsyncRequestHandler:
                 response = loads(response)
 
             if status_code != 200:
-                self.raise_error(response)
+                await self.raise_error(response)
 
             return response
 

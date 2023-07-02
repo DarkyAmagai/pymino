@@ -1638,12 +1638,12 @@ class Global:
 
 
     @authenticated
-    def leave_chat(self, chatId: str) -> ApiResponse:
+    def leave_chat(self, chatId: Union[str, List[str]]) -> ApiResponse:
         """
         Removes the authenticated user from a chat thread.
 
-        :param chatId: The ID of the chat thread to leave.
-        :type chatId: str
+        :param chatId: A list of chat thread IDs to leave or a single chat thread ID to leave.
+        :type chatId: Union[str, List[str]]
         :return: The API response.
         :rtype: ApiResponse
 
@@ -1655,7 +1655,7 @@ class Global:
         """
         return ApiResponse(self.make_request(
             method="DELETE",
-            url=f"/g/s/chat/thread/{chatId}/member/{self.userId}"
+            url = f"/g/s/chat/thread/leave?threadIds={','.join(chatId) if isinstance(chatId, list) else chatId}"
             ))
 
 
