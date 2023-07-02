@@ -871,7 +871,7 @@ class EventHandler:
     def _add_cache(self, chatId: str, userId: str, content: str):
         with self.cache as cache:
             if cache.get(f"{chatId}_{userId}") is not None:
-                self.cache.clear(f"{chatId}_{userId}")
+                self.cache.pop(f"{chatId}_{userId}")
 
             cache.add(
                 key=f"{chatId}_{userId}",
