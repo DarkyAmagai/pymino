@@ -477,9 +477,11 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Joined community successfully!")
         """
+        data = {"timestamp": int(time() * 1000)}
+        if invitationId:
+            data["invitationId"] = invitationId
         return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/join", 
-            data={"timestamp": int(time() * 1000), **{"invitationId": invitationId} if invitationId else {}}
+            method="POST", url=f"/x{self.community_id if comId is None else comId}/s/community/join", data=data
             ))
 
 
