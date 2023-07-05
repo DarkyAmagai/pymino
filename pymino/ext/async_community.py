@@ -442,14 +442,12 @@ class AsyncCommunity:
 
 
     @community
-    async def join_community(self, comId: Union[str, int] = None, invitationId: Optional[str] = None) -> ApiResponse:
+    async def join_community(self, comId: Union[str, int] = None) -> ApiResponse:
         """
         Joins the current or specified community.
 
         :param comId: The ID of the community to join. If not provided, the current community ID is used.
         :type comId: Union[str, int]
-        :param invitationId: The ID of the community invitation. Default is None
-        :type invitationId: Optional[str]
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -477,7 +475,7 @@ class AsyncCommunity:
             await self.session.handler(
             method="POST",
             url=f"/x{self.community_id if comId is None else comId}/s/community/join", 
-            data={"timestamp": int(time() * 1000), **{"invitationId": invitationId} if invitationId else {}}
+            data={"timestamp": int(time() * 1000)}
             ))
 
 
