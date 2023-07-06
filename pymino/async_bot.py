@@ -112,43 +112,24 @@ class AsyncBot(AsyncWSClient):
         if device_id:
             self.device_id = device_id
 
-        #return ApiResponse(await self.request.handler(
-            #method="POST",
-            #url = "/g/s/auth/login",
-            #data = {
-                #"secret": f"0 {password}",
-                #"clientType": 100,
-                #"systemPushEnabled": 0,
-                #"timestamp": int(time() * 1000),
-                #"locale": "en_US",
-                #"action": "normal",
-                #"bundleID": "com.narvii.master",
-                #"timezone": -480,
-                #"deviceID": self.device_id,
-                #"email": email,
-                #"v": 2,
-                #"clientCallbackURL": "narviiapp://default"
-                #}
-            #)).json()
-            async with self.request.handler(
-                method="POST",
-                url = "/g/s/auth/login",
-                data = {
-                    "secret": f"0 {password}",
-                    "clientType": 100,
-                    "systemPushEnabled": 0,
-                    "timestamp": int(time() * 1000),
-                    "locale": "en_US",
-                    "action": "normal",
-                    "bundleID": "com.narvii.master",
-                    "timezone": -480,
-                    "deviceID": self.device_id,
-                    "email": email,
-                    "v": 2,
-                    "clientCallbackURL": "narviiapp://default"
-                    }
-                ) as response:
-                return ApiResponse(await response).json()
+        return ApiResponse(await self.request.handler(
+            method="POST",
+            url = "/g/s/auth/login",
+            data = {
+                "secret": f"0 {password}",
+                "clientType": 100,
+                "systemPushEnabled": 0,
+                "timestamp": int(time() * 1000),
+                "locale": "en_US",
+                "action": "normal",
+                "bundleID": "com.narvii.master",
+                "timezone": -480,
+                "deviceID": self.device_id,
+                "email": email,
+                "v": 2,
+                "clientCallbackURL": "narviiapp://default"
+                }
+            )).json()
 
 
     async def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
