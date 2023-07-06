@@ -2,12 +2,13 @@ __title__ = 'pymino'
 __author__ = 'cynical'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023 Cynical'
-__version__ = '1.2.2.6'
+__version__ = '1.2.3.0'
 __description__ = 'A Python wrapper for the aminoapps.com API'
 
 from .bot import Bot as Bot
 from .async_bot import AsyncBot as AsyncBot
 from .client import Client as Client
+from .async_client import AsyncClient as AsyncClient
 
 from requests import get
 from colorama import Fore, Style

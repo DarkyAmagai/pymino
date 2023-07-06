@@ -97,7 +97,7 @@ class AsyncWSClient(AsyncEventHandler):
 
     async def _ready(self) -> None:
         if "ready" in self._events:
-            await self._events["ready"]()
+            await self.emit("ready")
         else:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 

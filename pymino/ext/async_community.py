@@ -139,6 +139,7 @@ class AsyncCommunity:
             if not any([args[0].community_id, kwargs.get("comId")]):
                 raise MissingCommunityId()
             return await func(*args, **kwargs)
+
         community_func.__annotations__ = func.__annotations__
         return community_func
 
@@ -252,7 +253,7 @@ class AsyncCommunity:
         return LinkInfo(response)
     
 
-    def fetch_object_id(self, link: str) -> str:
+    async def fetch_object_id(self, link: str) -> str:
         """
         Fetches the object ID given a link to the object.
 
@@ -274,7 +275,7 @@ class AsyncCommunity:
 
         KEY = str((link, "OBJECT_ID"))
         if not self.cache.get(KEY):
-            response = self.session.handler(
+            response = await self.session.handler(
                 method="GET",
                 url=f"/g/s/link-resolution?q={link}"
             )
@@ -3914,18 +3915,18 @@ class AsyncCommunity:
         [data.update({key: value}) for key, value in {
             "nickname": nickname,
             "content": content,
-            "icon": self.__handle_media__(media=icon, media_value=True) if icon is not None else None,
-            "mediaList": [[100, self.__handle_media__(media=cover_image, media_value=True), None, None, None, None]] if cover_image is not None else None
+            "icon": await self.__handle_media__(media=icon, media_value=True) if icon is not None else None,
+            "mediaList": [[100, await self.__handle_media__(media=cover_image, media_value=True), None, None, None, None]] if cover_image is not None else None
             }.items() if value is not None]
 
         if backgroundColor:
             data["extensions"]["style"] = {"backgroundColor": backgroundColor}
 
         if backgroundImage:
-            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None, None, None, None]]}
+            data["extensions"]["style"] = {"backgroundMediaList": [[100, await self.__handle_media__(media=backgroundImage, media_value=True), None, None, None, None]]}
 
         return UserProfile(
-            self.session.handler(
+            await self.session.handler(
                 method="POST",
                 url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}",
                 data=data
@@ -4122,8 +4123,8 @@ class AsyncCommunity:
             "linkSnippetList": [{
                 "link": link,
                 "mediaType": 100,
-                "mediaUploadValue": self.encode_media(
-                    self.__handle_media__(
+                "mediaUploadValue": await self.encode_media(
+                    await self.__handle_media__(
                         media=image,
                         content_type="image/jpg",
                         media_value=False
@@ -4156,7 +4157,7 @@ class AsyncCommunity:
             url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
             data = PrepareMessage(
                 mediaType = 100,
-                mediaUploadValue=self.encode_media(self.__handle_media__(media=image, content_type="image/jpg", media_value=False)),
+                mediaUploadValue= await self.encode_media(self.__handle_media__(media=image, content_type="image/jpg", media_value=False)),
                 mediaUploadValueContentType = "image/jpg",
                 mediaUhqEnabled = True
                 ).json()
@@ -4196,7 +4197,7 @@ class AsyncCommunity:
             data = PrepareMessage(
                 type=2,
                 mediaType=110,
-                mediaUploadValue=self.encode_media(self.__handle_media__(media=audio, content_type="audio/aac", media_value=False)
+                mediaUploadValue=await self.encode_media(self.__handle_media__(media=audio, content_type="audio/aac", media_value=False)
                 )).json()
             ))
 
@@ -6000,7 +6001,7 @@ class AsyncCommunity:
 
         if title: data               .update(dict(title = title))
         if content: data             .update(dict(content = content))
-        if icon: data                .update(dict(icon = self.upload_media(open(icon, "rb").read()), content_type = "image/jpg"))
+        if icon: data                .update(dict(icon = await self.upload_media(open(icon, "rb").read()), content_type = "image/jpg"))
         if keywords: data            .update(dict(keywords = keywords))
         if announcement: data        .update(dict(extensions = dict(announcement = announcement)))
         if pinAnnouncement: data     .update(dict(extensions = dict(pinAnnouncement = pinAnnouncement)))
@@ -7439,4 +7440,42 @@ class AsyncCommunity:
         else: return AdminLogList(await self.session.handler(
             method = "GET",
             url = f"/x{comId or self.community_id}/s/admin/operation?size={size}&operatorUid={userId}&pagingType=t"
+        ))
+
+    @community
+    async def apply_bubble(self, bubbleId: str, chatId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+        """
+        Applies the specified bubble to the community.
+
+        :param bubbleId: The ID of the bubble to apply.
+        :type bubbleId: str
+        :param comId: The ID of the community to apply the bubble to. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The response of the request.
+        :rtype: response object
+
+        This function applies the specified bubble to the community.
+
+        Note: The response object may vary based on the implementation.
+
+        **Example usage:**
+
+        >>> client.community.apply_bubble("000000")
+        """
+        if bubbleId is None:
+            raise ValueError("bubbleId cannot be None.")
+        
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/chat/thread/apply-bubble",
+            data = {
+                "applyToAll": False,
+                "bubbleId": bubbleId,
+                "threadId": chatId,
+                "timestamp": int(time() * 1000)
+            } if chatId else {
+                "applyToAll": True,
+                "bubbleId": bubbleId,
+                "timestamp": int(time() * 1000)
+            }
         ))

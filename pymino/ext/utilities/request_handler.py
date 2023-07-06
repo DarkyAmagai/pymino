@@ -271,7 +271,9 @@ class RequestHandler:
             response.get("api:statuscode", 200) == 105,
             hasattr(self, "email"),
             hasattr(self, "password")
-            ]): return self.bot.run(self.email, self.password, use_cache=False)
+            ]):
+            # NOTE: Login expired will have to run request manually
+            return self.bot.run(self.email, self.password, use_cache=False)
         
         else: raise APIException(response)
         

@@ -225,14 +225,14 @@ class Context():
                 cached_message = cache.get(f"{self.message.chatId}_{self.message.author.userId}")
 
                 if cached_message == message:
-                    cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                    cache.pop(f"{self.message.chatId}_{self.message.author.userId}")
                     return 200
 
                 if all([cached_message is not None, cached_message != message]):
-                    cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+                    cache.pop(f"{self.message.chatId}_{self.message.author.userId}")
                     return 404
 
-            cache.clear(f"{self.message.chatId}_{self.message.author.userId}")
+            cache.pop(f"{self.message.chatId}_{self.message.author.userId}")
             return 500
 
 

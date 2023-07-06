@@ -1,15 +1,16 @@
+import asyncio
 from time import time
 from typing import Any, Callable, Optional, TypeVar, Union
 
 from .ext.entities import *
-from .ext.global_client import Global
-from .ext import RequestHandler, Account, Community
+from .ext.async_global_client import AsyncGlobal
+from .ext import AsyncRequestHandler, AsyncAccount, AsyncCommunity
 from .ext.utilities.generate import device_id as generate_device_id
 
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-class Client(Global):
+class AsyncClient(AsyncGlobal):
     """
     `Client` - This is the main client.
 
@@ -114,6 +115,7 @@ class Client(Global):
     """
     def __init__(self, **kwargs):
         self._debug:            bool = check_debugger()
+        self.loop:              asyncio.AbstractEventLoop = asyncio.get_event_loop()
         self._is_authenticated: bool = False
         self._userId:           str = None
         self._sid:              str = None
@@ -121,14 +123,15 @@ class Client(Global):
         self.cache:             Cache = Cache("cache")
         self.community_id:      Optional[str] = kwargs.get("comId", kwargs.get("community_id"))
         self.device_id:         Optional[str] = kwargs.get("device_id") or generate_device_id()
-        self.request:           RequestHandler = RequestHandler(
-                                self,
-                                proxy=kwargs.get("proxy")
+        self.request:           AsyncRequestHandler = AsyncRequestHandler(
+                                bot=self,
+                                loop = self.loop,
+                                proxy = kwargs.get("proxy")
                                 )
-        self.account:           Account = Account(
+        self.account:           AsyncAccount = AsyncAccount(
                                 session=self.request
                                 )
-        self.community:         Community = Community(
+        self.community:         AsyncCommunity = AsyncCommunity(
                                 bot=self,
                                 session=self.request,
                                 community_id=self.community_id
@@ -239,7 +242,7 @@ class Client(Global):
         **Note:** This setter only sets the user ID and cannot be used to retrieve the user ID. To retrieve the user ID, use
         the `self.userId` property.
         """
-        self._userId = value
+        self._userId = value # Human is gay.
 
         
     @property
@@ -296,17 +299,17 @@ class Client(Global):
         >>> def my_function(self):
         >>>     # Function code
         """
-        def wrapper(*args, **kwargs) -> Any:
+        async def wrapper(*args, **kwargs) -> Any:
             try:
                 if not args[0].is_authenticated:
                     raise LoginRequired
-                return func(*args, **kwargs)
+                return await func(*args, **kwargs)
             except AttributeError:
                 raise LoginRequired
         return wrapper
 
 
-    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
+    async def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
         Fetches the community ID associated with the provided community link.
 
@@ -331,7 +334,7 @@ class Client(Global):
         """
         KEY = str((community_link, "comId"))
         if not self.cache.get(KEY):
-            self.cache.set(KEY, CCommunity(self.request.handler(
+            self.cache.set(KEY, CCommunity(await self.request.handler(
                 method="GET", url=f"/g/s/link-resolution?q={community_link}")
                 ).comId)
             
@@ -375,7 +378,7 @@ class Client(Global):
         return community_id
 
 
-    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
+    async def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
         Authenticates the bot with the provided email and password.
 
@@ -392,7 +395,7 @@ class Client(Global):
         if device_id:
             self.device_id = device_id
 
-        return ApiResponse(self.request.handler(
+        return ApiResponse(await self.request.handler(
             method="POST",
             url = "/g/s/auth/login",
             data = {
@@ -412,7 +415,7 @@ class Client(Global):
             )).json()
 
 
-    def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
+    async def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
         """
         Authenticates the user with the provided email and password.
 
@@ -446,9 +449,9 @@ class Client(Global):
             self.userId: str = parse_auid(cached[0])
 
             try:
-                response: dict = self.fetch_account()
+                response: dict = await self.fetch_account()
             except Exception:
-                response: dict = self.authenticate(
+                response: dict = await self.authenticate(
                     email=email,
                     password=password,
                     device_id=cached[1]
@@ -457,7 +460,7 @@ class Client(Global):
         else:
             self.sid = None
             self._cached = True
-            response: dict = self.authenticate(
+            response: dict = await self.authenticate(
                 email=email,
                 password=password,
                 device_id=device_id
@@ -469,7 +472,7 @@ class Client(Global):
         return response
 
 
-    def login(
+    async def login(
         self,
         email: Optional[str] = None,
         password: Optional[str] = None,
@@ -507,9 +510,9 @@ class Client(Global):
             self.sid = sid
             self.request.sid = sid
             self.userId = parse_auid(sid)
-            response = self.fetch_account()
+            response = await self.fetch_account()
         else:
-            response = self._login_handler(
+            response = await self._login_handler(
                 email=email,
                 password=password,
                 device_id=device_id,
@@ -522,7 +525,7 @@ class Client(Global):
         return self._run(response)
 
 
-    def run(
+    async def run(
         self,
         email: Optional[str] = None,
         password: Optional[str] = None,
@@ -555,7 +558,7 @@ class Client(Global):
         >>> client = Client()
         >>> client.run(email="example@example.com", password="password")
         """
-        return self.login(email=email, password=password, sid=sid, device_id=device_id, use_cache=use_cache)
+        return await self.login(email=email, password=password, sid=sid, device_id=device_id, use_cache=use_cache)
 
 
     def _run(self, response: dict) -> dict:
@@ -583,7 +586,7 @@ class Client(Global):
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
-            self.profile: UserProfile = UserProfile(response) # Human is gay.
+            self.profile: UserProfile = UserProfile(response)
 
         if not self.sid:
             self.sid: str = response["sid"]
@@ -604,7 +607,7 @@ class Client(Global):
 
 
     @authenticated
-    def disconnect_google(self, password: str) -> dict:
+    async def disconnect_google(self, password: str) -> dict:
         """
         Disconnects the user's Google account from their account on Amino.
 
@@ -621,7 +624,7 @@ class Client(Global):
         **Note:** This function can be used to disconnect the user's Google account from their Amino account, for example if
         the user wants to use a different Google account or does not want to use Google to sign in anymore.
         """
-        return self.request.handler(
+        return await self.request.handler(
             method="POST",
             url="/g/s/auth/disconnect",
             data={
@@ -658,7 +661,7 @@ class Client(Global):
         return None
 
 
-    def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
+    async def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
         Registers a new account with the provided email, password, username, and verification code.
 
@@ -677,7 +680,7 @@ class Client(Global):
         verification code is sent to the email address for account activation. The method returns an `Authenticate` object
         containing the authenticated user's session ID and user ID.
         """
-        return self.account.register(
+        return await self.account.register(
             email=email, 
             password=password,
             username=username,
@@ -686,7 +689,7 @@ class Client(Global):
 
 
     @authenticated
-    def delete_request(self, email: str, password: str) -> ApiResponse:
+    async def delete_request(self, email: str, password: str) -> ApiResponse:
         """
         Sends a request to delete the authenticated user's account.
 
@@ -701,11 +704,11 @@ class Client(Global):
         authenticate the request. The method returns an `ApiResponse` object containing the server's response to the delete
         request.
         """
-        return self.account.delete_request(email=email, password=password)
+        return await self.account.delete_request(email=email, password=password)
 
 
     @authenticated
-    def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
+    async def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
         """
         Cancels a previously requested account deletion for the authenticated user.
 
@@ -720,10 +723,10 @@ class Client(Global):
         parameters are used to authenticate the request. The method returns an `ApiResponse` object containing the server's
         response to the delete request cancellation request.
         """
-        return self.account.delete_request_cancel(email=email, password=password)
+        return await self.account.delete_request_cancel(email=email, password=password)
 
 
-    def check_device(self, device_id: str) -> ApiResponse:
+    async def check_device(self, device_id: str) -> ApiResponse:
         """
         Checks if the given device ID is valid.
 
@@ -740,10 +743,10 @@ class Client(Global):
         The method returns the `ApiResponse` object obtained from calling the `check_device` method of the `account`
         object. The response will return a `0` status code if the device ID is valid.
         """
-        return self.account.check_device(deviceId=device_id)
+        return await self.account.check_device(deviceId=device_id)
 
 
-    def fetch_account(self) -> dict:
+    async def fetch_account(self) -> dict:
         """
         Fetches the account information for the authenticated user.
 
@@ -762,16 +765,16 @@ class Client(Global):
         The method returns a dictionary containing the user's account information.
         """
         self.profile: UserProfile = UserProfile(
-            self.request.handler(
+            await self.request.handler(
                 method="GET",
                 url=f"/g/s/user-profile/{self.userId}"
                 ))
         
-        return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
+        return ApiResponse(await self.request.handler(method="GET", url="/g/s/account")).json()
 
 
     @authenticated
-    def upload_image(self, image: str) -> str:
+    async def upload_image(self, image: str) -> str:
         """
         Uploads an image to amino servers.
 
@@ -786,11 +789,11 @@ class Client(Global):
 
         The method returns the URL of the uploaded image.
         """
-        return self.account.upload_image(image=image)
+        return await self.account.upload_image(image=image)
 
 
     @authenticated
-    def fetch_profile(self) -> UserProfile:
+    async def fetch_profile(self) -> UserProfile:
         """
         Fetches the user profile of the authenticated user.
 
@@ -803,11 +806,11 @@ class Client(Global):
 
         The method returns the `UserProfile` object.
         """
-        return self.account.fetch_profile()
+        return await self.account.fetch_profile()
 
 
     @authenticated
-    def set_amino_id(self, aminoId: str) -> ApiResponse:
+    async def set_amino_id(self, aminoId: str) -> ApiResponse:
         """
         Sets the Amino ID of the authenticated user.
 
@@ -823,11 +826,11 @@ class Client(Global):
         The method returns the `ApiResponse` object obtained from calling the `set_amino_id` method of the `account` object.
         The response will return a `0` status code if the Amino ID is set successfully.
         """
-        return self.account.set_amino_id(aminoId=aminoId)
+        return await self.account.set_amino_id(aminoId=aminoId)
 
 
     @authenticated
-    def fetch_wallet(self) -> Wallet:
+    async def fetch_wallet(self) -> Wallet:
         """
         Fetches the wallet information for the authenticated user.
 
@@ -840,10 +843,10 @@ class Client(Global):
 
         The method returns a `Wallet` object containing the user's wallet information.
         """
-        return self.account.fetch_wallet()
+        return await self.account.fetch_wallet()
 
 
-    def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
+    async def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
         """
         Requests security validation for the provided email address.
 
@@ -862,10 +865,10 @@ class Client(Global):
 
         The method returns an `ApiResponse` object containing the server's response to the security validation request.
         """
-        return self.account.request_security_validation(email=email, resetPassword=resetPassword)
+        return await self.account.request_security_validation(email=email, resetPassword=resetPassword)
 
 
-    def activate_email(self, email: str, code: str) -> ApiResponse:
+    async def activate_email(self, email: str, code: str) -> ApiResponse:
         """
         Activates the user's email using the provided verification code.
 
@@ -880,11 +883,11 @@ class Client(Global):
         parameters are used to authenticate the request. The method returns an `ApiResponse` object containing the server's
         response to the activation request.
         """
-        return self.account.activate_email(email=email, code=code)
+        return await self.account.activate_email(email=email, code=code)
 
 
     @authenticated
-    def reset_password(self, email: str, newPassword: str, code: str) -> ResetPassword:
+    async def reset_password(self, email: str, newPassword: str, code: str) -> ResetPassword:
         """
         Resets the user's password using the provided email, verification code, and new password.
 
@@ -901,4 +904,4 @@ class Client(Global):
         verification code, and new password parameters are used to authenticate the request. The method returns a `ResetPassword`
         object containing the user's session ID and user ID.
         """
-        return self.account.reset_password(email=email, newPassword=newPassword, code=code)
+        return await self.account.reset_password(email=email, newPassword=newPassword, code=code)

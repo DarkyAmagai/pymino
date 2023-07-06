@@ -106,7 +106,7 @@ class AsyncEventHandler:
 
     async def emit(self, name: str, *args) -> None:
         """`emit` is a function that emits an event."""
-        await self._events[name](*args) if name in self._events else None
+        self._events[name](*args) if name in self._events else None
 
 
     def command(
@@ -263,7 +263,7 @@ class AsyncEventHandler:
     def _add_cache(self, chatId: str, userId: str, content: str):
         with self.cache as cache:
             if cache.get(f"{chatId}_{userId}") is not None:
-                self.cache.clear(f"{chatId}_{userId}")
+                self.cache.pop(f"{chatId}_{userId}")
 
             cache.add(
                 key=f"{chatId}_{userId}",

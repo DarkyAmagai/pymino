@@ -411,7 +411,7 @@ class Bot(WSClient, Global):
 
 
     @userId.setter
-    def userId(self, value: str) -> None:
+    def userId(self, value: str) -> None: # Human is gay.
         """
         Sets the ID of the user associated with the client.
 
@@ -668,7 +668,7 @@ class Bot(WSClient, Global):
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if not self.is_ready:
-            self.is_ready = True
+            self._is_ready = True
             self.connect()
 
         if self.debug:

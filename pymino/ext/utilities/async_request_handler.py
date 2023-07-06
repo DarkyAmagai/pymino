@@ -119,14 +119,14 @@ class AsyncRequestHandler:
         """
         `send_request` - Sends a request
 
-        `**Parameters**``
+        `**Parameters**`
         - `method` - The request method to use.
         - `url` - The url to send the request to.
         - `data` - The data to send with the request.
         - `headers` - The headers to send with the request.
         - `content_type` - The content type of the data.
 
-        `**Returns**``
+        `**Returns**`
         - `Union[int, str]` - The status code and response from the request.
 
         """
@@ -137,7 +137,9 @@ class AsyncRequestHandler:
             async with self.session.request(
                 method, url, data=data, headers=headers, proxy=self.proxy
             ) as response:
-                return response.status, await response.text()
+                status_code = response.status
+                response_text = await response.text()
+            return status_code, response_text
         except (
             TypeError,
             ClientError,
@@ -157,6 +159,9 @@ class AsyncRequestHandler:
             WSServerHandshakeError,
         ):
             return await self.handler(method, url, data, content_type)
+        
+        finally:
+            await self.close_session()
 
 
     async def handler(
@@ -374,6 +379,7 @@ class AsyncRequestHandler:
             print(f"{color}{Style.BRIGHT}{method}{Style.RESET_ALL} - {url}")
 
 
-    async def close(self) -> None:
-        """Closes the HTTP session."""
-        await self.session.close()
+    async def close_session(self):
+        if self.session is not None:
+            await self.session.close()
+            self.session = None

@@ -503,3 +503,9 @@ class InvalidCommandPrefix(Exception):
         super().__init__(
             "Invalid command prefix. Please provide a valid command prefix."
             )
+        
+class MissingAwaitError(Exception):
+    def __init__(self):
+        super().__init__(
+            "Missing await error. Please add `await` before your function call."
+            )
