@@ -138,10 +138,11 @@ class Community:
         def community_func(*args, **kwargs) -> Any:
             
             if not args[0].userId:
-                raise NotLoggedIn("You are not logged in. Please login before using this function.")
+                raise NotLoggedIn()
             if not any([args[0].community_id, kwargs.get("comId")]):
                 raise MissingCommunityId()
             return func(*args, **kwargs)
+
         community_func.__annotations__ = func.__annotations__
         return community_func
 
