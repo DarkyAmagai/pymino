@@ -886,7 +886,7 @@ class UserProfile:
 		>>> print(user.following_count)
 		```
 		"""
-		return self._data.get('membersCount', None)
+		return self._data.get('joinedCount', None)
 
 	@property
 	def role(self) -> int:
