@@ -809,7 +809,6 @@ class AsyncGlobal:
         ))
 
 
-    @authenticated
     async def fetch_following(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
         """
         Fetches the user profiles of the users that the specified user is following.
@@ -838,8 +837,42 @@ class AsyncGlobal:
             url = f"/g/s/user-profile/{userId}/joined?start={start}&size={size}"
         ))
 
+    async def large_fetch_following(self, userId: str, size: int = 25, pageToken: str = None, ignoreMembership: bool = True) -> FollowerList:
+        """
+        Fetches the user profiles of the users that the specified user is following.
+        :param userId: The ID of the user.
+        :type userId: str
+        :param size: The number of user profiles to fetch. (Default: 25)
+        :type size: int, optional
+        :param pageToken: The page token to fetch from. (Default: None)
+        :type pageToken: str, optional
+        :param ignoreMembership: Whether to ignore membership. (Default: True)
+        :type ignoreMembership: bool, optional
+        :return: A `FollowerList` object containing the user profiles.
+        :rtype: FollowerList
+        
+        This function sends a GET request to the API to fetch the user profiles of the users that the specified user is following.
+        
+        `FollowerList` represents a list of user profiles.
+        
+        **Example usage:**
+    
+        >>> following = client.large_fetch_following("user123")
+        ... for userId in following.members.userId:
+        ...     print(userId)
+        """
+        if pageToken:
+            return FollowerList(await self.make_request(
+                method = "GET",
+                url = f"/g/s/user-profile/{userId}/joined?size={size}&pageToken={pageToken}&pagingType=t&ignoreMembership={1 if ignoreMembership else 0}"
+            ))
 
-    @authenticated
+        return FollowerList(await self.make_request(
+            method = "GET",
+            url = f"/g/s/user-profile/{userId}/joined?pagingType=t&size={size}&ignoreMembership={1 if ignoreMembership else 0}"
+        ))
+
+
     async def fetch_visitors(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
         """
         Fetches the visitors of a user profile.

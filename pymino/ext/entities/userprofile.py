@@ -1324,3 +1324,29 @@ class UserProfileList:
 		self.visit_privacy:				list = [x.visit_privacy for x in parser]
 		self.stories_count:				list = [x.stories_count for x in parser]
 		self.blogs_count:				list = [x.blogs_count for x in parser]
+
+class Pagging:
+    def __init__(self, data: dict):
+        self._data = data.get("paging") if isinstance(data, dict) else data
+        self.prev_page_token = None
+        self.next_page_token = None
+
+        if isinstance(data, dict):
+            self.prev_page_token: Union[str, None] = self._data.get("prevPageToken")
+            self.next_page_token: Union[str, None] = self._data.get("nextPageToken")
+    
+    def json(self) -> dict:
+        return self._data
+
+class FollowerList:
+    def __init__(self, data: dict):
+        self._data = data
+        self.paging = None
+        self.members = None
+        
+        if isinstance(data, dict):
+            self.paging = Pagging(self._data)
+            self.members = UserProfileList(self._data)
+    
+    def json(self) -> dict:
+        return self._data
