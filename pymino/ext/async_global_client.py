@@ -1791,3 +1791,25 @@ class AsyncGlobal:
                 url = f"/g/s/link-resolution?q={link}"
                 ))
         return LinkInfo(self.cache.get(KEY))
+
+    async def fetch_public_communities(self, type: str = "discover"):
+        """
+        Fetches a list of public communities.
+
+        This method retrieves a list of public communities based on the specified parameters.
+
+        :param type: The type of communities to fetch (default is "discover").
+        :type type: str
+        :return: A `CCommunityList` object containing the list of public communities.
+        :rtype: CCommunityList
+        
+        **example usage:**
+        
+        >>> communities = client.fetch_public_communities()
+        >>> for community in communities.name:
+        >>>     print(community)
+        """
+        return CCommunityList(await self.make_request(
+            method = "GET",
+            url = f"/g/s/topic/0/feed/community?type={type}&categoryKey=recommendation&moduleId=0c56a709-1f96-474d-ae2f-4225d0e998e5"
+        ))
