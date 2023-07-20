@@ -1283,6 +1283,7 @@ class OnlineMembers:
 class UserProfileList:
 	def __init__(self, data: dict):
 		self._data = data.get("userProfileList", data) if isinstance(data, dict) else data
+		self.userProfileCount = None
 
 		parser:							list = [UserProfile(x) for x in self._data]
 		self.status:					list = [x.status for x in parser]
@@ -1324,6 +1325,7 @@ class UserProfileList:
 		self.visit_privacy:				list = [x.visit_privacy for x in parser]
 		self.stories_count:				list = [x.stories_count for x in parser]
 		self.blogs_count:				list = [x.blogs_count for x in parser]
+		self.userProfileCount:			int  = data.get("userProfileCount", len(self._data))
 
 class Pagging:
     def __init__(self, data: dict):
