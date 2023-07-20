@@ -110,6 +110,7 @@ class CCommunity:
         self.ndcId              = None
         self.comId              = None
         self.icon               = None
+        self.joinType           = None
 
         if isinstance(data, dict):
             self.data:                  dict = data.get("community", self.data)
@@ -134,6 +135,7 @@ class CCommunity:
             self.templateId:            Union[int, None] = self.data.get("templateId", self.templateId)
             self.searchable:            Union[bool, None] = self.data.get("searchable", self.searchable)
             self.createdTime:           Union[str, None] = self.data.get("createdTime", self.createdTime)
+            self.joinType:              Union[int, None] = self.data.get("joinType", self.joinType)
             self.invitation:            InvitationId = InvitationId(self.data.get("invitation", self.invitation))
             
             try:
@@ -175,6 +177,7 @@ class CCommunityList:
         self.ndcId:                                 list = [x.ndcId for x in parser]
         self.comId:                                 list = [x.comId for x in parser]
         self.icon:                                  list = [x.icon for x in parser]
+        self.joinType:                               list = [x.joinType for x in parser]
     
     def json(self) -> Union[dict, str]:
         return self.data

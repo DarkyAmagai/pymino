@@ -1894,3 +1894,36 @@ class Global:
             method = "GET",
             url = f"/g/s/topic/0/feed/community?type={type}&categoryKey=recommendation&moduleId=0c56a709-1f96-474d-ae2f-4225d0e998e5"
         ))
+    
+    def fetch_available_communities(self, start: int = 0, size: int = 25, language: str = "en"):
+        """
+        Fetches a list of available communities.
+
+        This method retrieves a list of communities that are available for exploration.
+
+        :param start: The starting index of the communities to fetch (default is 0).
+        :type start: int
+        :param size: The number of communities to fetch in a single request (default is 25).
+        :type size: int
+        :param language: The language code used for filtering communities (default is "en").
+        :type language: str
+        :return: A CCommunityList object containing information about the available communities.
+        :rtype: CCommunityList
+        :raises: Any exceptions raised during the API request process.
+
+        The `CCommunityList` object provides access to information about multiple communities:
+
+        - `json`: The raw response data from the API.
+        - `comId`: The list of community Ids.
+        - `name`: The list of community names.
+
+        **Example usage:**
+
+        >>> community_list = client.community.fetch_available_communities(start=0, size=10, language="en")
+        >>> for name, comId in zip(community_list.name, community_list.comId):
+        >>>     print(name, comId])
+        """
+        return CCommunityList(self.make_request(
+            method = "GET",
+            url = f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&start={start}&size={size}&pagingType=t"
+        ))
