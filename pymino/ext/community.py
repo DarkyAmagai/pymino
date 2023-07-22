@@ -503,12 +503,12 @@ class Community:
         >>> print(invitation_id)
         """
         if "inviteCode" in kwargs: #TODO: Remove this in the near future.
-            inviteCode = kwargs["inviteCode"]
+            invite_code = kwargs["inviteCode"]
             print("The 'inviteCode' parameter has been deprecated. Please use 'invite_code' instead.")
 
         return InvitationId(self.session.handler(
             method = "GET",
-            url = f"/g/s/community/link-identify?q={inviteCode}"
+            url = f"/g/s/community/link-identify?q={invite_code}"
             )).invitationId
 
 

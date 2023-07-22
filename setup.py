@@ -22,8 +22,7 @@ setup(
         "colorama==0.4.6",
         "websocket-client==1.6.1",
         "diskcache==5.6.1",
-        "aiohttp==3.8.4",
-        "wsaccel==0.6.4"
+        "aiohttp==3.8.4"
     ],
     keywords=[
         "amino",
@@ -37,10 +36,9 @@ setup(
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    python_requires=">=3.7"
+    python_requires=">=3.8"
 )

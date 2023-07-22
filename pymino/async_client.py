@@ -4,8 +4,8 @@ from typing import Any, Callable, Optional, TypeVar, Union
 
 from .ext.entities import *
 from .ext.async_global_client import AsyncGlobal
+from .ext.utilities.generate import Generator
 from .ext import AsyncRequestHandler, AsyncAccount, AsyncCommunity
-from .ext.utilities.generate import device_id as generate_device_id
 
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -16,10 +16,12 @@ class AsyncClient(AsyncGlobal):
 
     `**Parameters**``
     - `**kwargs` - any other parameters to use for the client.
-
     - `device_id` - device id to use for the client.
-
     - `proxy` - proxy string to use for the client.
+    - `hash_prefix` - The hash prefix to use for the bot. `Defaults` to `19`.
+    - `device_key` - The device key to use for the bot. `Defaults` to `E7309ECC0953C6FA60005B2765F99DBBC965C8E9`.
+    - `signature_key` - The signature key to use for the bot. `Defaults` to `DFA5ED192DDA6E88A12FE12130DC6206B1251E44`.
+    
     
     ----------------------------
     Why use `Client` over `Bot`?
@@ -113,7 +115,14 @@ class AsyncClient(AsyncGlobal):
     ```
 
     """
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        community_id: Optional[Union[str, int]] = None,
+        hash_prefix: Union[str, int] = 19,
+        device_key: str = "E7309ECC0953C6FA60005B2765F99DBBC965C8E9",
+        signature_key: str  = "DFA5ED192DDA6E88A12FE12130DC6206B1251E44",
+        **kwargs
+        ) -> None:
         self._debug:            bool = check_debugger()
         self.loop:              asyncio.AbstractEventLoop = asyncio.get_event_loop()
         self._is_authenticated: bool = False
@@ -121,12 +130,18 @@ class AsyncClient(AsyncGlobal):
         self._sid:              str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
-        self.community_id:      Optional[str] = kwargs.get("comId", kwargs.get("community_id"))
-        self.device_id:         Optional[str] = kwargs.get("device_id") or generate_device_id()
+        self.community_id:      Optional[str] = community_id or kwargs.get("comId")
+        self.generate:          Generator = Generator(
+                                prefix=hash_prefix,
+                                device_key=device_key,
+                                signature_key=signature_key
+                                )
+        self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate.device_id()
         self.request:           AsyncRequestHandler = AsyncRequestHandler(
                                 bot=self,
                                 loop = self.loop,
-                                proxy = kwargs.get("proxy")
+                                proxy = kwargs.get("proxy"),
+                                generator=self.generate
                                 )
         self.account:           AsyncAccount = AsyncAccount(
                                 session=self.request
@@ -806,7 +821,7 @@ class AsyncClient(AsyncGlobal):
 
         The method returns the `UserProfile` object.
         """
-        return await self.account.fetch_profile()
+        return await self.account.fetch_profile(self.userId)
 
 
     @authenticated

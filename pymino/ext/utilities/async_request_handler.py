@@ -8,8 +8,8 @@ from asyncio import AbstractEventLoop
 from aiohttp.client_exceptions import *
 from typing import Optional, Union, Tuple, Callable
 
+from .generate import Generator
 from ..entities.handlers import orjson_exists
-from .generate import device_id, generate_signature
 
 from ..entities import (
     Forbidden,
@@ -32,12 +32,20 @@ class AsyncRequestHandler:
 
     `**Parameters**``
     - `bot` - The main bot class.
+    - `generator` - The generator class.
+    - `loop` - The event loop to use.
     - `proxy` - The proxy to use for requests.
 
     """
-
-    def __init__(self, bot, loop: AbstractEventLoop, proxy: Optional[str] = None):
+    def __init__(
+        self,
+        bot,
+        generator: Generator,
+        loop: AbstractEventLoop,
+        proxy: Optional[str] = None
+        ) -> None:
         self.bot        = bot
+        self.generate   = generator
         self.loop:      AbstractEventLoop = loop
         self.session:   Optional[ClientSession] = None
         self.sid:       Optional[str] = None
@@ -52,15 +60,12 @@ class AsyncRequestHandler:
             503: ServiceUnavailable
         }
 
-
     async def initialize_session(self):
         self.session = ClientSession()
-
 
     async def close_session(self):
         if self.session is not None:
             await self.session.close()
-
 
     def service_url(self, url: str) -> str:
         """
@@ -88,7 +93,6 @@ class AsyncRequestHandler:
             "AUID": self.userId or str(uuid4())
         }
 
-
     async def fetch_request(self, method: str) -> Callable:
         """
         `fetch_request` - Returns the request method
@@ -106,7 +110,6 @@ class AsyncRequestHandler:
             "DELETE": self.session.delete,
         }
         return request_methods[method]
-
 
     async def send_request(
             self,
@@ -163,7 +166,6 @@ class AsyncRequestHandler:
         finally:
             await self.close_session()
 
-
     async def handler(
             self,
             method: str,
@@ -202,7 +204,6 @@ class AsyncRequestHandler:
 
         return await self.handle_response(status_code=status_code, response=content)
 
-
     async def service_handler(
             self,
             url: str,
@@ -222,13 +223,12 @@ class AsyncRequestHandler:
 
         """
 
-        headers = {"NDCDEVICEID": device_id(), **await self.service_headers()}
+        headers = {"NDCDEVICEID": self.generate.device_id(), **await self.service_headers()}
 
         if data or content_type:
             headers, data = await self.fetch_signature(data, headers, content_type)
 
         return url, headers, self.ensure_utf8(data)
-
 
     def ensure_utf8(self, data: Union[dict, bytes, None]) -> Union[dict, bytes, None]:
         """
@@ -257,7 +257,6 @@ class AsyncRequestHandler:
         }
 
         return handlers.get(type(data), lambda x: x)(data)
-
 
     async def fetch_signature(
             self,
@@ -289,11 +288,10 @@ class AsyncRequestHandler:
             {
                 "CONTENT-LENGTH": f"{len(data)}",
                 "CONTENT-TYPE": content_type or "application/json; charset=utf-8",
-                "NDC-MSG-SIG": generate_signature(data),
+                "NDC-MSG-SIG": self.generate.signature(data),
             }
         )
         return headers, data
-
 
     async def raise_error(self, response: dict) -> None:
         """
@@ -317,7 +315,6 @@ class AsyncRequestHandler:
 
         else:
             raise APIException(response)
-
 
     async def handle_response(self, status_code: int, response: str) -> dict:
         """
@@ -353,7 +350,6 @@ class AsyncRequestHandler:
 
             return response
 
-
     def print_response(self, method: str, url: str, status_code: int):
         """
         `print_response` - Prints the response if debug is enabled
@@ -377,7 +373,6 @@ class AsyncRequestHandler:
                 }.get(method, Fore.RED)
             )
             print(f"{color}{Style.BRIGHT}{method}{Style.RESET_ALL} - {url}")
-
 
     async def close_session(self):
         if self.session is not None:

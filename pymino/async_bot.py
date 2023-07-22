@@ -4,12 +4,13 @@ from time import time, perf_counter
 
 from .ext.entities import *
 from .ext.async_socket import AsyncWSClient
+from .ext.utilities.generate import Generator
 from .ext.async_community import AsyncCommunity
-from .ext.utilities.generate import device_id as generate_device_id
+from .ext.async_global_client import AsyncGlobal
 from .ext.utilities.async_request_handler import AsyncRequestHandler
 
 
-class AsyncBot(AsyncWSClient):
+class AsyncBot(AsyncWSClient, AsyncGlobal):
     def __init__(
         self,
         command_prefix: Optional[str] = "!",
@@ -17,8 +18,11 @@ class AsyncBot(AsyncWSClient):
         device_id: Optional[str] = None,
         intents: bool = False,
         online_status: bool = False,
-        proxy: Optional[str] = None
-        ):
+        proxy: Optional[str] = None,
+        hash_prefix: Union[str, int] = 19,
+        device_key: str = "E7309ECC0953C6FA60005B2765F99DBBC965C8E9",
+        signature_key: str  = "DFA5ED192DDA6E88A12FE12130DC6206B1251E44"
+        ) -> None:
         self.loop:              asyncio.AbstractEventLoop = asyncio.get_event_loop()
         self._cooldown_message  = None
         self._debug:            bool = check_debugger()
@@ -34,12 +38,18 @@ class AsyncBot(AsyncWSClient):
             raise InvalidCommandPrefix()
 
         self.community_id:      Union[str, int] = community_id
+        self.generate:          Generator = Generator(
+                                prefix=hash_prefix,
+                                device_key=device_key,
+                                signature_key=signature_key
+                                )
         self.online_status:     bool = online_status
-        self.device_id:         Optional[str] = device_id or generate_device_id()
+        self.device_id:         Optional[str] = device_id or self.generate.device_id()
         self.request:           AsyncRequestHandler = AsyncRequestHandler(
                                 bot = self,
                                 loop = self.loop,
-                                proxy=proxy
+                                proxy=proxy,
+                                generator=self.generate
                                 )
         self.community:         AsyncCommunity = AsyncCommunity(
                                 bot = self,
@@ -48,7 +58,7 @@ class AsyncBot(AsyncWSClient):
                                 )
         if self.community_id:   self.set_community_id(community_id)
 
-        AsyncWSClient.__init__(self)
+        super().__init__()
 
     @property
     def debug(self) -> bool:

@@ -1,10 +1,10 @@
 from time import time
 
-from .utilities.generate import device_id
 from .entities.userprofile import UserProfile
 from .entities.general import (
     ApiResponse, Authenticate, ResetPassword, Wallet
     )
+
 
 class AsyncAccount:
     """
@@ -12,7 +12,6 @@ class AsyncAccount:
     """
     def __init__(self, session):
         self.session = session
-
 
     async def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
@@ -45,7 +44,7 @@ class AsyncAccount:
             url="/g/s/auth/register",
             data={
                 "secret": f"0 {password}",
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "email": email,
                 "clientType": 100,
                 "nickname": username,
@@ -55,7 +54,6 @@ class AsyncAccount:
                 "identity": email,
                 "timestamp": int(time() * 1000)
                 }))
-
 
     async def delete_request(self, email: str, password: str) -> ApiResponse:
         """
@@ -82,11 +80,10 @@ class AsyncAccount:
             url="/g/s/account/delete-request",
             data={
                 "secret": f"0 {password}",
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "email": email,
                 "timestamp": int(time() * 1000)
             }))
-
 
     async def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
         """
@@ -114,11 +111,10 @@ class AsyncAccount:
             url="/g/s/account/delete-request/cancel",
             data={
                 "secret": f"0 {password}",
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "email": email,
                 "timestamp": int(time() * 1000)
             }))
-
 
     async def check_device(self, deviceId: str) -> ApiResponse:
         """
@@ -149,7 +145,6 @@ class AsyncAccount:
                 "timestamp": int(time() * 1000)
                 }))
 
-
     async def fetch_account(self) -> ApiResponse:
         """
         `**fetch_account**` - Fetches the account information.
@@ -166,7 +161,6 @@ class AsyncAccount:
         ```
         """
         return ApiResponse(await self.session.handler(method = "GET", url="/g/s/account"))
-
 
     async def upload_image(self, image: str) -> str:
         """
@@ -194,8 +188,7 @@ class AsyncAccount:
             content_type="image/jpg"
             )).mediaValue
 
-
-    async def fetch_profile(self) -> UserProfile:
+    async def fetch_profile(self, userId: str) -> UserProfile:
         """
         `**fetch_profile**` - Fetches the profile information.
         
@@ -212,9 +205,8 @@ class AsyncAccount:
         """
         return UserProfile(await self.session.handler(
             method = "GET",
-            url = f"/g/s/user-profile/{self.userId}"
+            url = f"/g/s/user-profile/{userId}"
             ))
-
 
     async def set_amino_id(self, aminoId: str) -> ApiResponse:
         """
@@ -241,7 +233,6 @@ class AsyncAccount:
             data={"aminoId": aminoId, "timestamp": int(time() * 1000)}
             ))
 
-
     async def fetch_wallet(self) -> Wallet:
         """
         `**fetch_wallet**` - Fetches the wallet information.
@@ -257,7 +248,6 @@ class AsyncAccount:
         print(response)
         """
         return Wallet(await self.session.handler(method="GET", url="/g/s/wallet"))
-
 
     async def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
         """
@@ -285,12 +275,11 @@ class AsyncAccount:
             data={
                 "identity": email,
                 "type": 1,
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "level": 2 if resetPassword else None,
                 "purpose": "reset-password" if resetPassword else None,
                 "timestamp": int(time() * 1000)
             }))
-
 
     async def activate_email(self, email: str, code: str) -> ApiResponse:
         """
@@ -319,11 +308,10 @@ class AsyncAccount:
                 "type": 1,
                 "identity": email,
                 "data": {"code":code},
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "timestamp": int(time() * 1000)
             }))
 
-    
     async def verify(self, email: str, code: str, deviceId: str) -> ApiResponse:
         """
         `**verify**` - Verifies the code sent to the email.
@@ -357,8 +345,7 @@ class AsyncAccount:
                 "timestamp": int(time() * 1000)
             }))
 
-
-    async def reset_password(self, email: str, newPassword: str, code: str, deviceId: str = device_id()) -> ResetPassword:
+    async def reset_password(self, email: str, newPassword: str, code: str, deviceId: str) -> ResetPassword:
         """
         `**reset_password**` - Resets the password.
 

@@ -1,6 +1,6 @@
 from time import time
 
-from .utilities.generate import device_id
+from .utilities.generate import Generator
 from .entities.userprofile import UserProfile
 from .entities.general import (
     ApiResponse, Authenticate, ResetPassword, Wallet
@@ -44,7 +44,7 @@ class Account:
             url="/g/s/auth/register",
             data={
                 "secret": f"0 {password}",
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "email": email,
                 "clientType": 100,
                 "nickname": username,
@@ -80,7 +80,7 @@ class Account:
             url="/g/s/account/delete-request",
             data={
                 "secret": f"0 {password}",
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "email": email,
                 "timestamp": int(time() * 1000)
             }))
@@ -111,7 +111,7 @@ class Account:
             url="/g/s/account/delete-request/cancel",
             data={
                 "secret": f"0 {password}",
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "email": email,
                 "timestamp": int(time() * 1000)
             }))
@@ -184,7 +184,7 @@ class Account:
         return ApiResponse(self.session.handler(method="POST", url="/g/s/media/upload",
             data=open(image, "rb").read(), content_type="image/jpg")).mediaValue
 
-    def fetch_profile(self) -> UserProfile:
+    def fetch_profile(self, userId: str) -> UserProfile:
         """
         `**fetch_profile**` - Fetches the profile information.
         
@@ -200,7 +200,7 @@ class Account:
         ```
         """
         return UserProfile(self.session.handler(
-            method = "GET", url = f"/g/s/user-profile/{self.userId}"))
+            method = "GET", url = f"/g/s/user-profile/{userId}"))
 
     def set_amino_id(self, aminoId: str) -> ApiResponse:
         """
@@ -267,7 +267,7 @@ class Account:
             data={
                 "identity": email,
                 "type": 1,
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "level": 2 if resetPassword else None,
                 "purpose": "reset-password" if resetPassword else None,
                 "timestamp": int(time() * 1000)
@@ -300,7 +300,7 @@ class Account:
                 "type": 1,
                 "identity": email,
                 "data": {"code":code},
-                "deviceID": device_id(),
+                "deviceID": self.session.generate.device_id(),
                 "timestamp": int(time() * 1000)
             }))
     
@@ -338,7 +338,7 @@ class Account:
                 "timestamp": int(time() * 1000)
             }))
 
-    def reset_password(self, email: str, newPassword: str, code: str, deviceId: str = device_id()) -> ResetPassword:
+    def reset_password(self, email: str, newPassword: str, code: str, deviceId: str) -> ResetPassword:
         """
         `**reset_password**` - Resets the password.
 

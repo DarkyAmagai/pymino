@@ -1,4 +1,3 @@
-from os import system
 from random import randint
 from typing import Optional
 from threading import Thread
@@ -10,19 +9,17 @@ from ujson import loads, dumps, JSONDecodeError
 from .entities import *
 from .context import EventHandler
 from .dispatcher import MessageDispatcher
-from .utilities.generate import device_id, generate_signature
 
 if orjson_exists():
     from orjson import (
         loads as orjson_loads, dumps as orjson_dumps
         )
 
-
 try:
     from websocket import WebSocket, WebSocketApp
 except ImportError as e:
-    system("pip uninstall websocket -y")
-    system("pip install websocket-client==1.6.1")
+    pipmain(["uninstall", "websocket", "-y"])
+    pipmain(["install", "websocket-client==1.6.1"])
     raise WrongWebSocketPackage from e
 
 
@@ -59,7 +56,7 @@ class WSClient(EventHandler):
 
     def run_forever(self) -> None:
         """Runs the websocket forever."""
-        ws_data = f"{device_id()}|{int(time() * 1000)}"
+        ws_data = f"{self.generate.device_id()}|{int(time() * 1000)}"
         self.ws = WebSocketApp(
             url = f"{self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
             on_open=self.on_websocket_open,
@@ -67,9 +64,9 @@ class WSClient(EventHandler):
             on_error=self.on_websocket_error,
             on_close=self.on_websocket_close,
             header={
-            "NDCDEVICEID": device_id(),
+            "NDCDEVICEID": self.generate.device_id(),
             "NDCAUTH": f"sid={self.sid}",
-            "NDC-MSG-SIG": generate_signature(ws_data)
+            "NDC-MSG-SIG": self.generate.signature(ws_data)
             })
         return self.start_processes()
 

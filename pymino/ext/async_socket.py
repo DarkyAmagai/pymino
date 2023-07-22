@@ -13,7 +13,6 @@ from .entities import *
 from .handle_queue import QueueHandler
 from .async_event_handler import AsyncEventHandler
 from .dispatcher import AsyncMessageDispatcher
-from .utilities.generate import device_id, generate_signature
 
 if orjson_exists():
     from orjson import loads as orjson_loads
@@ -116,13 +115,13 @@ class AsyncWSClient(AsyncEventHandler):
         try:
             async with create_client_session() as session:
                 self.session = session
-                ws_data = f"{device_id()}|{int(time() * 1000)}"
+                ws_data = f"{self.generate.device_id()}|{int(time() * 1000)}"
                 self.ws = await session.ws_connect(
                     url=f"{await self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
                     headers={
-                        "NDCDEVICEID": device_id(),
+                        "NDCDEVICEID": self.generate.device_id(),
                         "NDCAUTH": f"sid={self.sid}",
-                        "NDC-MSG-SIG": generate_signature(ws_data)
+                        "NDC-MSG-SIG": self.generate.signature(ws_data)
                     }
                 )
 

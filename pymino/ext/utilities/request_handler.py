@@ -4,17 +4,17 @@ from ujson import loads, dumps
 from colorama import Fore, Style
 from typing import Optional, Union, Tuple, Callable
 
+from .generate import Generator
 from ..entities.handlers import orjson_exists
-from .generate import device_id, generate_signature
 from requests import Session as Http, Response as HttpResponse
 
 from ..entities import (
     Forbidden,
     BadGateway,
-    NullResponse,
     APIException,
     ServiceUnavailable
     )
+
 from requests.exceptions import (
     ConnectionError,
     ReadTimeout,
@@ -35,11 +35,18 @@ class RequestHandler:
 
     `**Parameters**``
     - `bot` - The main bot class.
+    - `generator` - The generator class.    
     - `proxy` - The proxy to use for requests.
 
     """
-    def __init__(self, bot, proxy: Optional[str] = None):
+    def __init__(
+        self,
+        bot,
+        generator: Generator,
+        proxy: Optional[str] = None
+        ) -> None:
         self.bot             = bot
+        self.generate        = generator
         self.http_handler:   Http = Http()
         self.sid:            Optional[str] = None
         self.userId:         Optional[str] = None
@@ -49,7 +56,7 @@ class RequestHandler:
             "http": proxy,
             "https": proxy
             } if proxy is not None else None
-        
+
         self.response_map = {
             403: Forbidden,
             502: BadGateway,
@@ -107,7 +114,7 @@ class RequestHandler:
             data: Union[dict, bytes, None],
             headers: dict,
             content_type: Optional[str]
-        ) -> Union[int, str]:
+        ) -> Tuple[int, str]:
         """
         `send_request` - Sends a request
         
@@ -119,7 +126,7 @@ class RequestHandler:
         - `content_type` - The content type of the data.
         
         `**Returns**``
-        - `Union[int, str]` - The status code and response from the request.
+        - `Tuple[int, str]` - The status code and response from the request.
         
         """
         try:
@@ -135,8 +142,8 @@ class RequestHandler:
             ConnectTimeout,
         ):
             sleep(1.5)
-            self.handler(method, url, data, content_type)
-    
+            return self.handler(method, url, data, content_type)
+
     def handler(
         self,
         method: str,
@@ -164,13 +171,21 @@ class RequestHandler:
         if all([method=="POST", data is None]):
             headers["CONTENT-TYPE"] = "application/octet-stream"
 
-        status_code, content = self.send_request(
-            method, url, binary_data, headers, content_type
-        )
+        try:
+            status_code, content = self.send_request(
+                method, url, binary_data, headers, content_type
+            )
+        except TypeError: # NOTE: Not sure if this is even needed.
+            return self.handler(method, url, data, content_type)
 
         self.print_response(method=method, url=url, status_code=status_code)
 
-        return self.handle_response(status_code=status_code, response=content)
+        response = self.handle_response(status_code=status_code, response=content)
+
+        if response is None:
+            return self.handler(method, url, data, content_type)
+        
+        return response
 
     def service_handler(
         self,
@@ -191,7 +206,7 @@ class RequestHandler:
 
         """
         
-        headers = {"NDCDEVICEID": device_id(), **self.service_headers()}
+        headers = {"NDCDEVICEID": self.generate.device_id(), **self.service_headers()}
 
         if data or content_type:
             headers, data = self.fetch_signature(data, headers, content_type)
@@ -251,7 +266,7 @@ class RequestHandler:
             "CONTENT-LENGTH": f"{len(data)}",
             "CONTENT-TYPE": content_type or "application/json; charset=utf-8",
             "NDC-MSG-SIG": (
-                generate_signature(data)
+                self.generate.signature(data)
             )
         })
         return headers, data
@@ -265,17 +280,20 @@ class RequestHandler:
         
         `**Returns**``
         - `None` - Raises an error if the status code is in the response map.
+        - `404` - Returns 404 if the status code is 105 and the email and password is set.
         
         """
-        if all([
-            response.get("api:statuscode", 200) == 105,
-            hasattr(self, "email"),
-            hasattr(self, "password")
-            ]):
-            # NOTE: Login expired will have to run request manually
-            return self.bot.run(self.email, self.password, use_cache=False)
-        
-        else: raise APIException(response)
+        if all(
+            [
+                response.get("api:statuscode", 200) == 105,
+                hasattr(self, "email"),
+                hasattr(self, "password"),
+            ]
+        ):
+            self.bot.run(self.email, self.password, use_cache=False)
+            return 404      
+      
+        raise APIException(response)
         
     def handle_response(self, status_code: int, response: str) -> dict:
         """
@@ -291,21 +309,18 @@ class RequestHandler:
         """
         if status_code in self.response_map:
             raise self.response_map[status_code]
-        
-        elif response.startswith("null"):
-            raise NullResponse
-        
-        else:
-            
-            try:
-                response = orjson_loads(response) if self.orjson else loads(response)
-            except Exception:
-                response = loads(response)
 
-            if status_code != 200:
-                self.raise_error(response)
+        try:
+            response = orjson_loads(response) if self.orjson else loads(response)
+        except Exception:
+            response = loads(response)
 
-            return response
+        if status_code != 200:
+            check_response = self.raise_error(response)
+            if check_response == 404:
+                return None
+
+        return response
 
     def print_response(self, method: str, url: str, status_code: int):
         """

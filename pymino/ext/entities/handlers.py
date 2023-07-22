@@ -22,21 +22,46 @@ def check_debugger() -> bool:
             search("pycharm", environ.get("TERM_PROGRAM")),
             is_repl(), is_android()
             ])
-    
+
+def install_wsaccel() -> None:
+    """
+    Try to install wsaccel if it isn't installed.
+    """
+    with Cache("cache") as cache:
+        if cache.get("wsaccel"):
+            return None
+
+        try:
+            from wsaccel import __version__
+            cache.set("wsaccel", True)
+            return True
+        except ImportError:
+            pipmain(["install", "wsaccel"])
+            cache.set("wsaccel", True)
+            system("cls || clear")
+            return None
+
 def orjson_exists() -> bool:
     """
     Checks if orjson is installed. If it isn't, it will install it.
     """
     if is_android(): return False
 
-    try:
-        from orjson import dumps as dumps
-        return True
-    except ImportError:
-        pipmain(["install", "orjson"])
-        system("cls || clear")
-        return True
-    
+    install_wsaccel()
+    with Cache("cache") as cache:
+        if cache.get("orjson"):
+            return True
+
+        try:
+            from orjson import dumps as dumps
+            cache.set("orjson", True)
+            return True
+        except ImportError:
+            pipmain(["install", "orjson"])
+            cache.set("orjson", True)
+            system("cls || clear")
+            return True
+
 def is_android() -> bool:
     """
     Checks if the program is running on an Android device.
