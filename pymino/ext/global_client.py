@@ -1927,3 +1927,25 @@ class Global:
             method = "GET",
             url = f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&start={start}&size={size}&pagingType=t"
         ))
+    
+    def unfollow(self, userId: str) -> ApiResponse:
+        """
+        Unfollows a user.
+
+        :param userId: The ID of the user to unfollow.
+        :type userId: str
+        :return: An ApiResponse object containing the response data from the API.
+        :rtype: ApiResponse
+
+        This function allows the logged-in user to unfollow another user specified by their ID.
+        After successful execution, the user will no longer be following the specified user.
+
+        **Example usage:**
+
+        >>> response = client.unfollow(userId="user123")
+        >>> print(response.status_code)
+        """
+        return ApiResponse(self.make_request(
+            method = "DELETE",
+            url = f"/g/s/user-profile/{userId}/member/{self.userId}"
+        ))
