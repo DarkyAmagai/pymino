@@ -1,4 +1,3 @@
-from time import sleep
 from uuid import uuid4
 from ujson import loads, dumps
 from colorama import Fore, Style
@@ -140,8 +139,8 @@ class RequestHandler:
             SSLError,
             ProxyError,
             ConnectTimeout,
-        ):
-            sleep(1.5)
+        ) as e:
+            self.bot._log(f"Failed to send request: {e}")
             return self.handler(method, url, data, content_type)
 
     def handler(
@@ -293,6 +292,7 @@ class RequestHandler:
             self.bot.run(self.email, self.password, use_cache=False)
             return 404      
       
+        self.bot._log(f"Exception: {response}")
         raise APIException(response)
         
     def handle_response(self, status_code: int, response: str) -> dict:

@@ -1,18 +1,96 @@
 from threading import Thread
 from typing import Optional, Union
 from time import perf_counter, time
+from logging import FileHandler, Logger, getLogger, Formatter, DEBUG
 
 from .ext.console import *
 from .ext.entities import *
-from .ext.socket import WSClient
-from .ext.global_client import Global
 from .ext.account import Account
+from .ext.socket import WSClient
 from .ext.community import Community
+from .ext.global_client import Global
 from .ext.utilities.generate import Generator
 from .ext.utilities.request_handler import RequestHandler
 
+__all__ = (
+    'Bot',
+)
+
 
 class Bot(WSClient, Global):
+    """
+    Bot class that interacts with aminoapps API.
+
+    This class extends `WSClient` and `Global` classes, allowing the bot to use WebSocket functionality and global client features.
+
+    Special Attributes:
+    __slots__ : tuple
+        A tuple containing a fixed set of attributes to optimize memory usage.
+
+    Attributes:
+    _debug : bool
+        Whether or not debug mode is enabled.
+    _console_enabled : bool
+        Whether or not the CONSOLE is enabled.
+    _cooldown_message : str
+        The default cooldown message used when a command is on cooldown.
+    _intents : bool
+        Whether or not intents are enabled.
+    _is_ready : bool
+        Whether the bot is ready after successful login.
+    _userId : str
+        The ID of the user associated with the bot.
+    _sid : str
+        The session ID of the client.
+    _cached : bool
+        Whether the login credentials are cached.
+    logger : Logger
+        The logger object.
+    cache : Cache
+        An instance of the Cache class for caching data.
+    command_prefix : Optional[str]
+        The prefix used for bot commands.
+    community_id : Union[str, int]
+        The ID of the community associated with the bot.
+    generate : Generator
+        An instance of the Generator class for generating data.
+    online_status : bool
+        Whether the bot's online status is enabled.
+    device_id : Optional[str]
+        The device ID used for logging in. If not provided, it will be generated using the Generator class.
+    _is_authenticated : bool
+        Whether the bot is authenticated.
+    request : RequestHandler
+        An instance of the RequestHandler class for handling API requests.
+    community : Community
+        An instance of the Community class for community-related actions.
+    account : Account
+        An instance of the Account class for account-related actions.
+    profile : UserProfile
+        An instance of the UserProfile class representing the bot's user profile.
+    """
+    __slots__ = (
+        '_debug',
+        '_console_enabled',
+        '_cooldown_message',
+        '_intents',
+        '_is_ready',
+        '_userId',
+        '_sid',
+        '_cached',
+        'cache',
+        'logger',
+        'command_prefix',
+        'community_id',
+        'generate',
+        'online_status',
+        'device_id',
+        '_is_authenticated'
+        'request',
+        'community',
+        'account',
+        'profile',
+    )
     def __init__(
         self,
         command_prefix: Optional[str] = "!",
@@ -227,7 +305,8 @@ class Bot(WSClient, Global):
         """
         self._debug:            bool = check_debugger()
         self._console_enabled:  bool = console_enabled
-        self._cooldown_message  = None
+        self._cooldown_message: Optional[str] = None
+        self._is_authenticated: bool = False
         self._intents:          bool = intents
         self._is_ready:         bool = False
         self._userId:           str = None
@@ -239,8 +318,9 @@ class Bot(WSClient, Global):
         if self.command_prefix == "":
             raise InvalidCommandPrefix()
         
+        self.logger:            Optional[Logger] = self._create_logger()
         self.community_id:      Union[str, int] = community_id
-        self.generate           = Generator(hash_prefix, device_key, signature_key)
+        self.generate:          Generator = Generator(hash_prefix, device_key, signature_key)
         self.online_status:     bool = online_status
         self.device_id:         Optional[str] = device_id or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
@@ -261,6 +341,32 @@ class Bot(WSClient, Global):
 
         super().__init__()
 
+    def __repr__(self):
+        """
+        Returns a string representation of the Bot object.
+
+        :return: A string representation of the Bot object.
+        :rtype: str
+        """
+        return f"Bot(command_prefix='{self.command_prefix}', community_id={self.community_id}, device_id='{self.device_id}')"
+
+    def __str__(self):
+        """
+        Returns a user-friendly string representation of the Bot object.
+
+        :return: A user-friendly string representation of the Bot object.
+        :rtype: str
+        """
+        return f"Bot: Prefix='{self.command_prefix}', Community ID={self.community_id}, Device ID='{self.device_id}'"
+
+    def __iter__(self) -> iter:
+        """
+        Allows iteration over the Bot object.
+
+        :return: An iterator for the Bot object.
+        :rtype: iter
+        """
+        return iter(self.__slots__)
 
     @property
     def debug(self) -> bool:
@@ -277,7 +383,6 @@ class Bot(WSClient, Global):
         debug mode state, use the `self._debug` attribute directly.
         """
         return self._debug
-    
 
     @debug.setter
     def debug(self, value: bool) -> None:
@@ -296,7 +401,6 @@ class Bot(WSClient, Global):
         """
         self._debug = value
 
-    
     @property
     def console_enabled(self) -> bool:
         """
@@ -312,7 +416,6 @@ class Bot(WSClient, Global):
         the `self._console_enabled` attribute directly.
         """
         return self._console_enabled
-    
 
     @console_enabled.setter
     def console_enabled(self, value: bool) -> None:
@@ -331,7 +434,6 @@ class Bot(WSClient, Global):
         """
         self._console_enabled = value
 
-
     @property
     def intents(self) -> bool:
         """
@@ -347,7 +449,6 @@ class Bot(WSClient, Global):
         state, use the `self._intents` attribute directly.
         """
         return self._intents
-    
 
     @intents.setter
     def intents(self, value: bool) -> None:
@@ -365,7 +466,6 @@ class Bot(WSClient, Global):
         """
         self._intents = value
 
-
     @property
     def is_ready(self) -> bool:
         """
@@ -381,7 +481,6 @@ class Bot(WSClient, Global):
         set the authentication state, use the `self._is_ready` attribute directly.
         """
         return self._is_ready
-    
 
     @is_ready.setter
     def is_ready(self, value: bool) -> None:
@@ -400,7 +499,6 @@ class Bot(WSClient, Global):
         """
         self._is_ready = value
 
-
     @property
     def userId(self) -> str:
         """
@@ -416,7 +514,6 @@ class Bot(WSClient, Global):
         `self._userId` attribute directly.
         """
         return self._userId
-
 
     @userId.setter
     def userId(self, value: str) -> None: # Human is gay.
@@ -435,7 +532,6 @@ class Bot(WSClient, Global):
         """
         self._userId = value
 
-        
     @property
     def sid(self) -> str:
         """
@@ -451,7 +547,6 @@ class Bot(WSClient, Global):
         use the `self._sid` attribute directly.
         """
         return self._sid
-
 
     @sid.setter
     def sid(self, value: str) -> None:
@@ -470,7 +565,6 @@ class Bot(WSClient, Global):
         """
         self._sid = value
 
-    
     def set_cooldown_message(self, message: str) -> None:
         """
         Changes the default cooldown message.
@@ -485,6 +579,60 @@ class Bot(WSClient, Global):
         """
         self._cooldown_message = message
 
+    @property
+    def is_authenticated(self) -> bool:
+        """
+        Whether or not the client is authenticated.
+
+        :return: True if the client is authenticated, False otherwise.
+        :rtype: bool
+
+        This property returns whether or not the client is authenticated. The client is authenticated after logging in to
+        Amino and receiving a valid session ID.
+
+        **Note:** This property only returns the authentication state and cannot be used to set the authentication state. To
+        set the authentication state, use the `self._is_authenticated` attribute directly.
+        """
+        return self._is_authenticated
+
+    @is_authenticated.setter
+    def is_authenticated(self, value: bool) -> None:
+        """
+        Sets the authentication state of the client.
+
+        :param value: True to authenticate the client, False to deauthenticate it.
+        :type value: bool
+        :return: None
+
+        This setter sets the authentication state of the client. The client is authenticated after logging in to Amino and
+        receiving a valid session ID.
+
+        **Note:** This setter only sets the authentication state and cannot be used to retrieve the authentication state. To
+        retrieve the authentication state, use the `self.is_authenticated` property.
+        """
+        self._is_authenticated = value
+
+    def _create_logger(self) -> Logger:
+        """
+        Creates a logger object.
+        
+        :return: A logger object.
+        :rtype: Logger
+        
+        This method creates a logger object. The logger object is used to log debug information to debug.log.
+        """
+        logger = getLogger("pymino")
+        logger.setLevel(DEBUG)
+
+        file_handler = FileHandler("debug.log")
+        file_handler.setLevel(DEBUG)
+
+        formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(formatter)
+
+        logger.addHandler(file_handler)
+
+        return logger
 
     def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
@@ -521,7 +669,6 @@ class Bot(WSClient, Global):
                 "clientCallbackURL": "narviiapp://default"
                 }
             )).json()
-
 
     def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
         """
@@ -579,7 +726,6 @@ class Bot(WSClient, Global):
 
         return response
 
-
     def run(
         self,
         email: Optional[str] = None,
@@ -634,7 +780,6 @@ class Bot(WSClient, Global):
 
         return self._run(response)
 
-
     def _run(self, response: dict) -> dict:
         """
         Processes the response from a successful login attempt and sets up the authenticated client.
@@ -670,14 +815,17 @@ class Bot(WSClient, Global):
         self.community.userId: str = self.userId
         self.request.sid: str = self.sid
         self.request.userId: str = self.userId
-        self.is_authenticated: bool = True
-
+        
         if hasattr(self.request, "email") and self._cached:
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if not self.is_ready:
             self._is_ready = True
+            self._is_authenticated = True
+            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
             self.connect()
+        else:
+            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
 
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
@@ -685,12 +833,10 @@ class Bot(WSClient, Global):
         Thread(target=self.__run_console__).start()
         return response
 
-    
     def __run_console__(self) -> None:
         if self.console_enabled:
             self._debug = False
             Console(self).fetch_menu()
-
 
     def fetch_account(self) -> dict:
         """
@@ -717,7 +863,6 @@ class Bot(WSClient, Global):
                 ))
         
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
-
 
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
@@ -755,7 +900,6 @@ class Bot(WSClient, Global):
 
         return community_id
 
-
     def set_community_id(self, community_id: Union[str, int]) -> int:
         """
         Sets the community ID on the client instance and the Community object.
@@ -786,7 +930,6 @@ class Bot(WSClient, Global):
         self.community.community_id = community_id
 
         return community_id
-
 
     def ping(self) -> float:
         """

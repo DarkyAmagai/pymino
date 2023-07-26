@@ -1,118 +1,78 @@
 from time import time
 from typing import Any, Callable, Optional, TypeVar, Union
+from logging import FileHandler, Logger, getLogger, Formatter, DEBUG
 
 from .ext.entities import *
 from .ext.global_client import Global
 from .ext.utilities.generate import Generator
 from .ext import RequestHandler, Account, Community
 
-
 F = TypeVar("F", bound=Callable[..., Any])
+
+__all__ = (
+    "Client",
+)
+
 
 class Client(Global):
     """
-    `Client` - This is the main client.
+    Bot class that interacts with aminoapps API.
 
-    `**Parameters**``
-    - `**kwargs` - any other parameters to use for the client.
-    - `device_id` - device id to use for the client.
-    - `proxy` - proxy string to use for the client.
-    - `hash_prefix` - The hash prefix to use for the bot. `Defaults` to `19`.
-    - `device_key` - The device key to use for the bot. `Defaults` to `E7309ECC0953C6FA60005B2765F99DBBC965C8E9`.
-    - `signature_key` - The signature key to use for the bot. `Defaults` to `DFA5ED192DDA6E88A12FE12130DC6206B1251E44`.
-    
-    ----------------------------
-    Why use `Client` over `Bot`?
+    This class extends `Global` classes, allowing the client to access all global client features.
 
-    - Used for scripts rather than bots.
-    - Lightweight, does not utilize websocket.
+    Special Attributes:
+    __slots__ : tuple
+        A tuple containing a fixed set of attributes to optimize memory usage.
 
-    ----------------------------
-    Do I have to be logged in to use `Client`?
-
-    - No, you do not have to be logged in to use `Client`.
-    - However, you will not be able to use any methods that require authentication.
-
-    `**NON-AUTH EXAMPLE**`
-    ```python
-    # This method does not require authentication, so it will work without logging in.    
-
-    from pymino import Client
-
-    client = Client()
-
-    print(f"Logged in: {client.is_authenticated}")
-
-    chat_id = client.community.fetch_object_id(link="https://aminoapps.com/p/123456789")
-
-    print(f"Chat ID: {chat_id}")
-    ```
-    ----------------------------
-
-    How do I login with `Client`?
-        - You can login with `Client` by using the `login` method.
-        
-    `**Login Example**`
-
-    ```python
-    from pymino import Client
-
-    client = Client()
-
-    client.login(email="email", password="password")
-
-    print(f"Logged in: {client.is_authenticated}")
-
-    # Output: Logged in: True
-    ```
-    ----------------------------
-    How can I utilize community methods with `Client`?
-        - First, you must set the community id.
-        - You can set the community id by using the `set_community_id` method
-        - Or the `fetch_community_id` method if you do not know the community id.
-
-    `**Community Example**`
-    ```python
-    from pymino import Client
-
-    client = Client()
-
-    client.login(email="email", password="password")
-
-    print(f"Logged in: {client.is_authenticated}")
-
-    client.fetch_community_id("http://aminoapps.com/c/CommunityName")
-    # Or
-    client.set_community_id(123456789)
-
-    print(f"Community ID has been set: {client.community_id}")
-    ```
-    ----------------------------
-    `**Community Methods**`
-    ```python
-    from pymino import Client
-
-    client = Client()
-
-    client.login(email="email", password="password")
-
-    client.fetch_community_id("http://aminoapps.com/c/CommunityName")
-
-    client.community.send_message(
-        chatId = "000000-0000-0000-0000-000000",
-        content = "Hello, world!"
-    ) # This will send in the community you set the community id for.
-
-    #Alternatively, you can use the community id as a parameter.
-    comId = client.fetch_community_id("http://aminoapps.com/c/CommunityName")
-    client.community.send_message(
-        chatId = "000000-0000-0000-0000-000000",
-        content = "Hello, world!",
-        comId = comId
-    )
-    ```
-
+    Attributes:
+    _debug : bool
+        Whether or not debug mode is enabled.
+    _userId : str
+        The ID of the user associated with the bot.
+    _sid : str
+        The session ID of the client.
+    _cached : bool
+        Whether the login credentials are cached.
+    _is_authenticated : bool
+        Whether or not the client is authenticated.
+    cache : Cache
+        An instance of the Cache class for caching data.
+    logger : Logger
+        An instance of the Logger class for logging.
+    is_logging : bool
+        Whether or not logging is enabled.
+    community_id : Union[str, int]
+        The ID of the community associated with the bot.
+    generate : Generator
+        An instance of the Generator class for generating data.
+    device_id : Optional[str]
+        The device ID used for logging in. If not provided, it will be generated using the Generator class.
+    request : RequestHandler
+        An instance of the RequestHandler class for handling API requests.
+    account : Account
+        An instance of the Account class for account-related actions.
+    community : Community
+        An instance of the Community class for community-related actions.
+    profile : UserProfile
+        An instance of the UserProfile class representing the bot's user profile.
     """
+    __slots__ = (
+        '_debug',
+        '_userId',
+        '_sid',
+        '_cached',
+        '_is_authenticated',
+        'cache',
+        'logger',
+        'is_logging'
+        'community_id',
+        'generate',
+        'device_id',
+        'request',
+        'account',
+        'community',
+        'profile'
+    )
     def __init__(
         self,
         community_id: Optional[Union[str, int]] = None,
@@ -121,12 +81,117 @@ class Client(Global):
         signature_key: str  = "DFA5ED192DDA6E88A12FE12130DC6206B1251E44",
         **kwargs
         ) -> None:
+        """
+        `Client` - This is the main client.
+
+        `**Parameters**``
+        - `**kwargs` - any other parameters to use for the client.
+        - `device_id` - device id to use for the client.
+        - `proxy` - proxy string to use for the client.
+        - `hash_prefix` - The hash prefix to use for the bot. `Defaults` to `19`.
+        - `device_key` - The device key to use for the bot. `Defaults` to `E7309ECC0953C6FA60005B2765F99DBBC965C8E9`.
+        - `signature_key` - The signature key to use for the bot. `Defaults` to `DFA5ED192DDA6E88A12FE12130DC6206B1251E44`.
+        
+        ----------------------------
+        Why use `Client` over `Bot`?
+
+        - Used for scripts rather than bots.
+        - Lightweight, does not utilize websocket.
+
+        ----------------------------
+        Do I have to be logged in to use `Client`?
+
+        - No, you do not have to be logged in to use `Client`.
+        - However, you will not be able to use any methods that require authentication.
+
+        `**NON-AUTH EXAMPLE**`
+        ```python
+        # This method does not require authentication, so it will work without logging in.    
+
+        from pymino import Client
+
+        client = Client()
+
+        print(f"Logged in: {client.is_authenticated}")
+
+        chat_id = client.community.fetch_object_id(link="https://aminoapps.com/p/123456789")
+
+        print(f"Chat ID: {chat_id}")
+        ```
+        ----------------------------
+
+        How do I login with `Client`?
+            - You can login with `Client` by using the `login` method.
+            
+        `**Login Example**`
+
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.login(email="email", password="password")
+
+        print(f"Logged in: {client.is_authenticated}")
+
+        # Output: Logged in: True
+        ```
+        ----------------------------
+        How can I utilize community methods with `Client`?
+            - First, you must set the community id.
+            - You can set the community id by using the `set_community_id` method
+            - Or the `fetch_community_id` method if you do not know the community id.
+
+        `**Community Example**`
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.login(email="email", password="password")
+
+        print(f"Logged in: {client.is_authenticated}")
+
+        client.fetch_community_id("http://aminoapps.com/c/CommunityName")
+        # Or
+        client.set_community_id(123456789)
+
+        print(f"Community ID has been set: {client.community_id}")
+        ```
+        ----------------------------
+        `**Community Methods**`
+        ```python
+        from pymino import Client
+
+        client = Client()
+
+        client.login(email="email", password="password")
+
+        client.fetch_community_id("http://aminoapps.com/c/CommunityName")
+
+        client.community.send_message(
+            chatId = "000000-0000-0000-0000-000000",
+            content = "Hello, world!"
+        ) # This will send in the community you set the community id for.
+
+        #Alternatively, you can use the community id as a parameter.
+        comId = client.fetch_community_id("http://aminoapps.com/c/CommunityName")
+        client.community.send_message(
+            chatId = "000000-0000-0000-0000-000000",
+            content = "Hello, world!",
+            comId = comId
+        )
+        ```
+
+        """
         self._debug:            bool = check_debugger()
         self._is_authenticated: bool = False
         self._userId:           str = None
         self._sid:              str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
+        self.logger:            Logger = self._create_logger()
+        self.is_logging:        bool = True
         self.community_id:      Optional[str] = community_id or kwargs.get("comId")
         self.generate:          Generator = Generator(
                                 prefix=hash_prefix,
@@ -150,6 +215,32 @@ class Client(Global):
         
         super().__init__()
 
+    def __repr__(self):
+        """
+        Returns a string representation of the Client object.
+
+        :return: A string representation of the Client object.
+        :rtype: str
+        """
+        return f"Client(community_id={self.community_id}, device_id={self.device_id})"
+
+    def __str__(self):
+        """
+        Returns a user-friendly string representation of the Client object.
+
+        :return: A user-friendly string representation of the Client object.
+        :rtype: str
+        """
+        return f"Client(community_id={self.community_id}, device_id={self.device_id})"
+
+    def __iter__(self) -> iter:
+        """
+        Allows iteration over the Client object.
+
+        :return: An iterator for the Client object.
+        :rtype: iter
+        """
+        return iter(self.__slots__)
 
     @property
     def debug(self) -> bool:
@@ -166,7 +257,6 @@ class Client(Global):
         debug mode state, use the `self._debug` attribute directly.
         """
         return self._debug
-    
 
     @debug.setter
     def debug(self, value: bool) -> None:
@@ -185,7 +275,6 @@ class Client(Global):
         """
         self._debug = value
 
-
     @property
     def is_authenticated(self) -> bool:
         """
@@ -201,7 +290,6 @@ class Client(Global):
         set the authentication state, use the `self._is_authenticated` attribute directly.
         """
         return self._is_authenticated
-    
 
     @is_authenticated.setter
     def is_authenticated(self, value: bool) -> None:
@@ -220,7 +308,6 @@ class Client(Global):
         """
         self._is_authenticated = value
 
-
     @property
     def userId(self) -> str:
         """
@@ -236,7 +323,6 @@ class Client(Global):
         `self._userId` attribute directly.
         """
         return self._userId
-
 
     @userId.setter
     def userId(self, value: str) -> None:
@@ -255,7 +341,6 @@ class Client(Global):
         """
         self._userId = value
 
-        
     @property
     def sid(self) -> str:
         """
@@ -271,7 +356,6 @@ class Client(Global):
         use the `self._sid` attribute directly.
         """
         return self._sid
-
 
     @sid.setter
     def sid(self, value: str) -> None:
@@ -290,6 +374,42 @@ class Client(Global):
         """
         self._sid = value
 
+    def _log(self, message: str) -> None:
+        """
+        Logs a message to debug.log
+
+        :param message: The message to log.
+        :type message: str
+        :return: None
+
+        """
+        if self.is_logging:
+            try:
+                self.logger.debug(message)
+            except Exception:
+                self.is_logging = False
+
+    def _create_logger(self) -> Logger:
+        """
+        Creates a logger object.
+        
+        :return: A logger object.
+        :rtype: Logger
+        
+        This method creates a logger object. The logger object is used to log debug information to debug.log.
+        """
+        logger = getLogger("pymino")
+        logger.setLevel(DEBUG)
+
+        file_handler = FileHandler("debug.log")
+        file_handler.setLevel(DEBUG)
+
+        formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_handler.setFormatter(formatter)
+
+        logger.addHandler(file_handler)
+
+        return logger
 
     def authenticated(func: F) -> F:
         """
@@ -318,7 +438,6 @@ class Client(Global):
             except AttributeError:
                 raise LoginRequired
         return wrapper
-
 
     def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
         """
@@ -356,7 +475,6 @@ class Client(Global):
 
         return community_id
 
-
     def set_community_id(self, community_id: Union[str, int]) -> int:
         """
         Sets the community ID on the client instance and the Community object.
@@ -388,7 +506,6 @@ class Client(Global):
 
         return community_id
 
-
     def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
         """
         Authenticates the bot with the provided email and password.
@@ -406,25 +523,26 @@ class Client(Global):
         if device_id:
             self.device_id = device_id
 
-        return ApiResponse(self.request.handler(
-            method="POST",
-            url = "/g/s/auth/login",
-            data = {
-                "secret": f"0 {password}",
-                "clientType": 100,
-                "systemPushEnabled": 0,
-                "timestamp": int(time() * 1000),
-                "locale": "en_US",
-                "action": "normal",
-                "bundleID": "com.narvii.master",
-                "timezone": -480,
-                "deviceID": self.device_id,
-                "email": email,
-                "v": 2,
-                "clientCallbackURL": "narviiapp://default"
-                }
-            )).json()
-
+        return ApiResponse(
+            self.request.handler(
+                method="POST",
+                url = "/g/s/auth/login",
+                data = {
+                    "secret": f"0 {password}",
+                    "clientType": 100,
+                    "systemPushEnabled": 0,
+                    "timestamp": int(time() * 1000),
+                    "locale": "en_US",
+                    "action": "normal",
+                    "bundleID": "com.narvii.master",
+                    "timezone": -480,
+                    "deviceID": self.device_id,
+                    "email": email,
+                    "v": 2,
+                    "clientCallbackURL": "narviiapp://default"
+                    }
+                )
+            ).json()
 
     def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
         """
@@ -482,7 +600,6 @@ class Client(Global):
 
         return response
 
-
     def login(
         self,
         email: Optional[str] = None,
@@ -535,7 +652,6 @@ class Client(Global):
 
         return self._run(response)
 
-
     def run(
         self,
         email: Optional[str] = None,
@@ -571,7 +687,6 @@ class Client(Global):
         """
         return self.login(email=email, password=password, sid=sid, device_id=device_id, use_cache=use_cache)
 
-
     def _run(self, response: dict) -> dict:
         """
         Processes the response from a successful login attempt and sets up the authenticated client.
@@ -597,7 +712,7 @@ class Client(Global):
         if response["api:statuscode"] != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
-            self.profile: UserProfile = UserProfile(response) # Human is gay.
+            self.profile: UserProfile = UserProfile(response) 
 
         if not self.sid:
             self.sid: str = response["sid"]
@@ -606,16 +721,21 @@ class Client(Global):
         self.community.userId: str = self.userId
         self.request.sid: str = self.sid
         self.request.userId: str = self.userId
-        self.is_authenticated: bool = True
-
+        
         if hasattr(self.request, "email") and self._cached:
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
+
+        if not self.is_authenticated:
+            self._is_authenticated = True
+            print("test")
+            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
+        else:
+            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
 
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
         return response
-
 
     @authenticated
     def disconnect_google(self, password: str) -> dict:
@@ -646,7 +766,6 @@ class Client(Global):
                 }
             )
 
-
     @authenticated
     def logout(self) -> None:
         """
@@ -670,7 +789,6 @@ class Client(Global):
         for key in ["sid", "userId", "community.userId", "request.sid", "request.userId", "is_authenticated"]:
             setattr(self, key, None)
         return None
-
 
     def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
         """
@@ -698,7 +816,6 @@ class Client(Global):
             verificationCode=verificationCode
             )
 
-
     @authenticated
     def delete_request(self, email: str, password: str) -> ApiResponse:
         """
@@ -716,7 +833,6 @@ class Client(Global):
         request.
         """
         return self.account.delete_request(email=email, password=password)
-
 
     @authenticated
     def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
@@ -736,7 +852,6 @@ class Client(Global):
         """
         return self.account.delete_request_cancel(email=email, password=password)
 
-
     def check_device(self, device_id: str) -> ApiResponse:
         """
         Checks if the given device ID is valid.
@@ -755,7 +870,6 @@ class Client(Global):
         object. The response will return a `0` status code if the device ID is valid.
         """
         return self.account.check_device(deviceId=device_id)
-
 
     def fetch_account(self) -> dict:
         """
@@ -783,7 +897,6 @@ class Client(Global):
         
         return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
 
-
     @authenticated
     def upload_image(self, image: str) -> str:
         """
@@ -802,7 +915,6 @@ class Client(Global):
         """
         return self.account.upload_image(image=image)
 
-
     @authenticated
     def fetch_profile(self) -> UserProfile:
         """
@@ -818,7 +930,6 @@ class Client(Global):
         The method returns the `UserProfile` object.
         """
         return self.account.fetch_profile(self.userId)
-
 
     @authenticated
     def set_amino_id(self, aminoId: str) -> ApiResponse:
@@ -839,7 +950,6 @@ class Client(Global):
         """
         return self.account.set_amino_id(aminoId=aminoId)
 
-
     @authenticated
     def fetch_wallet(self) -> Wallet:
         """
@@ -855,7 +965,6 @@ class Client(Global):
         The method returns a `Wallet` object containing the user's wallet information.
         """
         return self.account.fetch_wallet()
-
 
     def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
         """
@@ -878,7 +987,6 @@ class Client(Global):
         """
         return self.account.request_security_validation(email=email, resetPassword=resetPassword)
 
-
     def activate_email(self, email: str, code: str) -> ApiResponse:
         """
         Activates the user's email using the provided verification code.
@@ -895,7 +1003,6 @@ class Client(Global):
         response to the activation request.
         """
         return self.account.activate_email(email=email, code=code)
-
 
     @authenticated
     def reset_password(self, email: str, newPassword: str, code: str) -> ResetPassword:

@@ -12,15 +12,42 @@ from typing import BinaryIO, Callable, List, Union
 from .entities import *
 from .utilities.commands import Command, Commands
 
-class Context():
-    """
-    `Context` - This handles the event context.
+__all__ = (
+    "Context",
+    "EventHandler"
+    )
 
-    `**Parameters**``
-    - `message` - The message which triggered the event.
-    - `session` - The session we will use to send requests.
 
+class Context:
     """
+    Context class that handles context.
+
+    This class is used to handle context for commands.
+
+    Special Attributes:
+    __slots__ : tuple
+        A tuple containing a fixed set of attributes to optimize memory usage.
+
+    Attributes:
+    message : Message
+        The message object.
+    bot : Bot
+        The bot object.
+    request : RequestHandler
+        The request handler object.
+    userId : str
+        The user ID.
+    intents : bool
+        Whether or not intents are enabled.
+
+"""
+    __slots__ = (
+        "message",
+        "bot",
+        "request",
+        "userId",
+        "intents"
+    )
     def __init__(self, message: Message, bot):
         self.message:   Message = message 
         self.bot        = bot

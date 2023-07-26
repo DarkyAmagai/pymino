@@ -426,7 +426,7 @@ class UserProfile:
 		>>> print(user.status)
 		```
 		"""
-		return self._data.get('status', None)
+		return self._data.get('status')
 
 	@property
 	def mood_sticker(self) -> Union[MoodSticker, MoodStickerNotFound]:
@@ -460,7 +460,7 @@ class UserProfile:
 		>>> print(user.wiki_count)
 		```
 		"""
-		return self._data.get('itemsCount', None)
+		return self._data.get('itemsCount')
 
 	@property
 	def consecutive_check_in_days(self) -> int:
@@ -475,7 +475,7 @@ class UserProfile:
 		>>> print(user.consecutive_check_in_days)
 		```
 		"""
-		return self._data.get('consecutiveCheckInDays', None)
+		return self._data.get('consecutiveCheckInDays')
 
 	@property
 	def uid(self) -> str:
@@ -490,7 +490,7 @@ class UserProfile:
 		>>> print(user.uid)
 		```
 		"""
-		return self._data.get('uid', None)
+		return self._data.get('uid')
 
 	@property
 	def userId(self) -> str:
@@ -520,7 +520,7 @@ class UserProfile:
 		>>> print(user.aminoId)
 		```
 		"""
-		return self._data.get('aminoId', None)
+		return self._data.get('aminoId')
 
 	@property
 	def modified_time(self) -> str:
@@ -535,7 +535,7 @@ class UserProfile:
 		>>> print(user.modified_time)
 		```
 		"""
-		return self._data.get('modifiedTime', None)
+		return self._data.get('modifiedTime')
 
 	@property
 	def following_status(self) -> int:
@@ -550,7 +550,7 @@ class UserProfile:
 		>>> print(user.following_status)
 		```
 		"""
-		return self._data.get('followingStatus', None)
+		return self._data.get('followingStatus')
 
 	@property
 	def online_status(self) -> int:
@@ -565,7 +565,7 @@ class UserProfile:
 		>>> print(user.online_status)
 		```
 		"""
-		return self._data.get('onlineStatus', None)
+		return self._data.get('onlineStatus')
 
 	@property
 	def account_membership_status(self) -> int:
@@ -580,7 +580,7 @@ class UserProfile:
 		>>> print(user.account_membership_status)
 		```
 		"""
-		return self._data.get('accountMembershipStatus', None)
+		return self._data.get('accountMembershipStatus')
 
 	@property
 	def is_global(self) -> bool:
@@ -595,7 +595,7 @@ class UserProfile:
 		>>> print(user.is_global)
 		```
 		"""
-		return self._data.get('isGlobal', None)
+		return self._data.get('isGlobal')
 
 	@property
 	def avatar_frame_id(self) -> str:
@@ -610,7 +610,7 @@ class UserProfile:
 		>>> print(user.avatar_frame_id)
 		```
 		"""
-		return self._data.get('avatarFrameId', None)
+		return self._data.get('avatarFrameId')
 
 	@property
 	def fan_club_list(self) -> list:
@@ -625,7 +625,7 @@ class UserProfile:
 		>>> print(user.fan_club_list)
 		```
 		"""
-		return self._data.get('fanClubList', None)
+		return self._data.get('fanClubList')
 
 	@property
 	def reputation(self) -> int:
@@ -640,7 +640,7 @@ class UserProfile:
 		>>> print(user.reputation)
 		```
 		"""
-		return self._data.get('reputation', None)
+		return self._data.get('reputation')
 
 	@property
 	def posts_count(self) -> int:
@@ -655,7 +655,7 @@ class UserProfile:
 		>>> print(user.posts_count)
 		```
 		"""
-		return self._data.get('postsCount', None)
+		return self._data.get('postsCount')
 
 	@property
 	def avatar_frame(self) -> Union[AvatarFrame, AvatarFrameNotFound]:
@@ -673,7 +673,7 @@ class UserProfile:
 		...     print('Avatar frame not found.')
 		```
 		"""
-		return AvatarFrame(self._data.get('avatarFrame', None))
+		return AvatarFrame(self._data.get('avatarFrame'))
 
 	@property
 	def follower_count(self) -> int:
@@ -688,7 +688,7 @@ class UserProfile:
 		>>> print(user.follower_count)
 		```
 		"""
-		return self._data.get('membersCount', None)	
+		return self._data.get('membersCount')	
 
 	@property
 	def nickname(self) -> str:
@@ -703,7 +703,7 @@ class UserProfile:
 		>>> print(user.nickname)
 		```
 		"""
-		return self._data.get('nickname', None)
+		return self._data.get('nickname')
 
 	@property
 	def username(self) -> str:
@@ -733,7 +733,7 @@ class UserProfile:
 		>>> print(user.media_list)
 		```
 		"""
-		return self._data.get('mediaList', None)
+		return self._data.get('mediaList')
 
 	@property
 	def icon(self) -> str:
@@ -748,7 +748,7 @@ class UserProfile:
 		>>> print(user.icon)
 		```
 		"""
-		return self._data.get('icon', None)
+		return self._data.get('icon')
 
 	@property
 	def avatar(self) -> str:
@@ -778,7 +778,7 @@ class UserProfile:
 		>>> print(user.is_nickname_verified)
 		```
 		"""
-		return self._data.get('isNicknameVerified', None)
+		return self._data.get('isNicknameVerified')
 
 	@property
 	def mood(self) -> str:
@@ -793,7 +793,7 @@ class UserProfile:
 		>>> print(user.mood)
 		```
 		"""
-		return self._data.get('mood', None)
+		return self._data.get('mood')
 
 	@property
 	def level(self) -> int:
@@ -808,7 +808,7 @@ class UserProfile:
 		>>> print(user.level)
 		```
 		"""
-		return self._data.get('level', None)
+		return self._data.get('level')
 
 	@property
 	def push_enabled(self) -> bool:
@@ -823,7 +823,7 @@ class UserProfile:
 		>>> print(user.push_enabled)
 		```
 		"""
-		return self._data.get('pushEnabled', None)
+		return self._data.get('pushEnabled')
 
 	@property
 	def membership_status(self) -> int:
@@ -838,7 +838,7 @@ class UserProfile:
 		>>> print(user.membership_status)
 		```
 		"""
-		return self._data.get('membershipStatus', None)
+		return self._data.get('membershipStatus')
 
 	@property
 	def influencer_info(self) -> Union[InfluencerInfo, InfluencerInfoNotFound]:
@@ -856,7 +856,7 @@ class UserProfile:
 		...     print("User influencer info not found.")
 		```
 		"""
-		return InfluencerInfo(self._data.get('influencerInfo', None))
+		return InfluencerInfo(self._data.get('influencerInfo'))
 
 	@property
 	def content(self) -> str:
@@ -871,7 +871,7 @@ class UserProfile:
 		>>> print(user.content)
 		```
 		"""
-		return self._data.get('content', None)
+		return self._data.get('content')
 
 	@property
 	def following_count(self) -> int:
@@ -886,7 +886,7 @@ class UserProfile:
 		>>> print(user.following_count)
 		```
 		"""
-		return self._data.get('joinedCount', None)
+		return self._data.get('joinedCount')
 
 	@property
 	def role(self) -> int:
@@ -901,7 +901,7 @@ class UserProfile:
 		>>> print(user.role)
 		```
 		"""
-		return self._data.get('role', None)
+		return self._data.get('role')
 
 	@property
 	def comments_count(self) -> int:
@@ -916,7 +916,7 @@ class UserProfile:
 		>>> print(user.comments_count)
 		```
 		"""
-		return self._data.get('commentsCount', None)
+		return self._data.get('commentsCount')
 
 	@property
 	def ndcId(self) -> int:
@@ -931,7 +931,7 @@ class UserProfile:
 		>>> print(user.ndcId)
 		```
 		"""
-		return self._data.get('ndcId', None)
+		return self._data.get('ndcId')
 
 	@property
 	def comId(self) -> int:
@@ -946,7 +946,7 @@ class UserProfile:
 		>>> print(user.comId)
 		```
 		"""
-		return self._data.get('ndcId', None)
+		return self._data.get('ndcId')
 
 	@property
 	def created_time(self) -> str:
@@ -961,7 +961,7 @@ class UserProfile:
 		>>> print(user.created_time)
 		```
 		"""
-		return self._data.get('createdTime', None)
+		return self._data.get('createdTime')
 
 	@property
 	def extensions(self) -> Union[UserExtensions, UserExtensionsNotFound]:
@@ -979,7 +979,7 @@ class UserProfile:
 		...     print("No extensions found.")
 		```
 		"""
-		return UserExtensions(self._data.get('extensions', None))
+		return UserExtensions(self._data.get('extensions'))
 
 	@property
 	def visit_privacy(self) -> int:
@@ -994,7 +994,7 @@ class UserProfile:
 		>>> print(user.visit_privacy)
 		```
 		"""
-		return self._data.get('visitPrivacy', None)
+		return self._data.get('visitPrivacy')
 
 	@property
 	def stories_count(self) -> int:
@@ -1009,7 +1009,7 @@ class UserProfile:
 		>>> print(user.stories_count)
 		```
 		"""
-		return self._data.get('storiesCount', None)
+		return self._data.get('storiesCount')
 
 	@property
 	def blogs_count(self) -> int:
@@ -1024,7 +1024,7 @@ class UserProfile:
 		>>> print(user.blogs_count)
 		```
 		"""
-		return self._data.get('blogsCount', None)
+		return self._data.get('blogsCount')
 
 	def json(self) -> dict:
 		"""
@@ -1073,7 +1073,7 @@ class OnlineMembers:
 	"""
 	def __init__(self, data: dict):
 		self._data = data.get('o', data)
-		self._user: dict = self._data.get('userProfileList', None)[0]
+		self._user: dict = self._data.get('userProfileList')[0]
 
 	@property
 	def topic(self) -> str:
@@ -1082,7 +1082,7 @@ class OnlineMembers:
 		
 		`Returns:` str | None
 		"""
-		return self._data.get('topic', None)
+		return self._data.get('topic')
 	
 	@property
 	def ndcId(self) -> str:
@@ -1091,7 +1091,7 @@ class OnlineMembers:
 
 		`Returns:` str | None
 		"""
-		return self._data.get('ndcId', None)
+		return self._data.get('ndcId')
 
 	@property
 	def comId(self) -> str:
@@ -1109,7 +1109,7 @@ class OnlineMembers:
 		
 		`Returns:` int | None
 		"""
-		return self._data.get('userProfileCount', None)
+		return self._data.get('userProfileCount')
 
 	@property
 	def is_guest(self) -> bool:
@@ -1118,7 +1118,7 @@ class OnlineMembers:
 		
 		`Returns:` bool | None
 		"""
-		return self._user.get('isGuest', None)
+		return self._user.get('isGuest')
 
 	@property
 	def uid(self) -> str:
@@ -1127,7 +1127,7 @@ class OnlineMembers:
 		
 		`Returns:` str | None
 		"""
-		return self._user.get('uid', None)
+		return self._user.get('uid')
 
 	@property
 	def userId(self) -> str:
@@ -1145,7 +1145,7 @@ class OnlineMembers:
 		
 		`Returns:` str | None
 		"""
-		return self._user.get('status', None)
+		return self._user.get('status')
 
 	@property
 	def icon(self) -> str:
@@ -1154,7 +1154,7 @@ class OnlineMembers:
 		
 		`Returns:` str | None
 		"""
-		return self._user.get('icon', None)
+		return self._user.get('icon')
 
 	@property
 	def avatar(self) -> str:
@@ -1172,7 +1172,7 @@ class OnlineMembers:
 		
 		`Returns:` int | None
 		"""
-		return self._user.get('reputation', None)
+		return self._user.get('reputation')
 
 	@property
 	def role(self) -> str:
@@ -1181,7 +1181,7 @@ class OnlineMembers:
 		
 		`Returns:` str | None
 		"""
-		return self._user.get('role', None)
+		return self._user.get('role')
 
 	@property
 	def nickname(self) -> str:
@@ -1190,7 +1190,7 @@ class OnlineMembers:
 		
 		`Returns:` str | None
 		"""
-		return self._user.get('nickname', None)
+		return self._user.get('nickname')
 
 	@property
 	def username(self) -> str:
@@ -1208,7 +1208,7 @@ class OnlineMembers:
 		
 		`Returns:` int | None
 		"""
-		return self._user.get('level', None)
+		return self._user.get('level')
 
 	@property
 	def extensions(self) -> UserExtensions:
@@ -1226,7 +1226,7 @@ class OnlineMembers:
 		...     print('No extensions')
 		```
 		"""
-		return UserExtensions(self._user.get('extensions', None))
+		return UserExtensions(self._user.get('extensions'))
 
 	@property
 	def account_membership_status(self) -> str:
@@ -1235,7 +1235,7 @@ class OnlineMembers:
 
 		`Returns:` str | None
 		"""
-		return self._user.get('accountMembershipStatus', None)
+		return self._user.get('accountMembershipStatus')
 
 	@property
 	def avatar_frame_id(self) -> str:
@@ -1244,7 +1244,7 @@ class OnlineMembers:
 
 		`Returns:` str | None
 		"""
-		return self._user.get('avatarFrameId', None)
+		return self._user.get('avatarFrameId')
 
 	@property
 	def avatar_frame(self) -> AvatarFrame:
@@ -1262,7 +1262,7 @@ class OnlineMembers:
 		...     print('No avatar frame')
 		```
 		"""
-		return AvatarFrame(self._user.get('avatarFrame', None))
+		return AvatarFrame(self._user.get('avatarFrame'))
 
 	@property
 	def is_nickname_verified(self) -> bool:
@@ -1271,7 +1271,7 @@ class OnlineMembers:
 
 		`Returns:` bool | None
 		"""
-		return self._user.get('isNicknameVerified', None)
+		return self._user.get('isNicknameVerified')
 
 	def json(self):
 		"""
@@ -1281,50 +1281,54 @@ class OnlineMembers:
 		return self._data
 
 class UserProfileList:
-	def __init__(self, data: dict):
-		self._data = data.get("userProfileList", data) if isinstance(data, dict) else data
+	def __init__(self, data: Union[dict, list]) -> None:
 
-		parser:							list = [UserProfile(x) for x in self._data]
-		self.status:					list = [x.status for x in parser]
-		self.mood_sticker:				list = [x.mood_sticker for x in parser]
-		self.wiki_count:				list = [x.wiki_count for x in parser]
-		self.consecutive_check_in_days:	list = [x.consecutive_check_in_days for x in parser]
-		self.uid:						list = [x.uid for x in parser]
-		self.userId:					list = self.uid
-		self.modified_time:				list = [x.modified_time for x in parser]
-		self.following_status:			list = [x.following_status for x in parser]
-		self.online_status:				list = [x.online_status for x in parser]
-		self.account_membership_status:	list = [x.account_membership_status for x in parser]
-		self.is_global:					list = [x.is_global for x in parser]
-		self.avatar_frame_id:			list = [x.avatar_frame_id for x in parser]
-		self.fan_club_list:				list = [x.fan_club_list for x in parser]
-		self.reputation:				list = [x.reputation for x in parser]
-		self.posts_count:				list = [x.posts_count for x in parser]
-		#self.avatar_frame:				list = [x.avatar_frame for x in parser]
-		self.follower_count:			list = [x.follower_count for x in parser]
-		self.nickname:					list = [x.nickname for x in parser]
-		self.username:					list = self.nickname
-		self.media_list:				list = [x.media_list for x in parser]
-		self.icon:						list = [x.icon for x in parser]
-		self.avatar:					list = self.icon
-		self.is_nickname_verified:		list = [x.is_nickname_verified for x in parser]
-		self.mood:						list = [x.mood for x in parser]
-		self.level:						list = [x.level for x in parser]
-		self.pushEnabled:				list = [x.push_enabled for x in parser]
-		self.membership_status:			list = [x.membership_status for x in parser]
+		if isinstance(data, dict):
+			self._data: List[dict] = data.get("userProfileList", data)
+		else:
+			self._data: List[dict] = data
+
+		parser:							List[UserProfile] = [UserProfile(x) for x in self._data]
+		self.status:					List[int] = [x.status for x in parser]
+		self.mood_sticker:				List[MoodSticker] = [x.mood_sticker for x in parser]
+		self.wiki_count:				List[int] = [x.wiki_count for x in parser]
+		self.consecutive_check_in_days:	List[int] = [x.consecutive_check_in_days for x in parser]
+		self.uid:						List[str] = [x.uid for x in parser]
+		self.userId:					List[str] = self.uid
+		self.modified_time:				List[str] = [x.modified_time for x in parser]
+		self.following_status:			List[int] = [x.following_status for x in parser]
+		self.online_status:				List[int] = [x.online_status for x in parser]
+		self.account_membership_status:	List[int] = [x.account_membership_status for x in parser]
+		self.is_global:					List[bool] = [x.is_global for x in parser]
+		self.avatar_frame_id:			List[str] = [x.avatar_frame_id for x in parser]
+		self.fan_club_list:				List[list] = [x.fan_club_list for x in parser]
+		self.reputation:				List[int] = [x.reputation for x in parser]
+		self.posts_count:				List[int] = [x.posts_count for x in parser]
+		#self.avatar_frame:				List[AvatarFrameList] = [AvatarFrameList(x.avatar_frame.json()) for x in parser]	
+		self.follower_count:			List[int] = [x.follower_count for x in parser]
+		self.nickname:					List[str] = [x.nickname for x in parser]
+		self.username:					List[str] = self.nickname
+		self.media_list:				List[list] = [x.media_list for x in parser]
+		self.icon:						List[str] = [x.icon for x in parser]
+		self.avatar:					List[str] = self.icon
+		self.is_nickname_verified:		List[bool] = [x.is_nickname_verified for x in parser]
+		self.mood:						List[str] = [x.mood for x in parser]
+		self.level:						List[int] = [x.level for x in parser]
+		self.pushEnabled:				List[bool] = [x.push_enabled for x in parser]
+		self.membership_status:			List[int] = [x.membership_status for x in parser]
 		#self.influencer_info:			list = [x.influencer_info for x in parser]
-		self.content:					list = [x.content for x in parser]
-		self.following_count:			list = [x.following_count for x in parser]
-		self.role:						list = [x.role for x in parser]
-		self.comments_count:			list = [x.comments_count for x in parser]
-		self.ndcId:						list = [x.ndcId for x in parser]
-		self.comId:						list = self.ndcId
-		self.created_time:				list = [x.created_time for x in parser]
-		#self.extensions:				list = [x.extensions for x in parser]
-		self.visit_privacy:				list = [x.visit_privacy for x in parser]
-		self.stories_count:				list = [x.stories_count for x in parser]
-		self.blogs_count:				list = [x.blogs_count for x in parser]
-		self.user_profile_count:		int = len(self._data)
+		self.content:					List[str] = [x.content for x in parser]
+		self.following_count:			List[int] = [x.following_count for x in parser]
+		self.role:						List[int] = [x.role for x in parser]
+		self.comments_count:			List[int] = [x.comments_count for x in parser]
+		self.ndcId:						List[int] = [x.ndcId for x in parser]
+		self.comId:						List[int] = self.ndcId
+		self.created_time:				List[str] = [x.created_time for x in parser]
+		#self.extensions:				List[UserExtensionsList] = [UserExtensionsList(self._data.get("extensions") for y in self._data) for x in parser]
+		self.visit_privacy:				List[int] = [x.visit_privacy for x in parser]
+		self.stories_count:				List[int] = [x.stories_count for x in parser]
+		self.blogs_count:				List[int] = [x.blogs_count for x in parser]
+		self.user_profile_count:		int = data.get("userProfileCount")
 
 class Pagging:
     def __init__(self, data: dict):

@@ -25,12 +25,46 @@ except ImportError as e:
 
 class WSClient(EventHandler):
     """
-    `WSClient` is a class that handles the websocket.
+    WSClient class that handles websocket events.
+
+    This class extends `EventHandler` class, allowing the bot to use event handler features.
+
+    Special Attributes:
+    __slots__ : tuple
+        A tuple containing a fixed set of attributes to optimize memory usage.
+
+    Attributes:
+    ws : WebSocketApp
+        The websocket object.
+    _communities : set
+        A set containing the communities the bot is in.
+    event_types : dict
+        A dictionary containing the event types.
+    notif_types : dict
+        A dictionary containing the notification types.
+    dispatcher : MessageDispatcher
+        The message dispatcher object.
+    channel : Optional[Channel] 
+        The agora channel.
+    orjson : bool
+        Whether or not orjson is installed.
+
     """
+    __slots__ = (
+        "ws",
+        "_communities",
+        "event_types",
+        "is_logging",
+        "notif_types",
+        "dispatcher",
+        "channel",
+        "orjson"
+    )
     def __init__(self):
-        self.ws:            WebSocketApp = None      
+        self.ws:            WebSocketApp = None
         self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
+        self.is_logging:    bool = True
         self.notif_types:   dict =  NotifTypes().notifs
         self.dispatcher:    MessageDispatcher = MessageDispatcher()
         self.channel:       Optional[Channel] = None
@@ -43,19 +77,32 @@ class WSClient(EventHandler):
 
         EventHandler.__init__(self)
 
-
     def fetch_ws_url(self) -> str:
         return f"wss://ws{randint(1, 4)}.aminoapps.com"
+    
+    def _log(self, message: str) -> None:
+        """
+        Logs a message to debug.log
 
+        :param message: The message to log.
+        :type message: str
+        :return: None
+
+        """
+        if self.is_logging:
+            try:
+                self.logger.debug(message)
+            except Exception:
+                self.is_logging = False
 
     def connect(self) -> None:
         """Connects to the websocket."""
         self.run_forever()
         return self.emit("ready")
 
-
     def run_forever(self) -> None:
         """Runs the websocket forever."""
+        self._log("Initializing websocket.")
         ws_data = f"{self.generate.device_id()}|{int(time() * 1000)}"
         self.ws = WebSocketApp(
             url = f"{self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
@@ -68,8 +115,9 @@ class WSClient(EventHandler):
             "NDCAUTH": f"sid={self.sid}",
             "NDC-MSG-SIG": self.generate.signature(ws_data)
             })
-        return self.start_processes()
-
+        
+        self.start_processes()
+        return self._log("Websocket connected.")
 
     def start_processes(self) -> None:
         """Starts the websocket processes."""
@@ -79,12 +127,12 @@ class WSClient(EventHandler):
         aalive_thread = Thread(target=run_alive_loop, args=(self,))
         aalive_thread.start()
 
-
     def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
         """Handles websocket errors."""
         with suppress(KeyError):
             self._events["error"](error)
 
+        return self._log(f"Websocket error: {error}")
 
     def on_websocket_message(self, ws: WebSocket, message: dict) -> None:
         """Handles websocket messages."""
@@ -94,7 +142,6 @@ class WSClient(EventHandler):
             raw_message = loads(message)
 
         self.dispatcher.handle(raw_message)
-
 
     def _handle_message(self, message: dict) -> None:
         """Sends the message to the event handler."""
@@ -109,39 +156,34 @@ class WSClient(EventHandler):
         if key != None:
             return self._handle_event(key, _message)
 
-
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
         notification: Notification = Notification(message)
         key = self.notif_types.get(notification.notification_type)
         return self._handle_event(key, notification) if key else None
 
-
     def _handle_agora_channel(self, message: dict) -> None:
         """Sets the agora channel."""
         self.channel: Channel = Channel(message)
-
 
     def _handle_user_online(self, message: dict) -> None:
         """Handles user online events."""
         return self._handle_event("user_online", OnlineMembers(message))
 
-
     def on_websocket_close(self, ws: WebSocket, close_status_code: int, close_msg: str) -> None:
         """Handles websocket close events."""
         if [close_status_code, close_msg] == [None, None]:
-            return self.run_forever() 
-
+            self._log("Websocket closed unexpectedly.")
+            return self.run_forever()
 
     def send_websocket_message(self, message: dict) -> None:
         """Sends a websocket message."""
         return self.ws.send(orjson_dumps(message).decode() if self.orjson else dumps(message))
 
-
     def stop_websocket(self) -> None:
         """Stops the websocket."""
+        self._log("Websocket received stop signal.")
         return self.ws.close()
-
 
     def on_websocket_open(self, ws: WebSocket) -> None:
         """Handles websocket open events."""
@@ -154,16 +196,13 @@ class WSClient(EventHandler):
                     "id": int(time() * 1000)
                 }})
 
-
     def _last_active(self, last_activity_time: float) -> bool:
         """Returns True if the last activity was 5 minutes ago."""""
         return time() - last_activity_time >= 300
 
-
     def _last_message(self, last_message_time: float) -> bool:
         """Returns True if the last message was 30 seconds ago."""
         return time() - last_message_time >= 30
-
 
     def _send_message(self) -> None:
         """Sends a message to the websocket."""
@@ -173,7 +212,6 @@ class WSClient(EventHandler):
                 "id": randint(1, 100)},
                 "t": 116
                 })
-
 
     def _activity_status(self) -> None:
         """Sets the user's activity status to online."""
