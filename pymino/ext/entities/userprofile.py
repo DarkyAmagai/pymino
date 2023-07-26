@@ -1328,7 +1328,6 @@ class UserProfileList:
 		self.visit_privacy:				List[int] = [x.visit_privacy for x in parser]
 		self.stories_count:				List[int] = [x.stories_count for x in parser]
 		self.blogs_count:				List[int] = [x.blogs_count for x in parser]
-		self.user_profile_count:		int = data.get("userProfileCount")
 
 class Pagging:
     def __init__(self, data: dict):

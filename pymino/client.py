@@ -727,7 +727,6 @@ class Client(Global):
 
         if not self.is_authenticated:
             self._is_authenticated = True
-            print("test")
             self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
         else:
             self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")

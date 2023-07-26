@@ -1928,6 +1928,7 @@ class Global:
             url = f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&start={start}&size={size}&pagingType=t"
         ))
 
+
     def unfollow(self, userId: str) -> ApiResponse:
         """
         Unfollows a user.
