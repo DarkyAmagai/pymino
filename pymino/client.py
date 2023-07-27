@@ -727,12 +727,12 @@ class Client(Global):
 
         if not self.is_authenticated:
             self._is_authenticated = True
-            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
+            self._log(f"Logged in as {self.profile.username.encode()} ({self.profile.userId})")
         else:
-            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
+            self._log(f"Reconnected as {self.profile.username.encode()} ({self.profile.userId})")
 
         if self.debug:
-            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
+            print(f"{Fore.MAGENTA}Logged in as {self.profile.username.encode()} ({self.profile.userId}){Style.RESET_ALL}")
 
         return response
 
