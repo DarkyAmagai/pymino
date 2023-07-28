@@ -616,7 +616,7 @@ class AsyncClient(AsyncGlobal):
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if self.debug:
-            print(f"{Fore.MAGENTA}Logged in as {self.profile.username.encode()} ({self.profile.userId}){Style.RESET_ALL}")
+            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
         return response
 

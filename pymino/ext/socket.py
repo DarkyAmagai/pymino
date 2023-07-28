@@ -91,7 +91,7 @@ class WSClient(EventHandler):
         """
         if self.is_logging:
             try:
-                self.logger.debug(message)
+                self.logger.debug(message.encode("utf-8"))
             except Exception:
                 self.is_logging = False
 

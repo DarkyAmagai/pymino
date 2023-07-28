@@ -822,13 +822,13 @@ class Bot(WSClient, Global):
         if not self.is_ready:
             self._is_ready = True
             self._is_authenticated = True
-            self._log(f"Logged in as {self.profile.username.encode()} ({self.profile.userId})")
+            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
             self.connect()
         else:
-            self._log(f"Reconnected as {self.profile.username.encode()} ({self.profile.userId})")
+            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
 
         if self.debug:
-            print(f"{Fore.MAGENTA}Logged in as {self.profile.username.encode()} ({self.profile.userId}){Style.RESET_ALL}")
+            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
         Thread(target=self.__run_console__).start()
         return response
