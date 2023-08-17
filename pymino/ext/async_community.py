@@ -2239,16 +2239,27 @@ class AsyncCommunity:
         ... else:
         ...     print("Failed to follow user.")
         """
-        return ApiResponse(
-            self.session.handler(
-                method="POST",
-                url=f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/{'member' if isinstance(userId, str) else 'joined'}",
-                data={
-                    "timestamp": int(time()),
-                    "targetUidList": userId
-                } if isinstance(userId, list) else None
+        if isinstance(userId, list):
+            return ApiResponse(await
+                self.session.handler(
+                    method = "POST",
+                    url = f"/x{comId or self.community_id}/s/user-profile/{self.userId}/joined",
+                    data = {
+                        "targetUidList": userId,
+                        "timestamp": int(time() * 1000)
+                    }
+                )
             )
-        )
+        
+        elif isinstance(userId, str):
+            return ApiResponse(await 
+                self.session.handler(
+                    method = "POST",
+                    url = f"/x{comId or self.community_id}/s/user-profile/{userId}/member"
+                )
+            )
+        
+        else: raise Exception("Invalid type for userId. Must be a string or a list of strings.")
 
     @community
     async def unfollow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
