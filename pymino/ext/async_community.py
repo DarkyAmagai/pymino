@@ -7491,3 +7491,21 @@ class AsyncCommunity:
                 "timestamp": int(time() * 1000)
             }
         ))
+    
+    @community
+    async def add_influencer(self, userId: str, monthlyFee: int, comId: Union[str, int] = None):
+        return ApiResponse(await self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/influencer/{userId}",
+            data = {
+                "monthlyFee": monthlyFee,
+                "timestamp": int(time() * 1000)
+            }
+        ))
+    
+    @community
+    async def remove_influencer(self, userId: str, comId: Union[str, int] = None):
+        return ApiResponse(await self.session.handler(
+            method = "DELETE",
+            url = f"/x{comId or self.community_id}/s/influencer/{userId}"
+        ))

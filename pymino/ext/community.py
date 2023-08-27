@@ -7383,8 +7383,6 @@ class Community:
             method = "GET",
             url = f"/x{comId or self.community_id}/s/admin/operation?size={size}&operatorUid={userId}&pagingType=t"
         ))
-# {"timestamp": , "applyToAll": true, "bubbleId": "000000"} All
-#
 
     @community
     def apply_bubble(self, bubbleId: str, chatId: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -7422,4 +7420,22 @@ class Community:
                 "bubbleId": bubbleId,
                 "timestamp": int(time() * 1000)
             }
+        ))
+
+    @community
+    def add_influencer(self, userId: str, monthlyFee: int, comId: Union[str, int] = None):
+        return ApiResponse(self.session.handler(
+            method = "POST",
+            url = f"/x{comId or self.community_id}/s/influencer/{userId}",
+            data = {
+                "monthlyFee": monthlyFee,
+                "timestamp": int(time() * 1000)
+            }
+        ))
+
+    @community
+    def remove_influencer(self, userId: str, comId: Union[str, int] = None):
+        return ApiResponse(self.session.handler(
+            method = "DELETE",
+            url = f"/x{comId or self.community_id}/s/influencer/{userId}"
         ))
