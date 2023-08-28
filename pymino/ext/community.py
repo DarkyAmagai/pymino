@@ -5301,12 +5301,12 @@ class Community:
             data = {"uid": userId}))
     
     @community
-    def feature_user(self, time: int, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def feature_user(self, feature_time: int, userId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a user in the current or specified community.
 
-        :param time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
-        :type time: int
+        :param feature_time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
+        :type feature_time: int
         :param userId: The ID of the user to feature.
         :type userId: str
         :param comId: The ID of the community to feature the user in. If not provided, the current community ID is used.
@@ -5327,7 +5327,7 @@ class Community:
 
         To feature a user with ID "0000-0000-0000-0000" for 1 day in the current community:
 
-        >>> response = client.community.feature_user(time=1, userId="0000-0000-0000-0000")
+        >>> response = client.community.feature_user(feature_time=1, userId="0000-0000-0000-0000")
         ... if response.statuscode == 0:
         ...     print("User featured successfully!")
         ... else:
@@ -5335,7 +5335,7 @@ class Community:
 
         To feature a user with ID "1111-1111-1111-1111" for 2 days in a community with ID "123":
 
-        >>> response = client.community.feature_user(time=2, userId="1111-1111-1111-1111", comId=123)
+        >>> response = client.community.feature_user(feature_time=2, userId="1111-1111-1111-1111", comId=123)
         ... if response.statuscode == 0:
         ...     print("User featured successfully!")
         ... else:
@@ -5346,17 +5346,17 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
             data = {
             "adminOpName": 114,
-            "adminOpValue": {"featuredType": 4, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
+            "adminOpValue": {"featuredType": 4, "featuredDuration": 86400 if feature_time == 1 else 172800 if feature_time == 2 else 259200 if feature_time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
     
     @community
-    def feature_chat(self, time: int, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def feature_chat(self, feature_time: int, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a chat in the current or specified community.
 
-        :param time: The duration of the feature. 1 = 1 hour, 2 = 2 hours, 3 = 3 hours.
-        :type time: int
+        :param feature_time: The duration of the feature. 1 = 1 hour, 2 = 2 hours, 3 = 3 hours.
+        :type feature_time: int
         :param chatId: The ID of the chat to feature.
         :type chatId: str
         :param comId: The ID of the community to feature the chat in. If not provided, the current community ID is used.
@@ -5377,7 +5377,7 @@ class Community:
 
         To feature a chat with ID "0000-0000-0000-0000" for 1 hour in the current community:
 
-        >>> response = client.community.feature_chat(time=1, chatId="0000-0000-0000-0000")
+        >>> response = client.community.feature_chat(feature_time=1, chatId="0000-0000-0000-0000")
         ... if response.statuscode == 0:
         ...     print("Chat featured successfully!")
         ... else:
@@ -5385,7 +5385,7 @@ class Community:
 
         To feature a chat with ID "1111-1111-1111-1111" for 2 hours in a community with ID "123":
 
-        >>> response = client.community.feature_chat(time=2, chatId="1111-1111-1111-1111", comId=123)
+        >>> response = client.community.feature_chat(feature_time=2, chatId="1111-1111-1111-1111", comId=123)
         ... if response.statuscode == 0:
         ...     print("Chat featured successfully!")
         ... else:
@@ -5396,17 +5396,17 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
             data = {
             "adminOpName": 114,
-            "adminOpValue": {"featuredType": 5, "featuredDuration": 3600 if time == 1 else 7200 if time == 2 else 10800 if time == 3 else None},
+            "adminOpValue": {"featuredType": 5, "featuredDuration": 3600 if feature_time == 1 else 7200 if feature_time == 2 else 10800 if feature_time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
     
     @community
-    def feature_blog(self, time: int, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def feature_blog(self, feature_time: int, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a blog in the current or specified community.
 
-        :param time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
-        :type time: int
+        :param feature_time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
+        :type feature_time: int
         :param blogId: The ID of the blog to feature.
         :type blogId: str
         :param comId: The ID of the community to feature the blog in. If not provided, the current community ID is used.
@@ -5427,7 +5427,7 @@ class Community:
 
         To feature a blog with ID "0000-0000-0000-0000" for 1 day in the current community:
 
-        >>> response = client.community.feature_blog(time=1, blogId="0000-0000-0000-0000")
+        >>> response = client.community.feature_blog(feature_time=1, blogId="0000-0000-0000-0000")
         ... if response.statuscode == 0:
         ...     print("Blog featured successfully!")
         ... else:
@@ -5435,7 +5435,7 @@ class Community:
 
         To feature a blog with ID "1111-1111-1111-1111" for 2 days in a community with ID "123":
 
-        >>> response = client.community.feature_blog(time=2, blogId="1111-1111-1111-1111", comId=123)
+        >>> response = client.community.feature_blog(feature_time=2, blogId="1111-1111-1111-1111", comId=123)
         ... if response.statuscode == 0:
         ...     print("Blog featured successfully!")
         ... else:
@@ -5446,17 +5446,17 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
             data = {
             "adminOpName": 114,
-            "adminOpValue": {"featuredType": 1, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
+            "adminOpValue": {"featuredType": 1, "featuredDuration": 86400 if feature_time == 1 else 172800 if feature_time == 2 else 259200 if feature_time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
     
     @community
-    def feature_wiki(self, time: int, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def feature_wiki(self, feature_time: int, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
         """
         Features a wiki in the current or specified community.
 
-        :param time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
-        :type time: int
+        :param feature_time: The duration of the feature. 1 = 1 day, 2 = 2 days, 3 = 3 days.
+        :type feature_time: int
         :param wikiId: The ID of the wiki to feature.
         :type wikiId: str
         :param comId: The ID of the community to feature the wiki in. If not provided, the current community ID is used.
@@ -5477,7 +5477,7 @@ class Community:
 
         To feature a wiki with ID "0000-0000-0000-0000" for 1 day in the current community:
 
-        >>> response = client.community.feature_wiki(time=1, wikiId="0000-0000-0000-0000")
+        >>> response = client.community.feature_wiki(feature_time=1, wikiId="0000-0000-0000-0000")
         ... if response.statuscode == 0:
         ...     print("Wiki featured successfully!")
         ... else:
@@ -5485,7 +5485,7 @@ class Community:
 
         To feature a wiki with ID "1111-1111-1111-1111" for 2 days in a community with ID "123":
 
-        >>> response = client.community.feature_wiki(time=2, wikiId="1111-1111-1111-1111", comId=123)
+        >>> response = client.community.feature_wiki(feature_time=2, wikiId="1111-1111-1111-1111", comId=123)
         ... if response.statuscode == 0:
         ...     print("Wiki featured successfully!")
         ... else:
@@ -5496,7 +5496,7 @@ class Community:
             url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
             data = {
             "adminOpName": 114,
-            "adminOpValue": {"featuredType": 2, "featuredDuration": 86400 if time == 1 else 172800 if time == 2 else 259200 if time == 3 else None},
+            "adminOpValue": {"featuredType": 2, "featuredDuration": 86400 if feature_time == 1 else 172800 if feature_time == 2 else 259200 if feature_time == 3 else None},
             "timestamp": int(time() * 1000)
             }))
 
@@ -7438,11 +7438,4 @@ class Community:
         return ApiResponse(self.session.handler(
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/influencer/{userId}"
-        ))
-
-    @community
-    def get_all_influencers(self, comId: Union[str, int] = None):
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/influencer"
         ))

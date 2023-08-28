@@ -7509,10 +7509,3 @@ class AsyncCommunity:
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/influencer/{userId}"
         ))
-
-    @community
-    async def get_all_influencers(self, comId: Union[str, int] = None):
-        return UserProfileList(await self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/influencer"
-        ))
