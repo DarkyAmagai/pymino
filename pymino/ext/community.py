@@ -7439,3 +7439,10 @@ class Community:
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/influencer/{userId}"
         ))
+
+    @community
+    def get_all_influencers(self, comId: Union[str, int] = None):
+        return UserProfileList(self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/influencer"
+        ))
