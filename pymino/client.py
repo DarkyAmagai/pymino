@@ -190,7 +190,8 @@ class Client(Global):
         self._sid:              str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
-        self.logger:            Logger = self._create_logger()
+        self.debug_log:         bool = kwargs.get("debug_log") if kwargs.get("debug_log") is not None else True
+        self.logger:            Logger = self._create_logger() if self.debug_log == True else None
         self.is_logging:        bool = True
         self.community_id:      Optional[str] = community_id or kwargs.get("comId")
         self.generate:          Generator = Generator(
@@ -727,10 +728,9 @@ class Client(Global):
 
         if not self.is_authenticated:
             self._is_authenticated = True
-            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
+            if self.debug_log: self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
         else:
-            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
-
+            if self.debug_log: self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
