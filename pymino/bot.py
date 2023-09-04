@@ -1,7 +1,8 @@
 from threading import Thread
 from typing import Optional, Union
 from time import perf_counter, time
-from logging import FileHandler, Logger, getLogger, Formatter, DEBUG
+from logging.handlers import RotatingFileHandler
+from logging import Logger, getLogger, Formatter, DEBUG
 
 from .ext.console import *
 from .ext.entities import *
@@ -82,6 +83,7 @@ class Bot(WSClient, Global):
         'logger',
         'command_prefix',
         'community_id',
+        'debug_log',
         'generate',
         'online_status',
         'device_id',
@@ -96,6 +98,7 @@ class Bot(WSClient, Global):
         command_prefix: Optional[str] = "!",
         community_id: Union[str, int] = None,
         console_enabled: bool = False,
+        debug_log: bool = False,
         device_id: str = None,
         intents: bool = False,
         online_status: bool = False,
@@ -111,6 +114,7 @@ class Bot(WSClient, Global):
         - `command_prefix` - The prefix to use for commands. `Defaults` to `!`.
         - `community_id` - The community id to use for the bot. `Defaults` to `None`.
         - `console_enabled` - Whether to enable the console. `Defaults` to `True`.
+        - `debug_log` - Whether to enable logging to file. `Defaults` to `False`.
         - `device_id` - The device id to use for the bot. `Defaults` to `None`.
         - `intents` - Avoids receiving events that you do not need. `Defaults` to `False`.
         - `online_status` - Whether to set the bot's online status to `online`. `Defaults` to `True`.
@@ -317,8 +321,8 @@ class Bot(WSClient, Global):
         self.command_prefix:    Optional[str] = command_prefix
         if self.command_prefix == "":
             raise InvalidCommandPrefix()
-        
-        self.logger:            Optional[Logger] = self._create_logger()
+
+        self.logger:            Optional[Logger] = self._create_logger() if debug_log else None
         self.community_id:      Union[str, int] = community_id
         self.generate:          Generator = Generator(hash_prefix, device_key, signature_key)
         self.online_status:     bool = online_status
@@ -624,7 +628,9 @@ class Bot(WSClient, Global):
         logger = getLogger("pymino")
         logger.setLevel(DEBUG)
 
-        file_handler = FileHandler("debug.log")
+        max_log_size = 10 * 1024 * 1024
+
+        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0)
         file_handler.setLevel(DEBUG)
 
         formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")

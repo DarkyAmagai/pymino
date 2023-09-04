@@ -1,6 +1,6 @@
 
 from uuid import uuid4
-from ujson import loads, dumps
+from json import loads, dumps
 from colorama import Fore, Style
 from aiohttp import ClientSession
 from asyncio import AbstractEventLoop

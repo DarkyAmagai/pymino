@@ -4,7 +4,7 @@ from threading import Thread
 from contextlib import suppress
 from urllib.parse import urlencode
 from time import sleep as delay, time
-from ujson import loads, dumps, JSONDecodeError
+from json import loads, dumps, JSONDecodeError
 
 from .entities import *
 from .context import EventHandler
@@ -64,12 +64,12 @@ class WSClient(EventHandler):
         self.ws:            WebSocketApp = None
         self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
-        self.is_logging:    bool = True
+        self.is_logging:    bool = bool(self.logger)
         self.notif_types:   dict =  NotifTypes().notifs
         self.dispatcher:    MessageDispatcher = MessageDispatcher()
         self.channel:       Optional[Channel] = None
         self.orjson:        bool = orjson_exists()
-        
+
         self.dispatcher.register(10, self._handle_notification)
         self.dispatcher.register(201, self._handle_agora_channel)
         self.dispatcher.register(400, self._handle_user_online)
@@ -153,15 +153,14 @@ class WSClient(EventHandler):
         ) else self._communities.add(_message.ndcId)
 
         key = self.event_types.get(f"{_message.type}:{_message.mediaType}")
-
-        return Thread(self._handle_event, args=(key, _message)) if key else None
+        if key != None:
+            return self._handle_event(key, _message)
 
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
         notification: Notification = Notification(message)
         key = self.notif_types.get(notification.notification_type)
-
-        return Thread(self._handle_event, args=(key, notification)) if key else None
+        return self._handle_event(key, notification) if key else None
 
     def _handle_agora_channel(self, message: dict) -> None:
         """Sets the agora channel."""
@@ -169,7 +168,7 @@ class WSClient(EventHandler):
 
     def _handle_user_online(self, message: dict) -> None:
         """Handles user online events."""
-        return Thread(self._handle_event, args=("user_online", OnlineMembers(message)))
+        return self._handle_event("user_online", OnlineMembers(message))
 
     def on_websocket_close(self, ws: WebSocket, close_status_code: int, close_msg: str) -> None:
         """Handles websocket close events."""

@@ -18,7 +18,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         "requests==2.31.0",
-        "ujson==5.8.0",
         "colorama==0.4.6",
         "websocket-client==1.6.1",
         "diskcache==5.6.1",

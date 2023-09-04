@@ -6,7 +6,7 @@ from typing import Optional
 from asyncio.queues import Queue
 from colorama import Fore, Style
 from urllib.parse import urlencode
-from ujson import loads, JSONDecodeError
+from json import loads, JSONDecodeError
 from contextlib import asynccontextmanager
 
 from .entities import *

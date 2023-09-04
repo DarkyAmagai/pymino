@@ -1,5 +1,14 @@
 from typing import Callable
+from threading import Thread
+from contextlib import contextmanager
 
+
+@contextmanager
+def thread_executor(handler: Callable, message: dict):
+    thread = Thread(target=handler, args=(message,))
+    thread.start()
+    yield
+    thread.join()
 
 class MessageDispatcher:
     """
@@ -23,14 +32,15 @@ class MessageDispatcher:
     def __init__(self):
         self.dispatch_table = {}
 
-    def register(self, message_type: int, handler: callable):
+    def register(self, message_type: int, handler: Callable):
         self.dispatch_table[message_type] = handler
 
     def handle(self, message: dict):
         message_type = message.get("t")
         if message_type not in self.dispatch_table:
-            return
-        self.dispatch_table[message_type](message)
+            return None
+        with thread_executor(self.dispatch_table[message_type], message):
+            pass
 
 
 class AsyncMessageDispatcher:

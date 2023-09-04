@@ -49,7 +49,15 @@ class Generator:
 
         return b64encode(bytes(signature)).decode("utf-8")
     
-    def update_device(self, device: str):
+    def update_device(self, device: str) -> str:
+        """
+        Update a device ID to new prefix.
+
+        :param device: The device ID to update.
+        :type device: str
+        :return: The updated device ID as a string.
+        :rtype: str
+        """
         encoded_data = sha1(str(bytes.fromhex(device[2:42])).encode('utf-8')).hexdigest()
 
         digest = new(

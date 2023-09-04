@@ -6413,7 +6413,8 @@ class AsyncCommunity:
                   backgroundColor: str = None,
                   fansOnly: bool = False,
                   extensions: dict = None,
-                  comId: Union[str, int] = None) -> CBlog:
+                  comId: Union[str, int] = None
+        ) -> CBlog:
         """
         Posts a blog in the community.
 
@@ -7508,4 +7509,11 @@ class AsyncCommunity:
         return ApiResponse(await self.session.handler(
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/influencer/{userId}"
+        ))
+
+    @community
+    async def get_all_influencers(self, comId: Union[str, int] = None):
+        return UserProfileList(await self.session.handler(
+            method = "GET",
+            url = f"/x{comId or self.community_id}/s/influencer"
         ))

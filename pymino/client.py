@@ -1,6 +1,8 @@
 from time import time
+from logging.handlers import RotatingFileHandler
+from logging import Logger, getLogger, Formatter, DEBUG
 from typing import Any, Callable, Optional, TypeVar, Union
-from logging import FileHandler, Logger, getLogger, Formatter, DEBUG
+
 
 from .ext.entities import *
 from .ext.global_client import Global
@@ -190,9 +192,8 @@ class Client(Global):
         self._sid:              str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
-        self.debug_log:         bool = kwargs.get("debug_log") if kwargs.get("debug_log") is not None else True
-        self.logger:            Logger = self._create_logger() if self.debug_log == True else None
-        self.is_logging:        bool = True
+        self.logger:            Logger = self._create_logger() if kwargs.get("debug_log") else None
+        self.is_logging:        bool = bool(self.logger)
         self.community_id:      Optional[str] = community_id or kwargs.get("comId")
         self.generate:          Generator = Generator(
                                 prefix=hash_prefix,
@@ -402,7 +403,9 @@ class Client(Global):
         logger = getLogger("pymino")
         logger.setLevel(DEBUG)
 
-        file_handler = FileHandler("debug.log")
+        max_log_size = 10 * 1024 * 1024
+
+        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0)
         file_handler.setLevel(DEBUG)
 
         formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -411,7 +414,7 @@ class Client(Global):
         logger.addHandler(file_handler)
 
         return logger
-
+    
     def authenticated(func: F) -> F:
         """
         A decorator that ensures the user is authenticated before running the decorated function.
@@ -728,9 +731,10 @@ class Client(Global):
 
         if not self.is_authenticated:
             self._is_authenticated = True
-            if self.debug_log: self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
+            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
         else:
-            if self.debug_log: self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
+            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
+
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
