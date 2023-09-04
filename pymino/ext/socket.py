@@ -153,14 +153,15 @@ class WSClient(EventHandler):
         ) else self._communities.add(_message.ndcId)
 
         key = self.event_types.get(f"{_message.type}:{_message.mediaType}")
-        if key != None:
-            return self._handle_event(key, _message)
+
+        return Thread(self._handle_event, args=(key, _message)) if key else None
 
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
         notification: Notification = Notification(message)
         key = self.notif_types.get(notification.notification_type)
-        return self._handle_event(key, notification) if key else None
+        
+        return Thread(self._handle_event, args=(key, notification)) if key else None
 
     def _handle_agora_channel(self, message: dict) -> None:
         """Sets the agora channel."""
@@ -168,7 +169,7 @@ class WSClient(EventHandler):
 
     def _handle_user_online(self, message: dict) -> None:
         """Handles user online events."""
-        return self._handle_event("user_online", OnlineMembers(message))
+        return Thread(self._handle_event, args=("user_online", OnlineMembers(message)))
 
     def on_websocket_close(self, ws: WebSocket, close_status_code: int, close_msg: str) -> None:
         """Handles websocket close events."""
