@@ -6407,8 +6407,8 @@ class AsyncCommunity:
     async def post_blog(self,
                   title: str,
                   content: str,
-                  imageList: list = None,
-                  captionList: list = None,
+                  imageList: List[str] = None,
+                  captionList: List[list] = None,
                   categoriesList: list = None,
                   backgroundColor: str = None,
                   fansOnly: bool = False,
@@ -6449,8 +6449,8 @@ class AsyncCommunity:
         ... print(blog.content)
         """
         media = []
-        if captionList is not None: [media.append([100, await self.__handle_media__(image[0], "image/jpg", True), image[1]] for image in captionList)]
-        elif imageList is not None: [media.append([100, await self.__handle_media__(image, "image/jpg", True), None] for image in imageList)]
+        if captionList is not None: [media.append([100, await self.__handle_media__(image[0], "image/jpg", True), image[1]])for image in captionList]
+        elif imageList is not None: [media.append([100, await self.__handle_media__(image, "image/jpg", True), None])for image in imageList]
 
         data = dict(address = None,
                     content = content,

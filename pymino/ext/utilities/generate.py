@@ -48,3 +48,13 @@ class Generator:
             str(data).encode("utf-8"), sha1).digest())
 
         return b64encode(bytes(signature)).decode("utf-8")
+    
+    def update_device(self, device: str):
+        encoded_data = sha1(str(bytes.fromhex(device[2:42])).encode('utf-8')).hexdigest()
+
+        digest = new(
+            self.DEVICE_KEY,
+            self.PREFIX + bytes.fromhex(encoded_data),
+            sha1).hexdigest()
+
+        return f"{bytes.hex(self.PREFIX)}{encoded_data}{digest}".upper()
