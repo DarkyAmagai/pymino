@@ -5979,24 +5979,24 @@ class Community:
         if viewOnly is not None:
             responses.append(ApiResponse(self.session.handler(
                 method = "POST",
-                url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
             )).status_code)
         
         if canInvite is not None:
             responses.append(ApiResponse(self.session.handler(
                 method = "POST",
-                url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
             )).status_code)
         
         if canTip is not None:
             responses.append(ApiResponse(self.session.handler(
                 method = "POST",
-                url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
+                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
             )).status_code)
         
         responses.append(ApiResponse(self.session.handler(
             method = "POST",
-            url = f"/x{self.community_id or comId}/s/chat/thread/{chatId}",
+            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}",
             data = data
         )).status_code)
 
