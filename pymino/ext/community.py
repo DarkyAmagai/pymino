@@ -7425,6 +7425,26 @@ class Community:
 
     @community
     def add_influencer(self, userId: str, monthlyFee: int, comId: Union[str, int] = None):
+        """
+        Adds an influencer to the community with the specified monthly fee.
+
+        :param userId: The ID of the influencer to add.
+        :type userId: str
+        :param monthlyFee: The monthly fee to be charged to the influencer.
+        :type monthlyFee: int
+        :param comId: The ID of the community to add the influencer to. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The response of the request.
+        :rtype: response object
+
+        This function adds the specified influencer to the community with the given monthly fee.
+
+        Note: The response object may vary based on the implementation.
+
+        **Example usage:**
+
+        >>> client.community.add_influencer("123456", 500)
+        """
         return ApiResponse(self.session.handler(
             method = "POST",
             url = f"/x{comId or self.community_id}/s/influencer/{userId}",
@@ -7436,6 +7456,25 @@ class Community:
 
     @community
     def remove_influencer(self, userId: str, comId: Union[str, int] = None):
+        """
+        Removes the specified user from the list of influencers in the community.
+
+        :param userId: The ID of the user to remove as an influencer.
+        :type userId: str
+        :param comId: The ID of the community from which to remove the influencer. If not provided,
+                    the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: The response of the request.
+        :rtype: response object
+
+        This function removes the specified user as an influencer from the community.
+
+        Note: The response object may vary based on the implementation.
+
+        **Example usage:**
+
+        >>> client.community.remove_influencer("123456")
+        """
         return ApiResponse(self.session.handler(
             method = "DELETE",
             url = f"/x{comId or self.community_id}/s/influencer/{userId}"
@@ -7443,7 +7482,53 @@ class Community:
     
     @community
     def get_all_influencers(self, comId: Union[str, int] = None):
+        """
+        Retrieves a list of all influencers within the specified community or the current community if comId is not provided.
+
+        :param comId: The ID of the community to retrieve influencers from. If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A list of user profiles representing the influencers in the community.
+        :rtype: UserProfileList
+
+        This function fetches a list of all influencers within the specified community or the current community if comId is not provided.
+
+        **Example usage:**
+
+        >>> influencers = await client.community.get_all_influencers("123456")
+        >>> for influencer in influencers:
+        ...     print(influencer.username)
+        """
         return UserProfileList(self.session.handler(
             method = "GET",
             url = f"/x{comId or self.community_id}/s/influencer"
+        ))
+    
+    @community
+    def joined_by_code(self, start: int = 0, size: int = 25, comId: Union[str, int] = None):
+        """
+        Retrieves a list of users who joined the community using an invitation code.
+
+        :param start: The index from which to start retrieving the invitation logs. Defaults to 0.
+        :type start: int, optional
+        :param size: The number of invitation logs to retrieve. Defaults to 25.
+        :type size: int, optional
+        :param comId: The ID of the community for which to retrieve invitation logs.
+                    If not provided, the current community ID is used.
+        :type comId: Union[str, int], optional
+        :return: A list of invitation logs.
+        :rtype: InvitationLogList
+
+        This function retrieves a list of users who joined the community using an invitation code.
+        The list is paginated based on the 'start' and 'size' parameters.
+
+        **Example usage:**
+
+        >>> logs = await client.community.joined_by_code(start=0, size=10)
+        >>> for log in logs:
+        ...     print(log.user_name, log.join_date)
+
+        """
+        return InvitationLogList(self.session.handler(
+            method = "GET",
+            url = f"/g/s-x{comId or self.community_id}/community/invitation/logs?start{start}&size={size}"
         ))
