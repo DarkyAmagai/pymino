@@ -229,7 +229,7 @@ class CommunityMembershipRequestList:
     def userId(self) -> List[Union[str, None]]:
         """Returns the user id of the community membership request list."""
         return self.uid
-    
+
 class InvitationLog:
     def __init__(self, data: dict) -> None:
         try:

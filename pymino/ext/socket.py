@@ -134,14 +134,18 @@ class WSClient(EventHandler):
 
         return self._log(f"Websocket error: {error}")
 
-    def on_websocket_message(self, ws: WebSocket, message: dict) -> None:
-        """Handles websocket messages."""
+    def on_websocket_message(self, ws: WebSocket, message: str) -> None:
+        """Receives websocket messages."""
+        return Thread(target=self._handle_websocket_message, args=(message,)).start()
+
+    def _handle_websocket_message(self, message: str) -> None:
+        """Handles websocket messages."""        
         try:
             raw_message = orjson_loads(message) if self.orjson else loads(message)
         except JSONDecodeError:
             raw_message = loads(message)
 
-        self.dispatcher.handle(raw_message)
+        return self.dispatcher.handle(raw_message)
 
     def _handle_message(self, message: dict) -> None:
         """Sends the message to the event handler."""
@@ -154,14 +158,14 @@ class WSClient(EventHandler):
 
         key = self.event_types.get(f"{_message.type}:{_message.mediaType}")
 
-        return Thread(self._handle_event, args=(key, _message)) if key else None
+        return self._handle_event(key, _message) if key else None
 
     def _handle_notification(self, message: dict) -> None:
         """Handles notifications."""
         notification: Notification = Notification(message)
         key = self.notif_types.get(notification.notification_type)
         
-        return Thread(self._handle_event, args=(key, notification)) if key else None
+        return self._handle_event(key, notification) if key else None
 
     def _handle_agora_channel(self, message: dict) -> None:
         """Sets the agora channel."""
@@ -169,7 +173,7 @@ class WSClient(EventHandler):
 
     def _handle_user_online(self, message: dict) -> None:
         """Handles user online events."""
-        return Thread(self._handle_event, args=("user_online", OnlineMembers(message)))
+        return self._handle_event("user_online", OnlineMembers(message))
 
     def on_websocket_close(self, ws: WebSocket, close_status_code: int, close_msg: str) -> None:
         """Handles websocket close events."""
@@ -206,7 +210,6 @@ class WSClient(EventHandler):
         return time() - last_message_time >= 30
 
     def _send_message(self) -> None:
-        """Sends a message to the websocket."""
         self.send_websocket_message({
             "o":{
                 "threadChannelUserInfoList": [],

@@ -7492,7 +7492,7 @@ class AsyncCommunity:
                 "timestamp": int(time() * 1000)
             }
         ))
-    
+
     @community
     async def add_influencer(self, userId: str, monthlyFee: int, comId: Union[str, int] = None):
         """
