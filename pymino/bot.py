@@ -969,3 +969,18 @@ class Bot(WSClient, Global):
             return round(elapsed_time_ms, 2)
         except Exception as e:
             raise PingFailed from e
+
+    def fetch_wallet(self) -> Wallet:
+        """
+        Fetches the wallet information for the authenticated user.
+
+        :return: A `Wallet` object containing the user's wallet information.
+        :rtype: Wallet
+
+        This method fetches the wallet information for the authenticated user. The wallet information includes the user's
+        total number of coins, the number of business coins, and other relevant details. The method calls the `fetch_wallet`
+        method of the `account` object. The result is a `Wallet` object that contains the user's wallet information.
+
+        The method returns a `Wallet` object containing the user's wallet information.
+        """
+        return self.account.fetch_wallet()
