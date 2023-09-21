@@ -679,11 +679,14 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Community flagged successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/flag", 
+        return ApiResponse(
+            self.session.handler(
+            method="POST",
+            url=f"/x{comId or self.community_id}/s/flag", 
             data={
-            "objectId": self.community_id,
+            "parentId": "",
+            "parentType": -1,
+            "objectId": f"x{comId or self.community_id}",
             "objectType": 16,
             "flagType": flagType.value if isinstance(flagType, FlagTypes) else flagType,
             "message": reason,
