@@ -1873,7 +1873,7 @@ class Global:
                 ))
         return LinkInfo(self.cache.get(KEY))
 
-    def fetch_public_communities(self, type: str = "discover"):
+    def fetch_public_communities(self, type: str = "discover") -> CCommunityList:
         """
         Fetches a list of public communities.
 
@@ -1895,7 +1895,7 @@ class Global:
             url = f"/g/s/topic/0/feed/community?type={type}&categoryKey=recommendation&moduleId=0c56a709-1f96-474d-ae2f-4225d0e998e5"
         ))
     
-    def fetch_available_communities(self, start: int = 0, size: int = 25, language: str = "en"):
+    def fetch_available_communities(self, start: int = 0, size: int = 25, language: str = "en") -> CCommunityList:
         """
         Fetches a list of available communities.
 
@@ -1945,4 +1945,24 @@ class Global:
         return ApiResponse(self.make_request(
             method = "DELETE",
             url = f"/g/s/user-profile/{userId}/member/{self.userId}"
+        ))
+    
+    def fetch_notifications(self, start: int = 0, size: int = 25):
+        """
+        Fetches the notifications for the authenticated user.
+        :param start: The starting index of the notifications to fetch (default is 0).
+        :type start: int
+        :param size: The number of notifications to fetch in a single request (default is 25).
+        :type size: int
+        :return: A list of notifications.
+        :rtype: list
+        This function allows the logged-in user to fetch their notifications.
+        **Example usage:**
+        >>> notifications = client.fetch_notifications(start=0, size=25)
+        >>> for notification in notifications:
+        >>>     print(notification)
+        """
+        return GlobalNotificationList(self.make_request(
+            method = "GET",
+            url = f"/g/s/notification?start={start}&size={size}"
         ))

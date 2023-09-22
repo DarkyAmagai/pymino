@@ -930,3 +930,237 @@ class QuizRankingList:
 
     def json(self) -> Union[dict, None]:
         return self.data
+
+class FetchNotification:
+    def __init__(self, data: dict):
+        self.data = data if isinstance(data, dict) else {}
+    
+    @property
+    def parentText(self) -> Union[str, None]:
+        """
+        `parentText` - Returns the parent text of the notification.
+        """
+        return self.data.get('parentText')
+    
+    @property
+    def objectId(self) -> Union[str, None]:
+        """
+        `objectId` - Returns the object id of the notification.
+        """
+        return self.data.get('objectId')
+    
+    @property
+    def contextText(self) -> Union[str, None]:
+        """
+        `contextText` - Returns the context text of the notification.
+        """
+        return self.data.get('contextText')
+    
+    @property
+    def type(self) -> Union[int, None]:
+        """
+        `type` - Returns the type of the notification.
+        """
+        return self.data.get('type')
+    
+    @property
+    def parentId(self) -> Union[str, None]:
+        """
+        `parentId` - Returns the parent id of the notification.
+        """
+        return self.data.get('parentId')
+    
+    @property
+    def operator(self) -> Union[UserProfile, None]:
+        """
+        `operator` - Returns the operator of the notification.
+        """
+        try:
+            return UserProfile(self.data.get('operator'))
+        except Exception:
+            return None
+    
+    @property
+    def createdTime(self) -> Union[str, None]:
+        """
+        `createdTime` - Returns the time the notification was created.
+        """
+        return self.data.get('createdTime')
+    
+    @property
+    def notificationId(self) -> Union[str, None]:
+        """
+        `notificationId` - Returns the notification id.
+        """
+        return self.data.get('notificationId')
+    
+    @property
+    def ndcId(self) -> Union[int, None]:
+        """
+        `ndcId` - Returns the ndc id of the notification.
+        """
+        return self.data.get('ndcId')
+    
+    @property
+    def comId(self) -> Union[int, None]:
+        """
+        `comId` - Returns the com id of the notification.
+        """
+        return self.ndcId
+    
+    @property
+    def objectText(self) -> Union[str, None]:
+        """
+        `objectText` - Returns the object text of the notification.
+        """
+        return self.data.get('objectText')
+    
+    @property
+    def contextValue(self) -> Union[str, None]:
+        """
+        `contextValue` - Returns the context value of the notification.
+        """
+        return self.data.get('contextValue')
+    
+    @property
+    def contextNdcId(self) -> Union[int, None]:
+        """
+        `contextNdcId` - Returns the context ndc id of the notification.
+        """
+        return self.data.get('contextNdcId')
+    
+    @property
+    def objectType(self) -> Union[int, None]:
+        """
+        `objectType` - Returns the object type of the notification.
+        """
+        return self.data.get('objectType')
+    
+    @property
+    def parentType(self) -> Union[int, None]:
+        """
+        `parentType` - Returns the parent type of the notification.
+        """
+        return self.data.get('parentType')
+    
+    def json(self) -> Union[dict, None]:
+        return self.data
+
+class GlobalNotificationList:
+    def __init__(self, data: dict):
+        self.data = data.get('notificationList', data)
+    
+    @property
+    def __parser__(self) -> List[FetchNotification]:
+        """
+        `__parser__` - Returns a list of FetchNotification objects.
+        """
+        return [FetchNotification(x) for x in self.data]
+    
+    @property
+    def parentText(self) -> list:
+        """
+        `parentText` - Returns a list of the parent text of the notification.
+        """
+        return [x.parentText for x in self.__parser__]
+    
+    @property
+    def objectId(self) -> list:
+        """
+        `objectId` - Returns a list of the object id of the notification.
+        """
+        return [x.objectId for x in self.__parser__]
+    
+    @property
+    def contextText(self) -> list:
+        """
+        `contextText` - Returns a list of the context text of the notification.
+        """
+        return [x.contextText for x in self.__parser__]
+    
+    @property
+    def type(self) -> list:
+        """
+        `type` - Returns a list of the type of the notification.
+        """
+        return [x.type for x in self.__parser__]
+    
+    @property
+    def parentId(self) -> list:
+        """
+        `parentId` - Returns a list of the parent id of the notification.
+        """
+        return [x.parentId for x in self.__parser__]
+    
+    @property
+    def operator(self) -> UserProfileList:
+        """
+        `operator` - Returns a list of the operator of the notification.
+        """
+        return UserProfileList([x.operator.json() for x in self.__parser__])
+    
+    @property
+    def createdTime(self) -> list:
+        """
+        `createdTime` - Returns a list of the time the notification was created.
+        """
+        return [x.createdTime for x in self.__parser__]
+    
+    @property
+    def notificationId(self) -> list:
+        """
+        `notificationId` - Returns a list of the notification id.
+        """
+        return [x.notificationId for x in self.__parser__]
+    
+    @property
+    def ndcId(self) -> list:
+        """
+        `ndcId` - Returns a list of the ndc id of the notification.
+        """
+        return [x.ndcId for x in self.__parser__]
+    
+    @property
+    def comId(self) -> list:
+        """
+        `comId` - Returns a list of the com id of the notification.
+        """
+        return [x.comId for x in self.__parser__]
+    
+    @property
+    def objectText(self) -> list:
+        """
+        `objectText` - Returns a list of the object text of the notification.
+        """
+        return [x.objectText for x in self.__parser__]
+    
+    @property
+    def contextValue(self) -> list:
+        """
+        `contextValue` - Returns a list of the context value of the notification.
+        """
+        return [x.contextValue for x in self.__parser__]
+    
+    @property
+    def contextNdcId(self) -> list:
+        """
+        `contextNdcId` - Returns a list of the context ndc id of the notification.
+        """
+        return [x.contextNdcId for x in self.__parser__]
+    
+    @property
+    def objectType(self) -> list:
+        """
+        `objectType` - Returns a list of the object type of the notification.
+        """
+        return [x.objectType for x in self.__parser__]
+    
+    @property
+    def parentType(self) -> list:
+        """
+        `parentType` - Returns a list of the parent type of the notification.
+        """
+        return [x.parentType for x in self.__parser__]
+    
+    def json(self) -> Union[dict, None]:
+        return self.data
