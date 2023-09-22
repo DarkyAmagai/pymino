@@ -1928,7 +1928,7 @@ class Global:
             url = f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&start={start}&size={size}&pagingType=t"
         ))
 
-
+    @authenticated
     def unfollow(self, userId: str) -> ApiResponse:
         """
         Unfollows a user.
@@ -1947,6 +1947,7 @@ class Global:
             url = f"/g/s/user-profile/{userId}/member/{self.userId}"
         ))
     
+    @authenticated
     def fetch_notifications(self, start: int = 0, size: int = 25):
         """
         Fetches the notifications for the authenticated user.
@@ -1965,4 +1966,23 @@ class Global:
         return GlobalNotificationList(self.make_request(
             method = "GET",
             url = f"/g/s/notification?start={start}&size={size}"
+        ))
+    
+    
+    @authenticated
+    def delete_notification(self, notificationId: str) -> ApiResponse:
+        """
+        Deletes a notification.
+        :param notificationId: The ID of the notification to delete.
+        :type notificationId: str
+        :return: An ApiResponse object containing the response data from the API.
+        :rtype: ApiResponse
+        This function allows the logged-in user to delete a notification.
+        **Example usage:**
+        >>> response = client.delete_notification(notificationId="notification123")
+        >>> print(response.status_code)
+        """
+        return ApiResponse(self.make_request(
+            method = "DELETE",
+            url = f"/g/s/notification/{notificationId}"
         ))

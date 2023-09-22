@@ -1846,3 +1846,62 @@ class AsyncGlobal:
             method = "GET",
             url = f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&start={start}&size={size}&pagingType=t"
         ))
+    
+    @authenticated
+    async def unfollow(self, userId: str) -> ApiResponse:
+        """
+        Unfollows a user.
+        :param userId: The ID of the user to unfollow.
+        :type userId: str
+        :return: An ApiResponse object containing the response data from the API.
+        :rtype: ApiResponse
+        This function allows the logged-in user to unfollow another user specified by their ID.
+        After successful execution, the user will no longer be following the specified user.
+        **Example usage:**
+        >>> response = client.unfollow(userId="user123")
+        >>> print(response.status_code)
+        """
+        return ApiResponse(await self.make_request(
+            method = "DELETE",
+            url = f"/g/s/user-profile/{userId}/member/{self.userId}"
+        ))
+    
+    @authenticated
+    async def fetch_notifications(self, start: int = 0, size: int = 25):
+        """
+        Fetches the notifications for the authenticated user.
+        :param start: The starting index of the notifications to fetch (default is 0).
+        :type start: int
+        :param size: The number of notifications to fetch in a single request (default is 25).
+        :type size: int
+        :return: A list of notifications.
+        :rtype: list
+        This function allows the logged-in user to fetch their notifications.
+        **Example usage:**
+        >>> notifications = client.fetch_notifications(start=0, size=25)
+        >>> for notification in notifications:
+        >>>     print(notification)
+        """
+        return GlobalNotificationList(await self.make_request(
+            method = "GET",
+            url = f"/g/s/notification?start={start}&size={size}"
+        ))
+    
+    
+    @authenticated
+    async def delete_notification(self, notificationId: str) -> ApiResponse:
+        """
+        Deletes a notification.
+        :param notificationId: The ID of the notification to delete.
+        :type notificationId: str
+        :return: An ApiResponse object containing the response data from the API.
+        :rtype: ApiResponse
+        This function allows the logged-in user to delete a notification.
+        **Example usage:**
+        >>> response = client.delete_notification(notificationId="notification123")
+        >>> print(response.status_code)
+        """
+        return ApiResponse(await self.make_request(
+            method = "DELETE",
+            url = f"/g/s/notification/{notificationId}"
+        ))
