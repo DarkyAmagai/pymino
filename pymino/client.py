@@ -598,6 +598,7 @@ class Client(Global):
                 password=password,
                 device_id=device_id
                 )
+        if not response.get('sid'): raise exceptions.AccountLoginRatelimited()
 
         for key, value in {"email": email, "password": password}.items():
             setattr(self.request, key, value)            

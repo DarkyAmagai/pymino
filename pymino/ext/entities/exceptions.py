@@ -379,6 +379,11 @@ class APIException(Exception):
 
         raise API_ERROR(response)
 
+class AccountLoginRatelimited(Exception):
+    def __init__(self):
+        super().__init__(
+            "Account login ratelimited by Amino, wait 3 minutes and try again."
+        )
             
 class MissingCommunityId(Exception):
     def __init__(self):
