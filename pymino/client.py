@@ -527,7 +527,7 @@ class Client(Global):
         if device_id:
             self.device_id = device_id
 
-        return ApiResponse(
+        response = ApiResponse(
             self.request.handler(
                 method="POST",
                 url = "/g/s/auth/login",
@@ -547,6 +547,8 @@ class Client(Global):
                     }
                 )
             ).json()
+        if not response.get('sid'): raise exceptions.AccountLoginRatelimited()
+        return response
 
     def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
         """
@@ -598,7 +600,6 @@ class Client(Global):
                 password=password,
                 device_id=device_id
                 )
-        if not response.get('sid'): raise exceptions.AccountLoginRatelimited()
 
         for key, value in {"email": email, "password": password}.items():
             setattr(self.request, key, value)            
