@@ -62,6 +62,7 @@ class Client(Global):
         '_debug',
         '_userId',
         '_sid',
+        '_secret',
         '_cached',
         '_is_authenticated',
         'cache',
@@ -79,8 +80,8 @@ class Client(Global):
         self,
         community_id: Optional[Union[str, int]] = None,
         hash_prefix: Union[str, int] = 19,
-        device_key: str = "E7309ECC0953C6FA60005B2765F99DBBC965C8E9",
-        signature_key: str  = "DFA5ED192DDA6E88A12FE12130DC6206B1251E44",
+        device_key: str = None,
+        signature_key: str  = None,
         **kwargs
         ) -> None:
         """
@@ -91,8 +92,8 @@ class Client(Global):
         - `device_id` - device id to use for the client.
         - `proxy` - proxy string to use for the client.
         - `hash_prefix` - The hash prefix to use for the bot. `Defaults` to `19`.
-        - `device_key` - The device key to use for the bot. `Defaults` to `E7309ECC0953C6FA60005B2765F99DBBC965C8E9`.
-        - `signature_key` - The signature key to use for the bot. `Defaults` to `DFA5ED192DDA6E88A12FE12130DC6206B1251E44`.
+        - `device_key` - The device key to use for the bot.
+        - `signature_key` - The signature key to use for the bot.
         
         ----------------------------
         Why use `Client` over `Bot`?
@@ -184,12 +185,14 @@ class Client(Global):
             comId = comId
         )
         ```
-
         """
+        if not all([device_key, signature_key]):
+            raise MissingDeviceKeyOrSignatureKey
         self._debug:            bool = check_debugger()
         self._is_authenticated: bool = False
         self._userId:           str = None
         self._sid:              str = None
+        self._secret:           str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
         self.logger:            Logger = self._create_logger() if kwargs.get("debug_log") else None
@@ -376,6 +379,39 @@ class Client(Global):
         """
         self._sid = value
 
+    @property
+    def secret(self) -> str:
+        """
+        The secret of the client.
+
+        :return: The secret.
+        :rtype: str
+
+        This property returns the secret of the client. The secret is set when the client logs in to Amino, and is used to
+        make authenticated API calls, such as posting messages or retrieving user information.
+
+        **Note:** This property only returns the secret and cannot be used to set the secret. To set the secret, use the
+        `self._secret` attribute directly.
+        """
+        return self._secret
+    
+    @secret.setter
+    def secret(self, value: str) -> None:
+        """
+        Sets the secret of the client.
+
+        :param value: The secret to set.
+        :type value: str
+        :return: None
+
+        This setter sets the secret of the client. The secret is used to make authenticated API calls, such as posting
+        messages or retrieving user information.
+
+        **Note:** This setter only sets the secret and cannot be used to retrieve the secret. To retrieve the secret, use
+        the `self.secret` property.
+        """
+        self._secret = value
+
     def _log(self, message: str) -> None:
         """
         Logs a message to debug.log
@@ -510,7 +546,7 @@ class Client(Global):
 
         return community_id
 
-    def authenticate(self, email: str, password: str, device_id: str=None) -> dict:
+    def authenticate(self, email: str=None, password: str=None, secret: str=None, device_id: str=None) -> dict:
         """
         Authenticates the bot with the provided email and password.
 
@@ -527,12 +563,11 @@ class Client(Global):
         if device_id:
             self.device_id = device_id
 
-        response = ApiResponse(
-            self.request.handler(
+        response = self.make_request(
                 method="POST",
                 url = "/g/s/auth/login",
                 data = {
-                    "secret": f"0 {password}",
+                    "secret": secret or f"0 {password}",
                     "clientType": 100,
                     "systemPushEnabled": 0,
                     "timestamp": int(time() * 1000),
@@ -545,12 +580,14 @@ class Client(Global):
                     "v": 2,
                     "clientCallbackURL": "narviiapp://default"
                     }
-                )
-            ).json()
-        if not response.get('sid'): raise exceptions.AccountLoginRatelimited()
+                )            
+
+        if not response.get('sid'):
+            raise exceptions.AccountLoginRatelimited()
+
         return response
 
-    def _login_handler(self, email: str, password: str, device_id: str=None, use_cache: bool=True) -> dict:
+    def _login_handler(self, email: str=None, password: str=None, secret: str=None, device_id: str=None, use_cache: bool=True) -> dict:
         """
         Authenticates the user with the provided email and password.
 
@@ -558,6 +595,8 @@ class Client(Global):
         :type email: str
         :param password: The password for the account.
         :type password: str
+        :param secret: The secret for the account. Defaults to None.
+        :type secret: Optional[str]
         :param device_id: The device ID associated with the account. Defaults to None.
         :type device_id: Optional[str]
         :param use_cache: Whether or not to use cached login credentials. Defaults to True.
@@ -598,6 +637,7 @@ class Client(Global):
             response: dict = self.authenticate(
                 email=email,
                 password=password,
+                secret=secret,
                 device_id=device_id
                 )
 
@@ -610,10 +650,11 @@ class Client(Global):
         self,
         email: Optional[str] = None,
         password: Optional[str] = None,
+        secret: Optional[str] = None,
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
         use_cache: bool = True
-        ) -> None:
+        ) -> dict:
         """
         Logs in to the client using the provided credentials.
 
@@ -621,6 +662,8 @@ class Client(Global):
         :type email: Optional[str]
         :param password: The password for the account. Defaults to None.
         :type password: Optional[str]
+        :param secret: The secret for the account. Defaults to None.
+        :type secret: Optional[str]
         :param sid: The session ID for the account. Defaults to None.
         :type sid: Optional[str]
         :param device_id: The device ID associated with the account. Defaults to None.
@@ -637,7 +680,7 @@ class Client(Global):
         >>> client = Client()
         >>> client.login(email="example@example.com", password="password")
         """
-        if not sid and not email and not password:
+        if not any([email and password, sid, secret]):
             raise MissingEmailPasswordOrSid
 
         if sid:
@@ -649,6 +692,7 @@ class Client(Global):
             response = self._login_handler(
                 email=email,
                 password=password,
+                secret=secret,
                 device_id=device_id,
                 use_cache=use_cache
                 )
@@ -715,18 +759,19 @@ class Client(Global):
         >>> response = client.authenticate(email="example@example.com", password="password")
         >>> client._run(response)
         """
-        if response["api:statuscode"] != 0: input(response), exit()
+        if response.get("api:statuscode") != 0: input(response), exit()
 
         if not hasattr(self, "profile"): 
             self.profile: UserProfile = UserProfile(response) 
 
         if not self.sid:
-            self.sid: str = response["sid"]
+            self.sid: str = response.get("sid")
 
         self.userId: str = self.profile.userId
         self.community.userId: str = self.userId
         self.request.sid: str = self.sid
         self.request.userId: str = self.userId
+        self._secret: str = response.get("secret")
         
         if hasattr(self.request, "email") and self._cached:
             cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
@@ -740,6 +785,7 @@ class Client(Global):
         if self.debug:
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
+        self.cache.set(key=f"{self.userId}-account", value=response, expire=21600)
         return response
 
     @authenticated
@@ -794,32 +840,6 @@ class Client(Global):
         for key in ["sid", "userId", "community.userId", "request.sid", "request.userId", "is_authenticated"]:
             setattr(self, key, None)
         return None
-
-    def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
-        """
-        Registers a new account with the provided email, password, username, and verification code.
-
-        :param email: The email address to register the account with.
-        :type email: str
-        :param password: The password to use for the account.
-        :type password: str
-        :param username: The username to use for the account.
-        :type username: str
-        :param verificationCode: The verification code sent to the email address for account activation.
-        :type verificationCode: str
-        :return: An `Authenticate` object containing the authenticated user's session ID, user ID, and community user ID.
-        :rtype: Authenticate
-
-        This method registers a new account with the provided email, password, username, and verification code. The
-        verification code is sent to the email address for account activation. The method returns an `Authenticate` object
-        containing the authenticated user's session ID and user ID.
-        """
-        return self.account.register(
-            email=email, 
-            password=password,
-            username=username,
-            verificationCode=verificationCode
-            )
 
     @authenticated
     def delete_request(self, email: str, password: str) -> ApiResponse:
@@ -894,13 +914,23 @@ class Client(Global):
 
         The method returns a dictionary containing the user's account information.
         """
-        self.profile: UserProfile = UserProfile(
-            self.request.handler(
-                method="GET",
-                url=f"/g/s/user-profile/{self.userId}"
-                ))
-        
-        return ApiResponse(self.request.handler(method="GET", url="/g/s/account")).json()
+        if cached_info := self.cache.get(f"{self.userId}-account"):
+            return cached_info
+
+        profile = self.make_request(
+            method="GET",
+            url=f"/g/s/user-profile/{self.userId}"
+            )
+        self.profile = UserProfile(profile)
+        account = self.make_request(
+            method="GET",
+            url="/g/s/account"
+            )
+
+        account.update(profile)
+        self.cache.set(key=f"{self.userId}-account", value=account, expire=21600)
+
+        return account
 
     @authenticated
     def upload_image(self, image: str) -> str:
@@ -937,23 +967,30 @@ class Client(Global):
         return self.account.fetch_profile(self.userId)
 
     @authenticated
-    def set_amino_id(self, aminoId: str) -> ApiResponse:
+    def set_amino_id(self, amino_id: str, **kwargs) -> ApiResponse:
         """
         Sets the Amino ID of the authenticated user.
 
-        :param aminoId: The Amino ID to set for the user.
-        :type aminoId: str
+        :param amino_id: The Amino ID to set for the user.
+        :type amino_id: str
+        :param kwargs: Additional keyword arguments. Check for deprecated parameter "aminoId" in kwargs.
+        :type kwargs: dict
         :return: An `ApiResponse` object containing the server's response to the set Amino ID request.
         :rtype: ApiResponse
 
-        This method sets the Amino ID of the authenticated user. The Amino ID is passed as a string argument. The method calls
-        the `set_amino_id` method of the `account` object with the `aminoId` parameter set to the given Amino ID. The result
-        is an `ApiResponse` object that contains the server's response to the set Amino ID request.
+        This method sets the Amino ID of the authenticated user. The Amino ID is passed as a string argument. The method checks
+        for the deprecated "aminoId" parameter in kwargs and logs a warning if present. It then calls the `set_amino_id`
+        method of the `account` object with the `amino_id` parameter set to the given Amino ID. The result is an `ApiResponse`
+        object that contains the server's response to the set Amino ID request.
 
         The method returns the `ApiResponse` object obtained from calling the `set_amino_id` method of the `account` object.
         The response will return a `0` status code if the Amino ID is set successfully.
         """
-        return self.account.set_amino_id(aminoId=aminoId)
+        if "aminoId" in kwargs:
+            self.log("aminoId is deprecated, use amino_id instead", "warning")
+            amino_id = kwargs.get("aminoId")
+
+        return self.account.set_amino_id(amino_id=amino_id)
 
     @authenticated
     def fetch_wallet(self) -> Wallet:
@@ -971,26 +1008,33 @@ class Client(Global):
         """
         return self.account.fetch_wallet()
 
-    def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
+    def request_security_validation(self, email: str, reset_password: bool = False, **kwargs) -> ApiResponse:
         """
         Requests security validation for the provided email address.
 
         :param email: The email address to request security validation for.
         :type email: str
-        :param resetPassword: Optional flag to indicate if the user is requesting password reset. Default is False.
-        :type resetPassword: bool
+        :param reset_password: Optional flag to indicate if the user is requesting password reset. Default is False.
+        :type reset_password: bool
+        :param kwargs: Additional keyword arguments. Check for deprecated parameter "resetPassword" in kwargs.
+        :type kwargs: dict
         :return: An `ApiResponse` object containing the server's response to the security validation request.
         :rtype: ApiResponse
 
         This method requests security validation for the provided email address. The email parameter is used to send
-        a validation email to the provided email address. If resetPassword parameter is True, then the email will be sent for
-        password reset. The method calls the `request_security_validation` method of the `account` object with the `email`
-        parameter set to the provided email address and `resetPassword` parameter set to the provided flag. The result is
-        an `ApiResponse` object that contains the server's response to the security validation request.
+        a validation email to the provided email address. If reset_password parameter is True, then the email will be sent for
+        password reset. The method checks for the deprecated "resetPassword" parameter in kwargs and logs a warning if present.
+        It then calls the `request_security_validation` method of the `account` object with the `email` parameter set to the
+        provided email address and `reset_password` parameter set to the provided flag. The result is an `ApiResponse` object
+        that contains the server's response to the security validation request.
 
         The method returns an `ApiResponse` object containing the server's response to the security validation request.
         """
-        return self.account.request_security_validation(email=email, resetPassword=resetPassword)
+        if "resetPassword" in kwargs:
+            self.log("resetPassword is deprecated, use reset_password instead", "warning")
+            reset_password = kwargs.get("resetPassword")
+
+        return self.account.request_security_validation(email=email, reset_password=reset_password)
 
     def activate_email(self, email: str, code: str) -> ApiResponse:
         """
@@ -1010,14 +1054,14 @@ class Client(Global):
         return self.account.activate_email(email=email, code=code)
 
     @authenticated
-    def reset_password(self, email: str, newPassword: str, code: str) -> ResetPassword:
+    def reset_password(self, email: str, new_password: str, code: str, **kwargs) -> ResetPassword:
         """
         Resets the user's password using the provided email, verification code, and new password.
 
         :param email: The email address associated with the account.
         :type email: str
-        :param newPassword: The new password to use for the account.
-        :type newPassword: str
+        :param new_password: The new password to use for the account.
+        :type new_password: str
         :param code: The verification code sent to the email address for account verification.
         :type code: str
         :return: A `ResetPassword` object containing the user's session ID and user ID.
@@ -1027,4 +1071,8 @@ class Client(Global):
         verification code, and new password parameters are used to authenticate the request. The method returns a `ResetPassword`
         object containing the user's session ID and user ID.
         """
-        return self.account.reset_password(email=email, newPassword=newPassword, code=code)
+        if "newPassword" in kwargs:
+            self.log("newPassword is deprecated, use new_password instead", "warning")
+            new_password = kwargs.get("newPassword")
+
+        return self.account.reset_password(email=email, new_password=new_password, code=code)

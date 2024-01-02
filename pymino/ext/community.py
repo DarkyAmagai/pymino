@@ -508,7 +508,8 @@ class Community:
 
         return InvitationId(self.session.handler(
             method = "GET",
-            url = f"/g/s/community/link-identify?q={invite_code}"
+            url = f"/g/s/community/link-identify?q={invite_code}",
+            is_login_required = False
             )).invitationId
 
 
@@ -552,7 +553,7 @@ class Community:
             method = "POST",
             url = f"/x{self.community_id if comId is None else comId}/s/community/join",
             data = {
-                "invitationId": self.fetch_invitationId(inviteCode=invite_code),
+                "invitationId": self.fetch_invitationId(invite_code=invite_code),
                 "timestamp": int(time() * 1000)
                 }
             ))

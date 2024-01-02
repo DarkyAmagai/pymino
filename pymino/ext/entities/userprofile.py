@@ -409,6 +409,7 @@ class UserProfile:
 	- `extensions` - The extensions of the user.
 	- `stories_count` - The amount of stories the user has created.
 	- `blogs_count` - The amount of blogs the user has created.
+	- `is_user_hidden` - Is the user hidden.
 	"""
 	def __init__(self, data: dict):
 		self._data = data.get('userProfile', data)
@@ -962,6 +963,40 @@ class UserProfile:
 		```
 		"""
 		return self._data.get('createdTime')
+	
+	@property
+	def is_user_hidden(self) -> bool:
+		"""
+		`isUserHidden` - Whether the user is hidden.
+
+		`Returns:` bool | None
+
+		`Example`:
+		```py
+		>>> user = bot.community.fetch_user(0000-0000-0000-0000)	
+		>>> print(f"Is user hidden: {user.is_user_hidden}")
+		```
+		"""
+		if extensions := self._data.get('extensions'):
+			return extensions.get('hideUserProfile', False)
+		return False
+	
+	@property
+	def is_user_banned(self) -> bool:
+		"""
+		`isUserBanned` - Whether the user is banned.
+
+		`Returns:` bool | None
+
+		`Example`:
+		```py
+		>>> user = bot.community.fetch_user(0000-0000-0000-0000)	
+		>>> print(f"Is user banned: {user.is_user_banned}")
+		```
+		"""
+		if extensions := self._data.get('extensions'):
+			return bool(extensions.get('__disabledTime__', False))
+		return False
 
 	@property
 	def extensions(self) -> Union[UserExtensions, UserExtensionsNotFound]:
@@ -1328,6 +1363,8 @@ class UserProfileList:
 		self.visit_privacy:				List[int] = [x.visit_privacy for x in parser]
 		self.stories_count:				List[int] = [x.stories_count for x in parser]
 		self.blogs_count:				List[int] = [x.blogs_count for x in parser]
+		self.is_user_hidden:			List[bool] = [x.is_user_hidden for x in parser]
+		self.is_user_banned:			List[bool] = [x.is_user_banned for x in parser]
 
 class Pagging:
     def __init__(self, data: dict):

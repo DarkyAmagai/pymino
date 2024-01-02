@@ -514,3 +514,9 @@ class MissingAwaitError(Exception):
         super().__init__(
             "Missing await error. Please add `await` before your function call."
             )
+        
+class MissingDeviceKeyOrSignatureKey(Exception):
+    def __init__(self):
+        super().__init__(
+            "Missing signature and or device key. Please provide a signature or device key."
+            )

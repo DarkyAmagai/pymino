@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://cdn.discordapp.com/attachments/965717722166100018/1175359333412913222/pymino-logo.png" alt="Pymino Logo" width="200">
+  <img src="https://cdn.discordapp.com/attachments/965717722166100018/1191698817452605500/pymino.png" alt="Pymino Logo" width="200">
   <h1 style="color: #0d47a1; font-size: 3em;">pymino</h1>
   
   <p>
@@ -14,6 +14,7 @@
 
   <div style="border: 3px solid red; padding: 10px; margin: 15px 0;">
     <h3 style="color: red;"><strong>⚠️ WARNING ⚠️</strong></h3>
+    <h3 style="color: red;"><strong>This software is provided for educational purposes only.</strong></h3>
     <p><strong>Pymino is a fully reverse-engineered client. By using this client, you may be violating the Amino Apps' Terms of Service. This could lead to your account being suspended or permanently banned. Please use Pymino responsibly and at your own risk.</strong></p>
     <p><strong>Understand that the developers and maintainers of Pymino are not responsible for any actions taken against your account as a result of using this client. Proceed with caution.</strong></p>
   </div>

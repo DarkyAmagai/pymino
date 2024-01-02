@@ -33,7 +33,7 @@ class Global:
         return wrapper
 
 
-    def make_request(self, method: str, url: str, data: dict = None) -> dict:
+    def make_request(self, method: str, url: str, data: dict = None, is_login_required: bool = True) -> dict:
         """
         Makes a request to the API.
         
@@ -45,6 +45,8 @@ class Global:
         :type data: dict
         :return: The response from the request.
         :rtype: dict
+        :param is_login_required: Whether the request requires the client to be logged in.
+        :type is_login_required: bool
         
         This method is used to make requests to the API.
         
@@ -53,6 +55,7 @@ class Global:
         >>> client.make_request(
             ...     method = "GET",
             ...     url = "/g/s/user-profile/0000-000000-000000-0000-000000"
+            ...     is_login_required = True
             ... )
             
         This will make a GET request to the URL `/g/s/user-profile/0000-000000-000000-0000-000000`.
@@ -60,7 +63,8 @@ class Global:
         return self.request.handler(
             method = method,
             url = url,
-            data = data
+            data = data,
+            is_login_required = is_login_required
         )
 
 

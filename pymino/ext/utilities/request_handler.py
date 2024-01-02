@@ -46,6 +46,7 @@ class RequestHandler:
         ) -> None:
         self.bot             = bot
         self.generate        = generator
+        self.api_url:        str = "http://service.aminoapps.com/api/v1"
         self.http_handler:   Http = Http()
         self.sid:            Optional[str] = None
         self.userId:         Optional[str] = None
@@ -73,7 +74,7 @@ class RequestHandler:
         - `str` - The service url.
         
         """
-        return f"http://service.aminoapps.com/api/v1{url}" if url.startswith("/") else url
+        return f"{self.api_url}{url}" if url.startswith("/") else url
     
     def service_headers(self) -> dict:
         """Returns the service headers"""
@@ -148,7 +149,8 @@ class RequestHandler:
         method: str,
         url: str,
         data: Union[dict, bytes, None] = None,
-        content_type: Optional[str] = None
+        content_type: Optional[str] = None,
+        is_login_required: bool = True
     ) -> dict:
         """
         `handler` - Handles all requests
@@ -158,6 +160,7 @@ class RequestHandler:
         - `url` - The url to send the request to.
         - `data` - The data to send with the request.
         - `content_type` - The content type of the data.
+        - `is_login_required` - Whether or not the request requires a login.
         
         `**Returns**``
         - `dict` - The response from the request.
@@ -169,6 +172,10 @@ class RequestHandler:
 
         if all([method=="POST", data is None]):
             headers["CONTENT-TYPE"] = "application/octet-stream"
+
+        if not is_login_required:
+            headers.pop("NDCAUTH")
+            headers.pop("AUID")
 
         try:
             status_code, content = self.send_request(
