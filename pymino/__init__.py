@@ -6,7 +6,7 @@ __title__ = 'pymino'
 __author__ = 'cynical'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023 Cynical'
-__version__ = '1.2.6.2'
+__version__ = '1.2.6.3'
 __description__ = 'A Python wrapper for the aminoapps.com API'
 
 from .bot import Bot
@@ -14,9 +14,7 @@ from .client import Client
 
 __all__: List[str] = [
     'Bot',
-    'AsyncBot',
     'Client',
-    'AsyncClient',
 ]
 
 print("Join the pymino discord server: https://discord.gg/RuRzyya55Z")

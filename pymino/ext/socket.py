@@ -1,3 +1,4 @@
+import signal
 from random import randint
 from typing import Optional
 from threading import Thread
@@ -75,6 +76,7 @@ class WSClient(EventHandler):
         self.dispatcher.register(400, self._handle_user_online)
         self.dispatcher.register(1000, self._handle_message)
 
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
         EventHandler.__init__(self)
 
     def fetch_ws_url(self) -> str:
@@ -91,7 +93,7 @@ class WSClient(EventHandler):
         """
         if self.is_logging:
             try:
-                self.logger.debug(message.encode("utf-8"))
+                self.logger.debug(message)
             except Exception:
                 self.is_logging = False
 

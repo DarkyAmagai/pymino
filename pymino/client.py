@@ -1,3 +1,4 @@
+from os import path
 from time import time
 from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
@@ -186,8 +187,13 @@ class Client(Global):
         )
         ```
         """
-        if not all([device_key, signature_key]):
+        self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
+        self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
+        self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
+
+        if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
+
         self._debug:            bool = check_debugger()
         self._is_authenticated: bool = False
         self._userId:           str = None
@@ -200,8 +206,8 @@ class Client(Global):
         self.community_id:      Optional[str] = community_id or kwargs.get("comId")
         self.generate:          Generator = Generator(
                                 prefix=hash_prefix,
-                                device_key=device_key,
-                                signature_key=signature_key
+                                device_key=self.__device_key__,
+                                signature_key=self.__signature_key__
                                 )
         self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
@@ -423,7 +429,7 @@ class Client(Global):
         """
         if self.is_logging:
             try:
-                self.logger.debug(message.encode("utf-8"))
+                self.logger.debug(message)
             except Exception:
                 self.is_logging = False
 
@@ -441,7 +447,7 @@ class Client(Global):
 
         max_log_size = 10 * 1024 * 1024
 
-        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0)
+        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0, encoding="utf-8")
         file_handler.setLevel(DEBUG)
 
         formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -786,7 +792,38 @@ class Client(Global):
             print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
 
         self.cache.set(key=f"{self.userId}-account", value=response, expire=21600)
+
+        self.__set_keys__()
         return response
+    
+    def __set_keys__(self):
+        """
+        Sets the device key and signature key on the client instance.
+
+        :return: None
+        :rtype: None
+
+        This method is called internally by the `login` and `run` methods after a successful login attempt.
+        It sets the device key and signature key on the client instance.
+        """
+        def check_keys(key: str, value: str) -> None:
+            self.__local_cache__.set(key=key, value=value) if self.__local_cache__.get(key) != value else None
+            
+        for key, value in {"device_key": self.__device_key__, "signature_key": self.__signature_key__}.items():
+            check_keys(key, value)
+
+    def reset_keys(self) -> None:
+        """
+        Resets the device key and signature key on the client instance.
+
+        :return: None
+        :rtype: None
+
+        This method resets the device key and signature key on the client instance.
+        """
+        for key in ["device_key", "signature_key"]:
+            self.__local_cache__.delete(key)
+        raise MissingDeviceKeyOrSignatureKey
 
     @authenticated
     def disconnect_google(self, password: str) -> dict:

@@ -1,3 +1,4 @@
+from os import path
 from threading import Thread
 from typing import Optional, Union
 from time import perf_counter, time
@@ -308,8 +309,13 @@ class Bot(WSClient, Global):
             bot.run(email="email", password="password")
             ```
         """
-        if not all([device_key, signature_key]):
+        self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
+        self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
+        self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
+
+        if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
+
         self._debug:            bool = check_debugger()
         self._console_enabled:  bool = console_enabled
         self._cooldown_message: Optional[str] = None
@@ -327,7 +333,7 @@ class Bot(WSClient, Global):
 
         self.logger:            Optional[Logger] = self._create_logger() if debug_log else None
         self.community_id:      Union[str, int] = community_id
-        self.generate:          Generator = Generator(hash_prefix, device_key, signature_key)
+        self.generate:          Generator = Generator(hash_prefix, self.__device_key__, self.__signature_key__)
         self.online_status:     bool = online_status
         self.device_id:         Optional[str] = device_id or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
@@ -666,7 +672,7 @@ class Bot(WSClient, Global):
 
         max_log_size = 10 * 1024 * 1024
 
-        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0)
+        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0, encoding="utf-8")
         file_handler.setLevel(DEBUG)
 
         formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -880,11 +886,42 @@ class Bot(WSClient, Global):
             self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
 
         if self.debug:
-            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
+            print(f"\n{Fore.MAGENTA}[LOGGED IN] {Style.RESET_ALL}{self.profile.username} ({Fore.YELLOW}{self.profile.userId}{Style.RESET_ALL})\n")
 
         Thread(target=self.__run_console__).start()
         self.cache.set(key=f"{self.userId}-account", value=response, expire=21600)
+
+        self.__set_keys__()
         return response
+    
+    def __set_keys__(self):
+        """
+        Sets the device key and signature key on the client instance.
+
+        :return: None
+        :rtype: None
+
+        This method is called internally by the `login` and `run` methods after a successful login attempt.
+        It sets the device key and signature key on the client instance.
+        """
+        def check_keys(key: str, value: str) -> None:
+            self.__local_cache__.set(key=key, value=value) if self.__local_cache__.get(key) != value else None
+            
+        for key, value in {"device_key": self.__device_key__, "signature_key": self.__signature_key__}.items():
+            check_keys(key, value)
+
+    def reset_keys(self) -> None:
+        """
+        Resets the device key and signature key on the client instance.
+
+        :return: None
+        :rtype: None
+
+        This method resets the device key and signature key on the client instance.
+        """
+        for key in ["device_key", "signature_key"]:
+            self.__local_cache__.delete(key)
+        raise MissingDeviceKeyOrSignatureKey
 
     def __run_console__(self) -> None:
         if self.console_enabled:

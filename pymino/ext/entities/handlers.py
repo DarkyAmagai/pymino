@@ -78,8 +78,9 @@ def notify() -> None:
     """
     Notifies the user that the bot is online.
     """
-    print(f"\n{Fore.MAGENTA}[PYMINO] | {Fore.GREEN}BOT STATUS: {Fore.YELLOW}ONLINE | {Style.RESET_ALL}{datetime.now().strftime('%H:%M:%S')}\n")
+    sleep(.1)
     print(f"{Fore.RED}[!] {Fore.YELLOW}If you see this message, you can safely ignore it. The bot is still running and will continue to run until you stop it.{Style.RESET_ALL}\n")
+    print(f"{Fore.RED}[!] {Fore.YELLOW}Press {Fore.RED}CTRL+C {Fore.YELLOW}to stop the bot.{Style.RESET_ALL}\n")
 
 def parse_auid(sid: str) -> str:
     """Parses the user ID from a session ID."""
@@ -152,10 +153,11 @@ def run_alive_loop(ws) -> None:
     last_activity_time  = start_time
     last_message_time   = start_time
 
+    notify()
     while True:
         current_time = time()
 
-        notify() if run_check else None
+        
 
         with suppress(Exception):
 
