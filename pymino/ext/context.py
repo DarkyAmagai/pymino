@@ -928,8 +928,7 @@ class EventHandler:
     
         if command is None:
             if command_name == "help" and data.content == f"{self.command_prefix}help":
-                cooldown_message = self._cooldown_message or self._commands.__help__()
-                return context.reply(content=cooldown_message)
+                return context.reply(content=self._commands.__help__())
             
             if self._events.get("text_message"):
                 return self._handle_all_events(event="text_message", data=data, context=context)
@@ -953,10 +952,7 @@ class EventHandler:
         """`_check_cooldown` is a function that checks if a command is on cooldown."""
         if self._commands.fetch_command(command_name).cooldown > 0:
             if self._commands.fetch_cooldown(command_name, data.author.userId) > time():
-
-                context.reply(
-                    content=f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds."
-                    )
+                context.reply(content=self._cooldown_message or f"You are on cooldown for {int(self._commands.fetch_cooldown(command_name, data.author.userId) - time())} seconds.")
                 return 403
             
             self._commands.set_cooldown(
@@ -966,7 +962,6 @@ class EventHandler:
                 )
 
         return 200
-
 
     def _add_cache(self, chatId: str, userId: str, content: str):
         with self.cache as cache:
