@@ -14,9 +14,64 @@ from .utilities.commands import Command, Commands
 
 __all__ = (
     "Context",
-    "EventHandler"
+    "EventHandler",
+    "WaitForMessage",
     )
 
+class WaitForMessage:
+    def __init__(self, status_code: int) -> None:
+        self.status_code = status_code
+        self._MESSAGE_TIMEOUT = None
+        self._INCORRECT_MESSAGE = None
+        self._MESSAGE_FOUND = None
+
+        self.__set_status_code__()
+
+    @property
+    def MESSAGE_TIMEOUT(self) -> bool:
+        """Whether or not the timeout was reached."""
+        return self._MESSAGE_TIMEOUT
+    
+    @MESSAGE_TIMEOUT.setter
+    def MESSAGE_TIMEOUT(self, value: bool) -> None:
+        self._MESSAGE_TIMEOUT = value
+
+    @property
+    def MESSAGE_NOT_FOUND(self) -> bool:
+        """Whether or not the message was not found."""
+        return self._MESSAGE_NOT_FOUND
+    
+    @MESSAGE_NOT_FOUND.setter
+    def MESSAGE_NOT_FOUND(self, value: bool) -> None:
+        self._MESSAGE_NOT_FOUND = value
+
+    @property
+    def MESSAGE_FOUND(self) -> bool:
+        """Whether or not the message was found."""
+        return self._MESSAGE_FOUND
+    
+    @MESSAGE_FOUND.setter
+    def MESSAGE_FOUND(self, value: bool) -> None:
+        self._MESSAGE_FOUND = value
+    
+    def __set_status_code__(self):
+        if self.status_code == 200:
+            self.MESSAGE_FOUND = True
+            self.MESSAGE_NOT_FOUND = False
+            self.MESSAGE_TIMEOUT = False
+
+        elif self.status_code == 404:
+            self.MESSAGE_FOUND = False
+            self.MESSAGE_NOT_FOUND = True
+            self.MESSAGE_TIMEOUT = False
+
+        elif self.status_code == 500:
+            self.MESSAGE_FOUND = False
+            self.MESSAGE_NOT_FOUND = False
+            self.MESSAGE_TIMEOUT = True
+
+    def __repr__(self) -> str:
+        return f"<WaitForMessage status_code={self.status_code} MESSAGE_TIMEOUT={self.MESSAGE_TIMEOUT} MESSAGE_NOT_FOUND={self.MESSAGE_NOT_FOUND} MESSAGE_FOUND={self.MESSAGE_FOUND}>"
 
 class Context:
     """
@@ -68,7 +123,7 @@ class Context:
         return {True: "g", False: f"x{self.message.comId}"}[self.message.comId == 0]
 
     @property
-    def comId(self) -> str:
+    def comId(self) -> int:
         """The community ID."""
         return self.message.comId
 
@@ -196,9 +251,8 @@ class Context:
             method = "DELETE",
             url = f"/{self.communityId}/s/chat/thread/{self.message.chatId}/message/{delete_message.messageId}"
             ))
-
-
-    def wait_for_message(self, message: str, timeout: int = 10) -> int:
+    
+    def wait_for_message(self, message: str, timeout: int = 10) -> WaitForMessage:
         """
         `wait_for_message` - This waits for a specific message within a certain timeout period. 
         
@@ -209,14 +263,15 @@ class Context:
             The maximum time to wait for the message in seconds. Default is 10.
         
         `**Returns**`
-        - `int` 
-            The method returns a status code indicating the result of the operation:
+        - `WaitForMessage`: The WaitForMessage object.
 
-                `200` - If the desired message is found within the timeout.
+            - `MESSAGE_TIMEOUT` : bool
+                - Whether or not the timeout was reached.
+            - `MESSAGE_NOT_FOUND` : bool
+                - Whether or not the message was not found.
+            - `MESSAGE_FOUND` : bool
+                - Whether or not the message was found.
 
-                `404` - If a different message is found within the timeout.
-                
-                `500` - If the timeout is reached without finding the desired message.
         
         `**Example**`
         ```py
@@ -231,14 +286,14 @@ class Context:
 
             response = ctx.wait_for_message(message="$verify", timeout=15)
 
-            if response == 500:
+            if response.MESSAGE_TIMEOUT:
                 ctx.send(content="You took too long to verify yourself. You have been kicked from the chat.", delete_after=TIMEOUT)
                 return bot.community.kick(userId=ctx.author.userId, chatId=ctx.chatId, allowRejoin=True, comId=ctx.comId)
 
-            elif response == 404:
+            elif response.MESSAGE_NOT_FOUND:
                 ctx.send(content="Invalid verification code. You have been kicked from the chat.", delete_after=TIMEOUT)
 
-            else:
+            elif response.MESSAGE_FOUND:
                 ctx.send(content="You have been verified!", delete_after=TIMEOUT)
         ```
         """
@@ -253,15 +308,14 @@ class Context:
 
                 if cached_message == message:
                     cache.pop(f"{self.message.chatId}_{self.message.author.userId}")
-                    return 200
+                    return WaitForMessage(status_code=200)
 
                 if all([cached_message is not None, cached_message != message]):
                     cache.pop(f"{self.message.chatId}_{self.message.author.userId}")
-                    return 404
+                    return WaitForMessage(status_code=404)
 
             cache.pop(f"{self.message.chatId}_{self.message.author.userId}")
-            return 500
-
+            return WaitForMessage(status_code=500)
 
     @_run
     @__typing__
@@ -850,7 +904,23 @@ class EventHandler:
         return self._commands.fetch_command(command_name)
 
     def _handle_command(self, data: Message, context: Context):
-        """Handles commands."""
+        """
+        Handles commands.
+
+        Args:
+            self: The instance of the class.
+            data (Message): The message data containing the command.
+            context (Context): The context of the command.
+
+        Returns:
+            None or the response from the command function.
+
+        Raises:
+            None
+
+        Examples:
+            This function is internally called and does not have direct usage examples.
+        """
         command_name = next(iter(data.content[len(self.command_prefix):].split(" ")))
 
         message = data.content[len(self.command_prefix) + len(command_name) + 1:]
@@ -867,7 +937,10 @@ class EventHandler:
         if data.content[:len(self.command_prefix)] != self.command_prefix:
             return None
 
-        response = self._check_cooldown(command.name, data, context)
+        try:
+            response = self._check_cooldown(command.name, data, context)
+        except AttributeError:
+            return None
 
         if response != 403:
             func = command.func
