@@ -49,6 +49,7 @@ class RequestHandler:
         self.api_url:        str = "http://service.aminoapps.com/api/v1"
         self.http_handler:   Http = Http()
         self.sid:            Optional[str] = None
+        self.device:         Optional[str] = None
         self.userId:         Optional[str] = None
         self.orjson:         bool = orjson_exists()
 
@@ -212,7 +213,7 @@ class RequestHandler:
 
         """
         
-        headers = {"NDCDEVICEID": self.generate.device_id(), **self.service_headers()}
+        headers = {"NDCDEVICEID": self.device or self.generate.device_id(), **self.service_headers()}
 
         if data or content_type:
             headers, data = self.fetch_signature(data, headers, content_type)
@@ -298,7 +299,7 @@ class RequestHandler:
         ):
             self.bot.run(self.email, self.password, use_cache=False)
             return 404      
-      
+        
         self.bot._log(f"Exception: {response}")
         raise APIException(response)
         

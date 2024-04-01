@@ -12,6 +12,8 @@ from contextlib import suppress
 
 from colorama import Fore, Style
 
+CACHE_NAME = "cache"
+
 def check_debugger() -> bool:
     """
     Checks if the program is being run in a debugger.
@@ -27,7 +29,7 @@ def install_wsaccel() -> None:
     """
     Try to install wsaccel if it isn't installed.
     """
-    with Cache("cache") as cache:
+    with Cache(CACHE_NAME) as cache:
         if cache.get("wsaccel"):
             return None
 
@@ -48,7 +50,7 @@ def orjson_exists() -> bool:
     if is_android(): return False
 
     install_wsaccel()
-    with Cache("cache") as cache:
+    with Cache(CACHE_NAME) as cache:
         if cache.get("orjson"):
             return True
 
@@ -91,19 +93,19 @@ def parse_auid(sid: str) -> str:
 def cache_login(email: str, device: str, sid: str):
     """Cache the login credentials for the current user."""
     with suppress(Exception):
-        cache = Cache("cache")
+        cache = Cache(CACHE_NAME)
         cache[email] = {"device": device, "sid": sid}
 
 def fetch_cache(email: str) -> tuple:
     """Fetch the login credentials for the current user."""
     with suppress(Exception):
-        cache = Cache("cache")
+        cache = Cache(CACHE_NAME)
         return cache[email]["sid"], cache[email]["device"]
 
 def cache_exists(email: str) -> bool:
     """Check if the cache exists for the current user."""
     with suppress(Exception):
-        cache = Cache("cache")
+        cache = Cache(CACHE_NAME)
         return email in cache
     
 async def alive_loop(ws) -> None:

@@ -568,6 +568,8 @@ class Client(Global):
         """
         if device_id:
             self.device_id = device_id
+        
+        self.request.device = self.device_id
 
         response = self.make_request(
                 method="POST",
@@ -623,9 +625,11 @@ class Client(Global):
         """
         if use_cache and cache_exists(email=email):
             cached = fetch_cache(email=email)
-
+            
+            self.device_id = cached[1]
+            self.request.device = cached[1]
             self.sid: str = cached[0]
-            self.request.sid: str = cached[0]
+            self.request.sid = cached[0]
             self.userId: str = parse_auid(cached[0])
 
             try:
