@@ -739,7 +739,7 @@ class Bot(WSClient, Global):
             data=str(data).encode("utf-8")
         )
         if Req.status_code != 200:
-            raise Exception(response.text)
+            raise Exception(Req.text)
 
         return response
 
