@@ -520,3 +520,9 @@ class MissingDeviceKeyOrSignatureKey(Exception):
         super().__init__(
             "Missing signature and or device key. Please provide a signature or device key."
             )
+
+class MissingServiceKey(Exception):
+    def __init__(self):
+        super().__init__(
+            "Missing service key. Please get it on the official Pymino server. https://discord.gg/3HRdkVNets."
+        )

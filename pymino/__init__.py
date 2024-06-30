@@ -6,7 +6,7 @@ __title__ = 'pymino'
 __author__ = 'cynical'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023 Cynical'
-__version__ = '1.2.6.6'
+__version__ = '1.2.7.0'
 __description__ = 'A Python wrapper for the aminoapps.com API'
 
 from .bot import Bot
@@ -17,7 +17,7 @@ __all__: List[str] = [
     'Client',
 ]
 
-print("Join the pymino discord server: https://discord.gg/RuRzyya55Z")
+print("Join the pymino discord server: https://discord.gg/3HRdkVNets.")
 
 try:
     latest_version = get("https://pypi.org/pypi/pymino/json").json()["info"]["version"]

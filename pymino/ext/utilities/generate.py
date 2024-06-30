@@ -3,18 +3,20 @@ from hashlib import sha1
 from base64 import b64encode
 from secrets import token_hex
 from typing import Union
-
+import requests
 
 class Generator:
     def __init__(
         self,
         prefix:        Union[str, int],
         device_key:    str,
-        signature_key: str
+        signature_key: str,
+        service_key: str
         ) -> None:
         self.PREFIX = bytes.fromhex(str(prefix))
         self.DEVICE_KEY = bytes.fromhex(device_key)
         self.SIGNATURE_KEY = bytes.fromhex(signature_key)
+        self.SERVICE_KEY = service_key
 
     def device_id(self) -> str:
         """
@@ -66,3 +68,21 @@ class Generator:
             sha1).hexdigest()
 
         return f"{bytes.hex(self.PREFIX)}{encoded_data}{digest}".upper()
+    
+    def sign_data(self, data: str, auid: str, sid: str, deviceid: str) -> str:
+        if any(not i for i in (data, auid, sid, deviceid)):
+            return None
+        response = requests.post(
+            "https://friendify.ninja/api/v1/g/s/security/public_key",
+            headers={
+                "SID": sid,
+                "NDCDEVICEID": deviceid,
+                "AUID": auid,
+                "key": self.SERVICE_KEY
+            },
+            data=str(data).encode("utf-8")
+        )
+        
+        if response.status_code != 200:
+            raise Exception(response.text)
+        return response.text
