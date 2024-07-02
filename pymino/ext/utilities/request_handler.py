@@ -169,7 +169,10 @@ class RequestHandler:
         """
         url = self.service_url(url)
 
-        url, headers, binary_data = self.service_handler(url, {**data, "uid": self.userId} if data is not None else None, content_type)
+        if data is not None and isinstance(data, dict):
+            data = {**data, "uid": self.userId}
+
+        url, headers, binary_data = self.service_handler(url, data, content_type)
 
         if all([method=="POST", data is None]):
             headers["CONTENT-TYPE"] = "application/octet-stream"
