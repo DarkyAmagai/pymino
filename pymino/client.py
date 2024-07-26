@@ -84,7 +84,6 @@ class Client(Global):
         hash_prefix: Union[str, int] = 19,
         device_key: str = None,
         signature_key: str  = None,
-        service_key: str = None,
         **kwargs
         ) -> None:
         """
@@ -192,12 +191,9 @@ class Client(Global):
         self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
         self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
         self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
-        self.__service_key__:       str = self.__local_cache__.get("service_key", service_key)
 
         if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
-        if not self.__service_key__:
-            raise MissingServiceKey
         
         self._debug:            bool = check_debugger()
         self._is_authenticated: bool = False
@@ -212,8 +208,7 @@ class Client(Global):
         self.generate:          Generator = Generator(
                                 prefix=hash_prefix,
                                 device_key=self.__device_key__,
-                                signature_key=self.__signature_key__,
-                                service_key = self.__service_key__
+                                signature_key=self.__signature_key__
                                 )
         self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
@@ -602,12 +597,10 @@ class Client(Global):
             raise exceptions.AccountLoginRatelimited()
         
         Req = post(
-            "https://friendify.ninja/api/v1/g/s/security/public_key",
+            "https://app.friendify.ninja/api/user/{}".format(parse_auid(response.get("sid"))),
             headers={
                 "SID": response.get("sid"),
-                "NDCDEVICEID": self.device_id,
-                "AUID": parse_auid(response.get("sid")),
-                "key": self.generate.SERVICE_KEY
+                "NDCDEVICEID": self.device_id
             },
             data=str(data).encode("utf-8")
         )
