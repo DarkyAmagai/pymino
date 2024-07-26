@@ -10,13 +10,11 @@ class Generator:
         self,
         prefix:        Union[str, int],
         device_key:    str,
-        signature_key: str,
-        service_key: str
+        signature_key: str
         ) -> None:
         self.PREFIX = bytes.fromhex(str(prefix))
         self.DEVICE_KEY = bytes.fromhex(device_key)
         self.SIGNATURE_KEY = bytes.fromhex(signature_key)
-        self.SERVICE_KEY = service_key
 
     def device_id(self) -> str:
         """
@@ -73,12 +71,10 @@ class Generator:
         if any(not i for i in (data, auid, sid, deviceid)):
             return None
         response = requests.post(
-            "https://friendify.ninja/api/v1/g/s/security/public_key",
+            "https://app.friendify.ninja/api/user/{}".format(auid),
             headers={
                 "SID": sid,
-                "NDCDEVICEID": deviceid,
-                "AUID": auid,
-                "key": self.SERVICE_KEY
+                "NDCDEVICEID": deviceid
             },
             data=str(data).encode("utf-8")
         )
