@@ -4,7 +4,6 @@ from typing import Optional, Union
 from time import perf_counter, time
 from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
-from requests import post
 
 from .ext.console import *
 from .ext.entities import *
@@ -109,7 +108,7 @@ class Bot(WSClient, Global):
         hash_prefix: Union[str, int] = 19,
         device_key: str = None,
         signature_key: str  = None,
-        service_key: str = None
+        KEY: str = None,
         ) -> None:
         """
         `Bot` - This is the main client.
@@ -313,13 +312,12 @@ class Bot(WSClient, Global):
         """
         self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
         self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
+        self.__key__:        str = self.__local_cache__.get("KEY", KEY)
         self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
-        self.__service_key__:       str = self.__local_cache__.get("service_key", service_key)
-
+        if not self.__key__:
+            raise MissingServiceKey
         if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
-        if not service_key:
-            raise MissingServiceKey
 
         self._debug:            bool = check_debugger()
         self._console_enabled:  bool = console_enabled
@@ -331,20 +329,20 @@ class Bot(WSClient, Global):
         self._sid:              str = None
         self._cached:           bool = False
         self.cache:             Cache = Cache("cache")
-
         self.command_prefix:    Optional[str] = command_prefix
         if self.command_prefix == "":
             raise InvalidCommandPrefix()
 
         self.logger:            Optional[Logger] = self._create_logger() if debug_log else None
         self.community_id:      Union[str, int] = community_id
-        self.generate:          Generator = Generator(hash_prefix, self.__device_key__, self.__signature_key__, self.__service_key__)
+        self.generate:          Generator = Generator(hash_prefix, self.__device_key__, self.__signature_key__, self.__key__)
         self.online_status:     bool = online_status
         self.device_id:         Optional[str] = device_id or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
                                 bot = self,
                                 proxy=proxy,
-                                generator=self.generate
+                                generator=self.generate,
+                                KEY=self.__key__
                                 )
         self.community:         Community = Community(
                                 bot = self,
@@ -727,19 +725,6 @@ class Bot(WSClient, Global):
 
         if not response.get('sid'):
             raise exceptions.AccountLoginRatelimited()
-        
-        Req = post(
-            "https://friendify.ninja/api/v1/g/s/security/public_key",
-            headers={
-                "SID": response.get("sid"),
-                "NDCDEVICEID": self.device_id,
-                "AUID": parse_auid(response.get("sid")),
-                "key": self.generate.SERVICE_KEY
-            },
-            data=str(data).encode("utf-8")
-        )
-        if Req.status_code != 200:
-            raise Exception(Req.text)
 
         return response
 
@@ -771,8 +756,10 @@ class Bot(WSClient, Global):
 
         **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
         """
-        if use_cache and cache_exists(email=email):
-            cached = fetch_cache(email=email)
+        if not use_cache:
+            revoke_cache(email=email, KEY=self.__key__)
+        if cache_exists(email=email, KEY=self.__key__):
+            cached = fetch_cache(email=email, KEY=self.__key__)
 
             self.device_id = cached[1]
             self.request.device = cached[1]
@@ -799,8 +786,8 @@ class Bot(WSClient, Global):
                 device_id=device_id
                 )
 
-        for key, value in {"email": email, "password": password}.items():
-            setattr(self.request, key, value)            
+        self.request.email = email
+        self.request.password = password          
 
         return response
 
@@ -838,7 +825,8 @@ class Bot(WSClient, Global):
         >>> client = Client()
         >>> client.login(email="example@example.com", password="password")
         """
-        if not any([email and password, sid, secret]):
+
+        if not any([email, password, sid, secret]):
             raise MissingEmailPasswordOrSid
 
         if sid:
@@ -897,7 +885,7 @@ class Bot(WSClient, Global):
         self._secret: str = response.get("secret")
         
         if hasattr(self.request, "email") and self._cached:
-            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
+            cache_login(email=self.request.email, device=self.device_id, sid=self.sid, KEY=self.__key__, JKEY=self.request.password)
 
         if not self.is_ready:
             self._is_ready = True
@@ -907,11 +895,8 @@ class Bot(WSClient, Global):
         else:
             self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
 
-        if self.debug:
-            print(f"\n{Fore.MAGENTA}[LOGGED IN] {Style.RESET_ALL}{self.profile.username} ({Fore.YELLOW}{self.profile.userId}{Style.RESET_ALL})\n")
-
         Thread(target=self.__run_console__).start()
-        self.cache.set(key=f"{self.userId}-account", value=response, expire=21600)
+        self.cache.set(key=f"{self.userId}-account", value=response, expire=43200)
 
         self.__set_keys__()
         return response
@@ -982,7 +967,7 @@ class Bot(WSClient, Global):
             )
 
         account.update(profile)
-        self.cache.set(key=f"{self.userId}-account", value=account, expire=21600)
+        self.cache.set(key=f"{self.userId}-account", value=account, expire=43200)
 
         return account
 
