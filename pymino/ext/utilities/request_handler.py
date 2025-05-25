@@ -42,6 +42,7 @@ class RequestHandler:
         self,
         bot,
         generator: Generator,
+        KEY: Optional[str] = None,
         proxy: Optional[str] = None
         ) -> None:
         self.bot             = bot
@@ -51,6 +52,9 @@ class RequestHandler:
         self.sid:            Optional[str] = None
         self.device:         Optional[str] = None
         self.userId:         Optional[str] = None
+        self.email:          Optional[str] = None
+        self.password:       Optional[str] = None
+        self.__key__:        Optional[str] = KEY
         self.orjson:         bool = orjson_exists()
 
         self.proxy = {
@@ -86,8 +90,8 @@ class RequestHandler:
             "HOST": "service.aminoapps.com",
             "CONNECTION": "Keep-Alive",
             "ACCEPT-ENCODING": "gzip, deflate, br",
-            "NDCAUTH": f"sid={self.sid}",
-            "AUID": self.userId or str(uuid4())
+            "NDCDEVICEID": self.device or self.generate.device_id(),
+            "NDCAUTH": "sid={}".format(self.sid)
             }
     
     def fetch_request(self, method: str) -> Callable:
@@ -167,6 +171,7 @@ class RequestHandler:
         - `dict` - The response from the request.
         
         """
+    
         url = self.service_url(url)
 
         if data is not None and isinstance(data, dict):
@@ -181,21 +186,14 @@ class RequestHandler:
             headers.pop("NDCAUTH")
             headers.pop("AUID")
 
-        try:
-            status_code, content = self.send_request(
-                method, url, binary_data, headers, content_type
-            )
-        except TypeError: # NOTE: Not sure if this is even needed.
-            return self.handler(method, url, data, content_type)
+        status_code, content = self.send_request(
+            method, url, binary_data, headers, content_type
+        )
 
         self.print_response(method=method, url=url, status_code=status_code)
 
-        response = self.handle_response(status_code=status_code, response=content)
+        return self.handle_response(status_code=status_code, response=content, url=url)
 
-        if response is None:
-            return self.handler(method, url, data, content_type)
-        
-        return response
 
     def service_handler(
         self,
@@ -215,12 +213,10 @@ class RequestHandler:
         - `Tuple[str, dict, Union[dict, bytes, None]]` - The service url, headers and data.
 
         """
+        headers = self.service_headers()
         
-        headers = {"NDCDEVICEID": self.device or self.generate.device_id(), **self.service_headers()}
-
         if data or content_type:
             headers, data = self.fetch_signature(data, headers, content_type)
-
         return url, headers, self.ensure_utf8(data)
 
     def ensure_utf8(self, data: Union[dict, bytes, None]) -> Union[dict, bytes, None]:
@@ -272,44 +268,26 @@ class RequestHandler:
         if not isinstance(data, bytes):
             data = orjson_dumps(data).decode("utf-8") if self.orjson else dumps(data)
         
+        response = self.generate.NdcMessageSignature(data, self.userId)
+        if response is None:
+            SID, NDCDEVICEID, NDC_MESSAGE_SIGNATURE = None, self.device or self.generate.device_id(), None
+        else:
+            SID, NDCDEVICEID, NDC_MESSAGE_SIGNATURE = response["0"], response["1"], response["2"]
+            SID = "sid={}".format(SID)
         headers.update({
-            "CONTENT-LENGTH": f"{len(data)}",
+            "CONTENT-LENGTH": str(len(data)),
             "CONTENT-TYPE": content_type or "application/json; charset=utf-8",
             "NDC-MSG-SIG": (
                 self.generate.signature(data)
             ),
-            "NDC-MESSAGE-SIGNATURE": (
-                self.generate.sign_data(data, self.userId, self.sid, self.device)
-            )
+            "NDC-MESSAGE-SIGNATURE": NDC_MESSAGE_SIGNATURE,
+            "NDCAUTH": SID,
+            "AUID": self.userId or str(uuid4()),
+            "NDCDEVICEID": NDCDEVICEID
         })
         return headers, data
-
-    def raise_error(self, response: dict) -> None:
-        """
-        `raise_error` - Raises an error if an error is in the response
         
-        `**Parameters**``
-        - `response` - The response from the request.
-        
-        `**Returns**``
-        - `None` - Raises an error if the status code is in the response map.
-        - `404` - Returns 404 if the status code is 105 and the email and password is set.
-        
-        """
-        if all(
-            [
-                response.get("api:statuscode", 200) == 105,
-                hasattr(self, "email"),
-                hasattr(self, "password"),
-            ]
-        ):
-            self.bot.run(self.email, self.password, use_cache=False)
-            return 404      
-        
-        self.bot._log(f"Exception: {response}")
-        raise APIException(response)
-        
-    def handle_response(self, status_code: int, response: str) -> dict:
+    def handle_response(self, status_code: int, response: str, url: str) -> dict:
         """
         `handle_response` - Handles the response and returns the response as a dict
         
@@ -323,16 +301,11 @@ class RequestHandler:
         """
         if status_code in self.response_map:
             raise self.response_map[status_code]
-
-        try:
-            response = orjson_loads(response) if self.orjson else loads(response)
-        except Exception:
-            response = loads(response)
-
+        
+        response = loads(response)
+        
         if status_code != 200:
-            check_response = self.raise_error(response)
-            if check_response == 404:
-                return None
+            raise APIException(response)
 
         return response
 

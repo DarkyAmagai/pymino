@@ -524,5 +524,5 @@ class MissingDeviceKeyOrSignatureKey(Exception):
 class MissingServiceKey(Exception):
     def __init__(self):
         super().__init__(
-            "Missing service key. Please get it on the official Pymino server. https://discord.gg/3HRdkVNets."
+            "It appears you are missing a required service key. This key is essential for accessing the service. To obtain the key, please visit the official Telegram channel. The channel provides support and resources related to the service. https://t.me/pymino"
         )
