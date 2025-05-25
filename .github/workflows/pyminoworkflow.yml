@@ -1,0 +1,33 @@
+name: Publish pymino to PyPI
+
+on:
+  release:
+    types: [published]  # Se activa cuando publicas un release/tag
+
+permissions:
+  id-token: write  # Requerido por OpenID Connect
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"  # Usa la versión de Python que estés usando
+
+      - name: Install build tool
+        run: |
+          python -m pip install --upgrade build
+
+      - name: Build the project
+        run: |
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
