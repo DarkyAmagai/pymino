@@ -80,9 +80,9 @@ class Client(Global):
     def __init__(
         self,
         community_id: Optional[Union[str, int]] = None,
-        hash_prefix: Union[str, int] = 19,
-        device_key: str = None,
-        signature_key: str  = None,
+        hash_prefix: Union[str, int] = 52,
+        device_key: str = "AE49550458D8E7C51D566916B04888BFB8B3CA7D",
+        signature_key: str  = "EAB4F1B9E3340CD1631EDE3B587CC3EBEDF1AFA9",
         service_key: str = None,
         **kwargs
         ) -> None:
