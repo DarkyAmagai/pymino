@@ -8,8 +8,8 @@ config.read('setup.cfg')
 setup(
     name="pymino",
     license="MIT",
-    author="forevercynical",
-    author_email="me@cynical.gg",
+    author="DarkyAmagai",
+    author_email="darkyamagai@outlook.es",
     description="Easily create a bot for Amino Apps using a modern easy to use synchronous library.",
     long_description=(Path(__file__).parent / "README.md").read_text(),
     long_description_content_type="text/markdown",
