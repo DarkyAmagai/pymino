@@ -9,7 +9,6 @@ from .ext.entities import *
 from .ext.global_client import Global
 from .ext.utilities.generate import Generator
 from .ext import RequestHandler, Account, Community
-from requests import post
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -84,7 +83,7 @@ class Client(Global):
         hash_prefix: Union[str, int] = 19,
         device_key: str = None,
         signature_key: str  = None,
-        service_key: str = None,
+        KEY: str = None,
         **kwargs
         ) -> None:
         """
@@ -192,13 +191,11 @@ class Client(Global):
         self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
         self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
         self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
-        self.__service_key__:       str = self.__local_cache__.get("service_key", service_key)
-
+        self.__key__:       str = self.__local_cache__.get("KEY", KEY)
         if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
-        if not self.__service_key__:
+        if not self.__key__:
             raise MissingServiceKey
-        
         self._debug:            bool = check_debugger()
         self._is_authenticated: bool = False
         self._userId:           str = None
@@ -213,13 +210,14 @@ class Client(Global):
                                 prefix=hash_prefix,
                                 device_key=self.__device_key__,
                                 signature_key=self.__signature_key__,
-                                service_key = self.__service_key__
+                                KEY=self.__key__
                                 )
         self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate.device_id()
         self.request:           RequestHandler = RequestHandler(
                                 self,
                                 proxy=kwargs.get("proxy"),
-                                generator=self.generate
+                                generator=self.generate,
+                                KEY=self.__key__
                                 )
         self.account:           Account = Account(
                                 session=self.request
@@ -600,19 +598,6 @@ class Client(Global):
 
         if not response.get('sid'):
             raise exceptions.AccountLoginRatelimited()
-        
-        Req = post(
-            "https://friendify.ninja/api/v1/g/s/security/public_key",
-            headers={
-                "SID": response.get("sid"),
-                "NDCDEVICEID": self.device_id,
-                "AUID": parse_auid(response.get("sid")),
-                "key": self.generate.SERVICE_KEY
-            },
-            data=str(data).encode("utf-8")
-        )
-        if Req.status_code != 200:
-            raise Exception(Req.text)
 
         return response
 
@@ -644,8 +629,10 @@ class Client(Global):
 
         **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
         """
-        if use_cache and cache_exists(email=email):
-            cached = fetch_cache(email=email)
+        if not use_cache:
+            revoke_cache(email=email, KEY=self.__key__)
+        if cache_exists(email=email, KEY=self.__key__):
+            cached = fetch_cache(email=email, KEY=self.__key__)
             
             self.device_id = cached[1]
             self.request.device = cached[1]
@@ -671,9 +658,9 @@ class Client(Global):
                 secret=secret,
                 device_id=device_id
                 )
-
-        for key, value in {"email": email, "password": password}.items():
-            setattr(self.request, key, value)            
+        
+        self.request.email = email
+        self.request.password = password            
 
         return response
 
@@ -711,7 +698,8 @@ class Client(Global):
         >>> client = Client()
         >>> client.login(email="example@example.com", password="password")
         """
-        if not any([email and password, sid, secret]):
+
+        if not any([email, password, sid, secret]):
             raise MissingEmailPasswordOrSid
 
         if sid:
@@ -805,7 +793,7 @@ class Client(Global):
         self._secret: str = response.get("secret")
         
         if hasattr(self.request, "email") and self._cached:
-            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
+            cache_login(email=self.request.email, device=self.device_id, sid=self.sid, KEY=self.__key__, JKEY=self.request.password)
 
         if not self.is_authenticated:
             self._is_authenticated = True
@@ -813,10 +801,7 @@ class Client(Global):
         else:
             self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
 
-        if self.debug:
-            print(f"{Fore.MAGENTA}Logged in as {self.profile.username} ({self.profile.userId}){Style.RESET_ALL}")
-
-        self.cache.set(key=f"{self.userId}-account", value=response, expire=21600)
+        self.cache.set(key=f"{self.userId}-account", value=response, expire=43200)
 
         self.__set_keys__()
         return response
@@ -990,7 +975,7 @@ class Client(Global):
             )
 
         account.update(profile)
-        self.cache.set(key=f"{self.userId}-account", value=account, expire=21600)
+        self.cache.set(key=f"{self.userId}-account", value=account, expire=43200)
 
         return account
 

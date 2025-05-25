@@ -4,7 +4,6 @@ from setuptools import setup, find_packages
 
 config = ConfigParser()
 config.read('setup.cfg')
-requirements = Path("requirements.txt").read_text().splitlines()
 
 setup(
     name="pymino",
@@ -15,9 +14,17 @@ setup(
     long_description=(Path(__file__).parent / "README.md").read_text(),
     long_description_content_type="text/markdown",
     url="https://github.com/forevercynical/pymino",
-    version = config.get('metadata', 'version'),
+    version=config.get('metadata', 'version'),
     packages=find_packages(),
-    install_requires=[requirements],
+    install_requires=[
+        "requests==2.32.3",
+        "ujson==5.10.0",
+        "colorama==0.4.6",
+        "websocket-client==1.8.0",
+        "diskcache==5.6.3",
+        "aiohttp==3.12.0",
+        "wsaccel==0.6.7"
+    ],
     keywords=[
         "amino",
         "pymino",
