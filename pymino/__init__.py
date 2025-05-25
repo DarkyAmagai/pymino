@@ -20,7 +20,7 @@ __all__: List[str] = [
 print("Join the pymino telegram channel: https:t.me/pymino.")
 
 try:
-    latest_version = get("https://pypi.org/pypi/pyamino/json").json()["info"]["version"]
+    latest_version = get("https://pypi.org/pypi/pymino/json").json()["info"]["version"]
 except Exception as e:
     print(f"Failed to check the latest version: {e}")
 else:

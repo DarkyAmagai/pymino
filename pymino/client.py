@@ -83,7 +83,7 @@ class Client(Global):
         hash_prefix: Union[str, int] = 19,
         device_key: str = None,
         signature_key: str  = None,
-        KEY: str = None,
+        service_key: str = None,
         **kwargs
         ) -> None:
         """
@@ -191,7 +191,7 @@ class Client(Global):
         self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
         self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
         self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
-        self.__key__:       str = self.__local_cache__.get("KEY", KEY)
+        self.__key__:       str = self.__local_cache__.get("KEY", service_key)
         if not all([self.__device_key__, self.__signature_key__]):
             raise MissingDeviceKeyOrSignatureKey
         if not self.__key__:
