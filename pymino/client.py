@@ -4,7 +4,6 @@ from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
 from typing import Any, Callable, Optional, TypeVar, Union
 
-
 from .ext.entities import *
 from .ext.global_client import Global
 from .ext.utilities.generate import Generator

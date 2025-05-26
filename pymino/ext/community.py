@@ -6,6 +6,7 @@ from diskcache import Cache
 from base64 import b64encode
 from time import time, timezone
 from typing import BinaryIO, Callable, List, Optional, Union, TypeVar, Any
+from .entities import BanTypes
 
 
 from .entities import *
@@ -3511,7 +3512,7 @@ class Community:
 
 
     @community
-    def ban(self, userId: str, reason: str, banType: int = None, comId: Union[str, int] = None) -> ApiResponse:
+    def ban(self, userId: str, reason: str, banType: int = BanTypes.OTHER, comId: Union[str, int] = None) -> ApiResponse:
         """
         Bans a user in the current or specified community.
 

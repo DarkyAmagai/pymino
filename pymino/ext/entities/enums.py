@@ -38,3 +38,12 @@ class FlagTypes(IntEnum):
 class OnlineTypes(IntEnum):
     ONLINE = 1
     OFFLINE = 2
+
+class BanTypes(IntEnum):
+    SEXUALLY_EXPLICIT = 100
+    SPAM = 2
+    OUT_OF_CONTEXT = 4
+    HARASSMENT = 0
+    INNAPROPIATE_SOLICITUDE = 102
+    EXTREME_VIOLENCE = 101
+    OTHER = 200
