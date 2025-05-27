@@ -22,7 +22,7 @@ setup(
         "colorama==0.4.6",
         "websocket-client==1.8.0",
         "diskcache==5.6.3",
-        "aiohttp==3.12.0",
+        "aiohttp==3.12.2",
         "wsaccel==0.6.7"
     ],
     keywords=[

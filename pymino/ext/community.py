@@ -3347,7 +3347,7 @@ class Community:
         ... else:
         ...     print("Failed to fetch wiki.")
         """
-        return ApiResponse(self.session.handler(
+        return CWiki(self.session.handler(
             method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"))
 
 
