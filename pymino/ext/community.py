@@ -3318,7 +3318,7 @@ class Community:
 
 
     @community
-    def fetch_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse: #TODO: Add Wiki class
+    def fetch_wiki(self, wikiId: str, comId: Union[str, int] = None) -> CWiki: #TODO: Add Wiki class
         """
         Fetches information about a wiki.
 
