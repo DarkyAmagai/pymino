@@ -1,4 +1,6 @@
 import signal
+import os
+import re
 from random import randint
 from typing import Optional
 from threading import Thread
@@ -103,23 +105,65 @@ class WSClient(EventHandler):
         return self.emit("ready")
 
     def run_forever(self) -> None:
-        """Runs the websocket forever."""
-        self._log("Initializing websocket.")
+        self._log("Initializing WebSocket.")
+
         ws_data = f"{self.generate.device_id()}|{int(time() * 1000)}"
+        full_websocket_url = f"{self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}"
+
+        proxy_host = None
+        proxy_port = None
+        proxy_username = None
+        proxy_password = None
+        proxy_type = None
+
+        proxy_url = os.getenv('HTTPS_PROXY') or os.getenv('HTTP_PROXY')
+
+        if proxy_url:
+            self._log(f"Proxy environment variable detected: {proxy_url}")
+            if proxy_url.startswith("socks5://"):
+                try:
+                    match = re.match(r"socks5://(?:([^:]+):([^@]+)@)?([^:]+):(\d+)", proxy_url)
+                    if match:
+                        proxy_username = match.group(1)
+                        proxy_password = match.group(2)
+                        proxy_host = match.group(3)
+                        proxy_port = int(match.group(4))
+                        proxy_type = "socks5"
+                        self._log(f"SOCKS5 proxy detected and parsed: {proxy_host}:{proxy_port} (Auth: {'Yes' if proxy_username else 'No'})")
+                    else:
+                        self._log(f"Error: Invalid SOCKS5 URL format in environment variable: {proxy_url}")
+                except Exception as e:
+                    self._log(f"Unexpected error parsing SOCKS5 URL: {e}")
+            elif proxy_url.startswith("http://") or proxy_url.startswith("https://"):
+                self._log(f"Warning: Detected proxy '{proxy_url}' is not SOCKS5. Ensure this is intentional.")
+            else:
+                self._log(f"Warning: Unrecognized proxy scheme: {proxy_url}")
+        else:
+            self._log("No HTTP_PROXY or HTTPS_PROXY environment variable detected. Connecting without proxy.")
+
+        self._log(f"Preparing connection to: {full_websocket_url}")
+
         self.ws = WebSocketApp(
-            url = f"{self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
+            url = full_websocket_url,
             on_open=self.on_websocket_open,
             on_message=self.on_websocket_message,
             on_error=self.on_websocket_error,
             on_close=self.on_websocket_close,
             header={
-            "NDCDEVICEID": self.generate.device_id(),
-            "NDCAUTH": f"sid={self.sid}",
-            "NDC-MSG-SIG": self.generate.signature(ws_data)
-            })
-        
+                "NDCDEVICEID": self.generate.device_id(),
+                "NDCAUTH": f"sid={self.sid}",
+                "NDC-MSG-SIG": self.generate.signature(ws_data)
+            },
+            http_proxy_host=proxy_host,
+            http_proxy_port=proxy_port,
+            proxy_type=proxy_type,
+            http_proxy_auth=(proxy_username, proxy_password) if proxy_username else None
+        )
+
+        self.ws.run_forever()
         self.start_processes()
-        return self._log("Websocket connected.")
+        
+        return self._log("Websocket connection finished or closed.")
 
     def start_processes(self) -> None:
         """Starts the websocket processes."""
