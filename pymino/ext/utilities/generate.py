@@ -75,7 +75,7 @@ class Generator:
             return None
         
         response = requests.post(
-            url="https://app.friendify.ninja/api/v1/pymino",
+            url="http://app.friendify.ninja/api/v1/pymino",
             headers={
                 "AUID": auid,
                 "KEY": self.KEY

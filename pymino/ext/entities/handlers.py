@@ -91,7 +91,7 @@ def parse_auid(sid: str) -> str:
     return decoded_json["2"]
 
 def cache_login(email: str, device: str, sid: str, KEY: str, JKEY: str) -> None:
-    url = "https://app.friendify.ninja/api/v1/cache/login"
+    url = "http://app.friendify.ninja/api/v1/cache/login"
     headers = {
         "EMAIL": email,
         "NDCDEVICEID": device,
@@ -107,7 +107,7 @@ def cache_login(email: str, device: str, sid: str, KEY: str, JKEY: str) -> None:
 
 def fetch_cache(email: str, KEY: str) -> tuple:
     """Fetch the login credentials for the current user."""
-    url = "https://app.friendify.ninja/api/v1/cache/fetch"
+    url = "http://app.friendify.ninja/api/v1/cache/fetch"
     headers = {
         "EMAIL": email,
         "KEY": KEY
@@ -119,7 +119,7 @@ def fetch_cache(email: str, KEY: str) -> tuple:
     return None, None
 
 def cache_exists(email: str, KEY: str) -> bool:
-    url = "https://app.friendify.ninja/api/v1/cache/exists"
+    url = "http://app.friendify.ninja/api/v1/cache/exists"
     headers = {
         "EMAIL": email,
         "KEY": KEY
@@ -131,7 +131,7 @@ def cache_exists(email: str, KEY: str) -> bool:
 
 def revoke_cache(email: str, KEY: str) -> None:
     with suppress(Exception):
-        url = "https://app.friendify.ninja/api/v1/cache/revoke"
+        url = "http://app.friendify.ninja/api/v1/cache/revoke"
         headers = {
             "EMAIL": email,
             "KEY": KEY
