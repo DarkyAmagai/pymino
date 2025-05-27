@@ -333,6 +333,7 @@ class CBlogList:
         self.widgetDisplayInterval:  list = [x.widgetDisplayInterval for x in parser]
         self.totalPollVoteCount:     list = [x.totalPollVoteCount for x in parser]
         self.blogId:                 list = [x.blogId for x in parser]
+        self.refObjectId:            list = [x.data.get("refObjectId", None) for x in parser]
         self.viewCount:              list = [x.viewCount for x in parser]
         self.language:               list = [x.language for x in parser]
         self.extensions:             list = [x.extensions for x in parser]
