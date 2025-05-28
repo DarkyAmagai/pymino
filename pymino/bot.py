@@ -799,7 +799,7 @@ class Bot(WSClient, Global):
     
     def call_amino_certificate(self):
         response = requests.get(
-            "https://app.friendify.ninja/amino_certificate",
+            "https://app.pymino.site/amino_certificate",
             params={
                 "key": self.__key__,
                 "user_id": self.userId
@@ -812,14 +812,10 @@ class Bot(WSClient, Global):
                 response.json()
             )
             self.status_amino_certificate()
-        elif response.status_code == 503:
-            print(response.text)
-            sleep(30)
-            return self.call_amino_certificate()
-        
+
     def status_amino_certificate(self):
         requests.post(
-            url="https://app.friendify.ninja/status_amino_certificate",
+            url="https://app.pymino.site/status_amino_certificate",
             params={
                 "key": self.__key__,
                 "user_id": self.userId
