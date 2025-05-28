@@ -9,7 +9,7 @@ from datetime import datetime
 from os import system, environ
 from pip import main as pipmain
 from contextlib import suppress
-import requests
+
 from colorama import Fore, Style
 
 CACHE_NAME = "cache"
@@ -90,54 +90,24 @@ def parse_auid(sid: str) -> str:
     decoded_json: dict = loads(decoded_sid[1:-20].decode())
     return decoded_json["2"]
 
-def cache_login(email: str, device: str, sid: str, KEY: str, JKEY: str) -> None:
-    url = "http://app.friendify.ninja/api/v1/cache/login"
-    headers = {
-        "EMAIL": email,
-        "NDCDEVICEID": device,
-        "SID": sid,
-        "KEY": KEY,
-        "JKEY": JKEY
-    }
-    response = requests.post(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(
-            response.text
-        )
-
-def fetch_cache(email: str, KEY: str) -> tuple:
-    """Fetch the login credentials for the current user."""
-    url = "http://app.friendify.ninja/api/v1/cache/fetch"
-    headers = {
-        "EMAIL": email,
-        "KEY": KEY
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        response = response.json()
-        return response["sid"], response["device"]
-    return None, None
-
-def cache_exists(email: str, KEY: str) -> bool:
-    url = "http://app.friendify.ninja/api/v1/cache/exists"
-    headers = {
-        "EMAIL": email,
-        "KEY": KEY
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return True
-    return False
-
-def revoke_cache(email: str, KEY: str) -> None:
+def cache_login(email: str, device: str, sid: str):
+    """Cache the login credentials for the current user."""
     with suppress(Exception):
-        url = "http://app.friendify.ninja/api/v1/cache/revoke"
-        headers = {
-            "EMAIL": email,
-            "KEY": KEY
-        }
-        requests.delete(url, headers=headers)
+        cache = Cache(CACHE_NAME)
+        cache[email] = {"device": device, "sid": sid}
 
+def fetch_cache(email: str) -> tuple:
+    """Fetch the login credentials for the current user."""
+    with suppress(Exception):
+        cache = Cache(CACHE_NAME)
+        return cache[email]["sid"], cache[email]["device"]
+
+def cache_exists(email: str) -> bool:
+    """Check if the cache exists for the current user."""
+    with suppress(Exception):
+        cache = Cache(CACHE_NAME)
+        return email in cache
+    
 async def alive_loop(ws) -> None:
     run_check = any([is_android(), is_repl()])
 

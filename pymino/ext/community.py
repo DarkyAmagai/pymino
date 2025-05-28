@@ -4096,15 +4096,18 @@ class Community:
             }).json()))
 
     @community
-    def send_message(self, chatId: str, content: str, comId: Union[str, int] = None, mentioned: Union[list, str] = None) -> CMessage:
+    def send_message(self, chatId: str, content: str, comId: Union[str, int] = None, mentioned: list = None) -> CMessage:
         return CMessage(self.session.handler(
-            method="POST", 
-            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data=PrepareMessage(content=content, extensions={
-                "mentionedArray": [{"uid": i} for i in mentioned] if isinstance(mentioned, list) else [{"uid": mentioned}] if isinstance(mentioned, str) else None
-            }).json()
-        ))
-
+            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
+            data = PrepareMessage(
+                content=content,
+                extensions = {
+                    "mentionedArray": [
+                    {"uid": self.userId}
+                    ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
+                    ] if isinstance(mentioned, list) else None
+                }).json()
+            ))
     
 
     @community

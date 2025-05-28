@@ -75,23 +75,14 @@ class Generator:
             return None
         
         response = requests.post(
-            url="http://app.friendify.ninja/api/v1/pymino",
-            headers={
-                "AUID": auid,
-                "KEY": self.KEY
+            url="https://app.friendify.ninja/api/v1/pymino",
+            params={
+                "user_id": auid,
+                "key": self.KEY
             },
             data=str(data).encode("utf-8")
         )
         if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 503:
-            print(response.text)
-            sleep(30)
-            return self.NdcMessageSignature(
-                data=data,
-                auid=auid
-            )
-        else:
-            raise Exception(
-                response.text
-            )
+            return response.text
+        if response.status_code == 403:
+            raise Exception(response.text)

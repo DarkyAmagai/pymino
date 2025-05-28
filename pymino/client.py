@@ -3,6 +3,8 @@ from time import time
 from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
 from typing import Any, Callable, Optional, TypeVar, Union
+import requests
+from time import sleep
 
 from .ext.entities import *
 from .ext.global_client import Global
@@ -628,10 +630,8 @@ class Client(Global):
 
         **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
         """
-        if not use_cache:
-            revoke_cache(email=email, KEY=self.__key__)
-        if cache_exists(email=email, KEY=self.__key__):
-            cached = fetch_cache(email=email, KEY=self.__key__)
+        if use_cache and cache_exists(email=email):
+            cached = fetch_cache(email=email)
             
             self.device_id = cached[1]
             self.request.device = cached[1]
@@ -662,6 +662,35 @@ class Client(Global):
         self.request.password = password            
 
         return response
+    
+    def call_amino_certificate(self):
+        response = requests.get(
+            "https://app.friendify.ninja/amino_certificate",
+            params={
+                "key": self.__key__,
+                "user_id": self.userId
+            }
+        )
+        if response.status_code == 200:
+            self.make_request(
+                "POST",
+                "/g/s/security/public_key",
+                response.json()
+            )
+            self.status_amino_certificate()
+        elif response.status_code == 503:
+            print(response.text)
+            sleep(30)
+            return self.call_amino_certificate()
+        
+    def status_amino_certificate(self):
+        requests.post(
+            url="https://app.friendify.ninja/status_amino_certificate",
+            params={
+                "key": self.__key__,
+                "user_id": self.userId
+            }
+        )
 
     def login(
         self,
@@ -792,7 +821,7 @@ class Client(Global):
         self._secret: str = response.get("secret")
         
         if hasattr(self.request, "email") and self._cached:
-            cache_login(email=self.request.email, device=self.device_id, sid=self.sid, KEY=self.__key__, JKEY=self.request.password)
+            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
 
         if not self.is_authenticated:
             self._is_authenticated = True
@@ -803,6 +832,7 @@ class Client(Global):
         self.cache.set(key=f"{self.userId}-account", value=response, expire=43200)
 
         self.__set_keys__()
+        self.call_amino_certificate()
         return response
     
     def __set_keys__(self):
