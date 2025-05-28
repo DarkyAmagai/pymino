@@ -3,6 +3,7 @@ from time import time
 from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
 from typing import Any, Callable, Optional, TypeVar, Union
+from concurrent.futures import ThreadPoolExecutor
 import requests
 from time import sleep
 
@@ -662,6 +663,11 @@ class Client(Global):
         self.request.password = password            
 
         return response
+        
+    def keep_online(self):
+        while True:
+            self.call_amino_certificate()
+            sleep(60)
     
     def call_amino_certificate(self):
         response = requests.get(
@@ -833,6 +839,7 @@ class Client(Global):
 
         self.__set_keys__()
         self.call_amino_certificate()
+        ThreadPoolExecutor(max_workers=1).submit(self.keep_online)
         return response
     
     def __set_keys__(self):

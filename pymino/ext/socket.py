@@ -82,7 +82,7 @@ class WSClient(EventHandler):
         EventHandler.__init__(self)
 
     def fetch_ws_url(self) -> str:
-        return f"ws://ws{randint(1, 4)}.aminoapps.com"
+        return f"wss://ws{randint(1, 4)}.aminoapps.com"
     
     def _log(self, message: str) -> None:
         """
