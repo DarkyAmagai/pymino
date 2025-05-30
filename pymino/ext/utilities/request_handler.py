@@ -47,7 +47,7 @@ class RequestHandler:
         ) -> None:
         self.bot             = bot
         self.generate        = generator
-        self.api_url:        str = "http://service.aminoapps.com/api/v1"
+        self.api_url:        str = "https://service.aminoapps.com/api/v1"
         self.http_handler:   Http = Http()
         self.sid:            Optional[str] = None
         self.device:         Optional[str] = None

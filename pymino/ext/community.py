@@ -6440,7 +6440,7 @@ class Community:
         """
         return ApiResponse(self.session.handler(
             method = "GET",
-            url = f"http://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation?size={size}&status={status}&start={start}"
+            url = f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation?size={size}&status={status}&start={start}"
         ))
     
 
@@ -6477,7 +6477,7 @@ class Community:
             return ApiResponse(
                 self.session.handler(
                     method = "DELETE",
-                    url = f"http://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation/{invitationId}"
+                    url = f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation/{invitationId}"
             ))
         except AccessDenied as e:
             raise AccessDenied("You must be a leader to revoke invites.") from e
@@ -6512,7 +6512,7 @@ class Community:
             return CommunityMembershipRequestList(
                 self.session.handler(
                     method = "GET",
-                    url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request?size={size}&status={status}&start={start}"
+                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request?size={size}&status={status}&start={start}"
             ))
         except AccessDenied as e:
             raise AccessDenied("You must be a leader to fetch membership requests.") from e
@@ -6550,7 +6550,7 @@ class Community:
             return ApiResponse(
                 self.session.handler(
                     method = "POST",
-                    url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/approve"
+                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/approve"
             ))
         except AccessDenied as e:
             raise AccessDenied("You must be a leader to approve membership requests.") from e
@@ -6587,7 +6587,7 @@ class Community:
             return ApiResponse(
                 self.session.handler(
                     method = "POST",
-                    url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/reject"
+                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/reject"
             ))
         except AccessDenied as e:
             raise AccessDenied("You must be a leader to decline membership requests.") from e
@@ -6630,7 +6630,7 @@ class Community:
             return CommunityStats(
                 self.session.handler(
                     method = "GET",
-                    url = f"http://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
+                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
             ))
         except AccessDenied as e:
             raise AccessDenied("You must be a leader to fetch community statistics.") from e

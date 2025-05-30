@@ -135,7 +135,7 @@ class Context:
     @property
     def api(self) -> str:
         """The API url."""
-        return "http://service.aminoapps.com/api/v1"
+        return "https://service.aminoapps.com/api/v1"
     
     @property
     def cache(self) -> Cache:
