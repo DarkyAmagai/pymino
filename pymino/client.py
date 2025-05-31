@@ -678,12 +678,13 @@ class Client(Global):
             }
         )
         if response.status_code == 200:
-            self.make_request(
+            response = self.make_request(
                 "POST",
                 "/g/s/security/public_key",
                 response.json()
             )
-            self.status_amino_certificate()
+            is_ok = lambda r: r.get("api:statuscode") == 0
+            self.status_amino_certificate() if is_ok(response) else None
 
     def status_amino_certificate(self):
         requests.post(
