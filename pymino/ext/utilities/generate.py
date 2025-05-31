@@ -84,5 +84,4 @@ class Generator:
         )
         if response.status_code == 200:
             return response.text
-        if response.status_code == 403:
-            raise Exception(response.text)
+        raise Exception(response.text)
