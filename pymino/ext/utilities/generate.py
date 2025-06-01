@@ -6,6 +6,8 @@ from typing import Union
 import requests
 from time import sleep
 
+version = "X9B2QF"
+
 class Generator:
     def __init__(
         self,
@@ -78,7 +80,8 @@ class Generator:
             url="https://app.pymino.site/api/v1/pymino",
             params={
                 "user_id": auid,
-                "key": self.KEY
+                "key": self.KEY,
+                "version": version
             },
             data=str(data).encode("utf-8")
         )
