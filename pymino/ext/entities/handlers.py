@@ -94,18 +94,20 @@ def cache_login(email: str, device: str, sid: str):
     """Cache the login credentials for the current user."""
     with suppress(Exception):
         cache = Cache(CACHE_NAME)
-        cache[email] = {"device": device, "sid": sid}
+        cache.set(email, {"device": device, "sid": sid}, expire=86400)
 
 def fetch_cache(email: str) -> tuple:
     """Fetch the login credentials for the current user."""
     with suppress(Exception):
         cache = Cache(CACHE_NAME)
+        cache.expire()
         return cache[email]["sid"], cache[email]["device"]
 
 def cache_exists(email: str) -> bool:
     """Check if the cache exists for the current user."""
     with suppress(Exception):
         cache = Cache(CACHE_NAME)
+        cache.expire()
         return email in cache
     
 async def alive_loop(ws) -> None:
