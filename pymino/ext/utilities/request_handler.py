@@ -271,10 +271,7 @@ class RequestHandler:
         """
     
         if data is not None and not isinstance(data, bytes):
-            if self.orjson:
-                data = self.orjson_dumps(data).decode("utf-8")
-            else:
-                data = dumps(data)
+            data = dumps(data)
     
         ndc_message_signature = None
         if self.userId and data:
