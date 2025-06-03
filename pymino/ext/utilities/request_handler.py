@@ -257,33 +257,42 @@ class RequestHandler:
         data: Union[dict, bytes, None],
         headers: dict,
         content_type: str = None
-    ) -> Tuple[dict, Union[dict, bytes, None]]:
+    ) -> Tuple[dict, Union[str, bytes, None]]:
         """
-        `fetch_signature` - Fetches the signature and returns the data and updated headers
-
-        `**Parameters**``
-        - `data` - The data to send with the request.
-        - `headers` - The headers to send with the request.
-        - `content_type` - The content type of the data.
-
-        `**Returns**``
-        - `Tuple[dict, Union[dict, bytes, None]]` - The headers and data.
-
+        Fetches the signature and returns the updated headers and data.
+    
+        Parameters:
+        - data: The data to send with the request.
+        - headers: The headers to send with the request.
+        - content_type: The content type of the data.
+    
+        Returns:
+        - Tuple[dict, Union[str, bytes, None]]: The updated headers and data.
         """
+    
+        if data is not None and not isinstance(data, bytes):
+            if self.orjson:
+                data = self.orjson_dumps(data).decode("utf-8")
+            else:
+                data = dumps(data)
+    
+        ndc_message_signature = None
+        if self.userId and data:
+            ndc_message_signature = self.generate.NdcMessageSignature(data, self.userId)
+    
+            if ndc_message_signature.get("requires_update"):
+                self.bot.call_amino_certificate()
+                ndc_message_signature = self.generate.NdcMessageSignature(data, self.userId)
 
-        if not isinstance(data, bytes):
-            data = orjson_dumps(data).decode("utf-8") if self.orjson else dumps(data)
-        
+        if ndc_message_signature and ndc_message_signature.get("signature"):
+            headers["NDC-MESSAGE-SIGNATURE"] = ndc_message_signature["signature"]
+    
         headers.update({
-            "CONTENT-LENGTH": f"{len(data)}",
+            "CONTENT-LENGTH": str(len(data) if data else 0),
             "CONTENT-TYPE": content_type or "application/json; charset=utf-8",
-            "NDC-MSG-SIG": (
-                self.generate.signature(data)
-            ),
-            "NDC-MESSAGE-SIGNATURE": (
-                self.generate.NdcMessageSignature(data, self.userId)
-            )
+            "NDC-MSG-SIG": self.generate.signature(data)
         })
+    
         return headers, data
 
     def raise_error(self, response: dict) -> None:

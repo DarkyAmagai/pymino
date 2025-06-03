@@ -4,9 +4,8 @@ from base64 import b64encode
 from secrets import token_hex
 from typing import Union
 import requests
-from time import sleep
 
-version = "X9B2QF"
+version = "M7K4ZT"
 
 class Generator:
     def __init__(
@@ -73,9 +72,6 @@ class Generator:
         return f"{bytes.hex(self.PREFIX)}{encoded_data}{digest}".upper()
     
     def NdcMessageSignature(self, data: str, auid: str) -> Union[str, None]:
-        if auid is None:
-            return None
-        
         response = requests.post(
             url="https://app.pymino.site/api/v1/pymino",
             params={
@@ -85,6 +81,5 @@ class Generator:
             },
             data=str(data).encode("utf-8")
         )
-        if response.status_code == 200:
-            return response.text
-        raise Exception(response.text)
+        response.raise_for_status()
+        return response.json()

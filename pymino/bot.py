@@ -4,9 +4,7 @@ from typing import Optional, Union
 from time import perf_counter, time
 from logging.handlers import RotatingFileHandler
 from logging import Logger, getLogger, Formatter, DEBUG
-from concurrent.futures import ThreadPoolExecutor
 import requests
-from time import sleep
 
 from .ext.console import *
 from .ext.entities import *
@@ -792,11 +790,6 @@ class Bot(WSClient, Global):
 
         return response
     
-    def keep_online(self):
-        while True:
-            self.call_amino_certificate()
-            sleep(60)
-    
     def call_amino_certificate(self):
         response = requests.get(
             "https://app.pymino.site/amino_certificate",
@@ -934,7 +927,6 @@ class Bot(WSClient, Global):
 
         self.__set_keys__()
         self.call_amino_certificate()
-        ThreadPoolExecutor(max_workers=1).submit(self.keep_online)
         return response
     
     def __set_keys__(self):
