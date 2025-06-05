@@ -5,7 +5,7 @@ from secrets import token_hex
 from typing import Union
 import requests
 
-version = "M7K4ZT"
+version = "R2N3ZA"
 
 class Generator:
     def __init__(
@@ -82,4 +82,4 @@ class Generator:
             data=str(data).encode("utf-8")
         )
         response.raise_for_status()
-        return response.json()
+        return response.text, response.status_code
