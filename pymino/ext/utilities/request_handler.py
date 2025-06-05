@@ -273,16 +273,16 @@ class RequestHandler:
         if data is not None and not isinstance(data, bytes):
             data = dumps(data)
     
-        ndc_message_signature = None
+        ndc_message_signature, status_code = None, None
         if self.userId and data:
-            ndc_message_signature = self.generate.NdcMessageSignature(data, self.userId)
+            ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
     
-            if ndc_message_signature.get("requires_update"):
+            if status_code == 201:
                 self.bot.call_amino_certificate()
-                ndc_message_signature = self.generate.NdcMessageSignature(data, self.userId)
+                ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
 
-        if ndc_message_signature and ndc_message_signature.get("signature"):
-            headers["NDC-MESSAGE-SIGNATURE"] = ndc_message_signature["signature"]
+        if ndc_message_signature and status_code == 200:
+            headers["NDC-MESSAGE-SIGNATURE"] = ndc_message_signature
     
         headers.update({
             "CONTENT-LENGTH": str(len(data) if data else 0),
