@@ -270,11 +270,11 @@ class RequestHandler:
         - Tuple[dict, Union[str, bytes, None]]: The updated headers and data.
         """
     
-        if data is not None and not isinstance(data, bytes):
+        if isinstance(data, dict):
             data = dumps(data)
     
         ndc_message_signature, status_code = None, None
-        if self.userId and data:
+        if self.userId and isinstance(data, (str, bytes)):
             ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
     
             if status_code == 201:
