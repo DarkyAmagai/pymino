@@ -29,7 +29,6 @@ def install_wsaccel() -> None:
     """
     Try to install wsaccel if it isn't installed.
     """
-    """
     with Cache(CACHE_NAME) as cache:
         if cache.get("wsaccel"):
             return None
@@ -43,29 +42,12 @@ def install_wsaccel() -> None:
             cache.set("wsaccel", True)
             system("cls || clear")
             return None
-    """
-    return None
     
 def orjson_exists() -> bool:
     """
     Checks if orjson is installed. If it isn't, it will install it.
     """
-    if is_android(): return False
-
-    install_wsaccel()
-    with Cache(CACHE_NAME) as cache:
-        if cache.get("orjson"):
-            return True
-
-        try:
-            from orjson import dumps as dumps
-            cache.set("orjson", True)
-            return True
-        except ImportError:
-            pipmain(["install", "orjson"])
-            cache.set("orjson", True)
-            system("cls || clear")
-            return True
+    return False
 
 def is_android() -> bool:
     """
