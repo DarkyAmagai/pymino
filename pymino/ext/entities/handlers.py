@@ -44,6 +44,8 @@ def install_wsaccel() -> None:
             system("cls || clear")
             return None
     """
+    return None
+    
 def orjson_exists() -> bool:
     """
     Checks if orjson is installed. If it isn't, it will install it.
