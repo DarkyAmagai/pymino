@@ -81,5 +81,6 @@ class Generator:
             },
             data=str(data).encode("utf-8")
         )
+        print("API Response:", response.text)
         response.raise_for_status()
         return response.text, response.status_code
