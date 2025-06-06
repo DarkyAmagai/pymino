@@ -29,6 +29,7 @@ def install_wsaccel() -> None:
     """
     Try to install wsaccel if it isn't installed.
     """
+    """
     with Cache(CACHE_NAME) as cache:
         if cache.get("wsaccel"):
             return None
@@ -42,7 +43,7 @@ def install_wsaccel() -> None:
             cache.set("wsaccel", True)
             system("cls || clear")
             return None
-
+    """
 def orjson_exists() -> bool:
     """
     Checks if orjson is installed. If it isn't, it will install it.
