@@ -304,15 +304,20 @@ class RequestHandler:
         - `404` - Returns 404 if the status code is 105 and the email and password is set.
         
         """
+        status_code = int(
+            response.get("api:statuscode", 200)
+        )
         if all(
             [
-                response.get("api:statuscode", 200) == 105,
+                status_code == 105,
                 hasattr(self, "email"),
                 hasattr(self, "password"),
             ]
         ):
             self.bot.run(self.email, self.password, use_cache=False)
-            return 404      
+            return 404
+        elif status_code in (11102, 11103, 11104) and self.__key__ and self.userId:
+            return status_code
         
         self.bot._log(f"Exception: {response}")
         raise APIException(response)
@@ -339,6 +344,15 @@ class RequestHandler:
 
         if status_code != 200:
             check_response = self.raise_error(response)
+            if check_response in (11102, 11103, 11104):
+                self.http_handler.delete(
+                    url="https://app.pymino.site/amino_certificate",
+                    params={
+                        "key": self.__key__,
+                        "user_id": self.userId
+                    }
+                )
+                
             if check_response == 404:
                 return None
 
