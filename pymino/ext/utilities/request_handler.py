@@ -352,6 +352,7 @@ class RequestHandler:
                         "user_id": self.userId
                     }
                 )
+                return None
                 
             if check_response == 404:
                 return None
