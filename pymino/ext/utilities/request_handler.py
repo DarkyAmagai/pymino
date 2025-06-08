@@ -316,7 +316,7 @@ class RequestHandler:
         ):
             self.bot.run(self.email, self.password, use_cache=False)
             return 404
-        elif status_code in (11102, 11104) and self.__key__ and self.userId:
+        elif status_code in (11102, 11103, 11104) and self.__key__ and self.userId:
             return status_code
         
         self.bot._log(f"Exception: {response}")
@@ -344,7 +344,7 @@ class RequestHandler:
 
         if status_code != 200:
             check_response = self.raise_error(response)
-            if check_response in (11102, 11104):
+            if check_response in (11102, 11103, 11104):
                 self.http_handler.delete(
                     url="https://app.pymino.site/amino_certificate",
                     params={
