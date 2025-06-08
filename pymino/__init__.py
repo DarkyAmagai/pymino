@@ -6,7 +6,7 @@ __title__ = 'pymino'
 __author__ = 'cynical'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023 Cynical'
-__version__ = '1.3.3.5'
+__version__ = '1.3.3.6'
 __description__ = 'A Python wrapper for the aminoapps.com API'
 
 from .bot import Bot
