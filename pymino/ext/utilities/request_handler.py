@@ -344,7 +344,7 @@ class RequestHandler:
 
         if status_code != 200:
             check_response = self.raise_error(response)
-            if check_response in (11102, 11103, 11104):
+            if check_response in (11101, 11102, 11103, 11104):
                 self.http_handler.delete(
                     url="https://app.pymino.site/amino_certificate",
                     params={
