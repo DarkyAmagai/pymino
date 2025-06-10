@@ -316,7 +316,7 @@ class RequestHandler:
         ):
             self.bot.run(self.email, self.password, use_cache=False)
             return 404
-        elif status_code in (11102, 11103, 11104) and self.__key__ and self.userId:
+        elif status_code in (11101, 11102, 11103, 11104) and self.__key__ and self.userId:
             return status_code
         
         self.bot._log(f"Exception: {response}")
