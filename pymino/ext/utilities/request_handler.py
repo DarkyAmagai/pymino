@@ -5,7 +5,7 @@ from typing import Optional, Union, Tuple, Callable
 
 from .generate import Generator
 from ..entities.handlers import orjson_exists
-from requests import Session as Http, Response as HttpResponse
+from requests import delete, Session as Http, Response as HttpResponse
 
 from ..entities import (
     Forbidden,
@@ -304,20 +304,20 @@ class RequestHandler:
         - `404` - Returns 404 if the status code is 105 and the email and password is set.
         
         """
-        status_code = int(
+        statuscode = int(
             response.get("api:statuscode", 200)
         )
         if all(
             [
-                status_code == 105,
+                statuscode == 105,
                 hasattr(self, "email"),
                 hasattr(self, "password"),
             ]
         ):
             self.bot.run(self.email, self.password, use_cache=False)
             return 404
-        elif status_code in (11101, 11102, 11103, 11104) and self.__key__ and self.userId:
-            return status_code
+        elif 11101 <= statuscode <= 11104:
+            return statuscode
         
         self.bot._log(f"Exception: {response}")
         raise APIException(response)
@@ -344,16 +344,11 @@ class RequestHandler:
 
         if status_code != 200:
             check_response = self.raise_error(response)
-            if check_response in (11101, 11102, 11103, 11104):
-                self.http_handler.delete(
-                    url="https://app.pymino.site/amino_certificate",
-                    params={
-                        "key": self.__key__,
-                        "user_id": self.userId
-                    }
+            if 11101 <= check_response <= 11104:
+                delete(
+                    url=f"https://app.pymino.site/amino_certificate?key={self.__key__}&user_id={self.userId}"
                 )
                 return None
-                
             if check_response == 404:
                 return None
 
