@@ -75,6 +75,11 @@ def parse_auid(sid: str) -> str:
     decoded_json: dict = loads(decoded_sid[1:-20].decode())
     return decoded_json["2"]
 
+def parse_timestamp(sid: str) -> str:
+    decoded_sid = urlsafe_b64decode(f"{sid}==")
+    decoded_json: dict = loads(decoded_sid[1:-20].decode())
+    return decoded_json["5"]
+
 def cache_login(email: str, device: str, sid: str):
     """Cache the login credentials for the current user."""
     with suppress(Exception):
