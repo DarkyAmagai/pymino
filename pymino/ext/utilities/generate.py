@@ -5,7 +5,7 @@ from secrets import token_hex
 from typing import Union
 import requests
 
-version = "R2N3ZA"
+version = "G7P4XQ"
 
 class Generator:
     def __init__(
