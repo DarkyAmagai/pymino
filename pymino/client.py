@@ -663,11 +663,13 @@ class Client(Global):
         return response
     
     def call_amino_certificate(self):
+        timestamp = parse_timestamp(self.sid)
         response = requests.get(
             "https://app.pymino.site/amino_certificate",
             params={
                 "key": self.__key__,
-                "user_id": self.userId
+                "user_id": self.userId,
+                "timestamp": timestamp
             }
         )
         if response.status_code == 200:
