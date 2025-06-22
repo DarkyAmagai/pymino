@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
 Name: pymino
-Version: 1.3.4.1
+Version: 1.3.4.2
 Summary: Easily create a bot for Amino Apps using a modern easy to use synchronous library.
-Home-page: https://github.com/forevercynical/pymino
+Home-page: https://github.com/DarkyAmagai/pymino
 Author: DarkyAmagai
 Author-email: darkyamagai@outlook.es
 License: MIT
