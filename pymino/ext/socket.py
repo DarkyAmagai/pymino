@@ -1,17 +1,28 @@
 import signal
 import os
 import re
+import urllib.parse
 from random import randint
 from typing import Optional
 from threading import Thread
+from dotenv import load_dotenv
 from contextlib import suppress
 from urllib.parse import urlencode
 from time import sleep as delay, time
 from json import loads, dumps, JSONDecodeError
+load_dotenv
+
 
 from .entities import *
 from .context import EventHandler
 from .dispatcher import MessageDispatcher
+
+proxy_url = (
+    os.getenv('ALL_PROXY') or
+    os.getenv('all_proxy') or
+    os.getenv('HTTPS_PROXY') or
+    os.getenv('HTTP_PROXY')
+)
 
 if orjson_exists():
     from orjson import (
@@ -63,7 +74,8 @@ class WSClient(EventHandler):
         "channel",
         "orjson"
     )
-    def __init__(self):
+    def __init__(self, **kwargs):
+        global proxy_url
         self.ws:            WebSocketApp = None
         self._communities:  set = set()
         self.event_types:   dict =  EventTypes().events
@@ -77,6 +89,9 @@ class WSClient(EventHandler):
         self.dispatcher.register(201, self._handle_agora_channel)
         self.dispatcher.register(400, self._handle_user_online)
         self.dispatcher.register(1000, self._handle_message)
+        
+        if kwargs.get("proxy", None):
+            proxy_url = kwargs.get("proxy")
 
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         EventHandler.__init__(self)
@@ -125,7 +140,15 @@ class WSClient(EventHandler):
 
     def start_processes(self) -> None:
         """Starts the websocket processes."""
-        websocket_thread = Thread(target=self.ws.run_forever)
+        websocket_thread = Thread(
+                target=self.ws.run_forever,
+                kwargs = {
+                    "proxy_type": urllib.parse.urlparse(proxy_url).scheme if proxy_url else None,
+                    "http_proxy_host": urllib.parse.urlparse(proxy_url).hostname if proxy_url else None,
+                    "http_proxy_port": urllib.parse.urlparse(proxy_url).port if proxy_url else None,
+                    "http_proxy_auth": (urllib.parse.urlparse(proxy_url).username, urllib.parse.urlparse(proxy_url).password) if proxy_url else None,
+                }
+            )
         websocket_thread.start()
 
         aalive_thread = Thread(target=run_alive_loop, args=(self,))

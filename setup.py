@@ -17,13 +17,14 @@ setup(
     version=config.get('metadata', 'version'),
     packages=find_packages(),
     install_requires=[
-        "requests==2.32.3",
+        "requests==2.32.4",
         "ujson==5.10.0",
         "colorama==0.4.6",
         "websocket-client==1.8.0",
         "diskcache==5.6.3",
-        "aiohttp==3.12.2",
-        "wsaccel==0.6.7"
+        "aiohttp=3.12.13",
+        "wsaccel==0.6.7",
+        "dotenv==0.9.9"
     ],
     keywords=[
         "amino",
