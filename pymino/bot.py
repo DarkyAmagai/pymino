@@ -356,7 +356,7 @@ class Bot(WSClient, Global):
 
         if self.community_id:   self.set_community_id(community_id)
 
-        super().__init__()
+        super().__init__(proxy = proxy)
 
     def __repr__(self):
         """
