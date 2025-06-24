@@ -278,7 +278,7 @@ class RequestHandler:
             ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
     
             if status_code == 201:
-                self.bot.run(self.email, self.password, use_cache=False)
+                self.bot.call_amino_certificate()
                 ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
 
         if ndc_message_signature and status_code == 200:
