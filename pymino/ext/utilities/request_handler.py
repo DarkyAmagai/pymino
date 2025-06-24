@@ -278,7 +278,7 @@ class RequestHandler:
             ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
     
             if status_code == 201:
-                self.bot.call_amino_certificate()
+                self.bot.run(self.email, self.password, use_cache=False)
                 ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
 
         if ndc_message_signature and status_code == 200:
@@ -316,9 +316,6 @@ class RequestHandler:
         ):
             self.bot.run(self.email, self.password, use_cache=False)
             return 404
-        elif 11101 <= statuscode <= 11104:
-            return statuscode
-        
         self.bot._log(f"Exception: {response}")
         raise APIException(response)
         
@@ -344,11 +341,6 @@ class RequestHandler:
 
         if status_code != 200:
             check_response = self.raise_error(response)
-            if 11101 <= check_response <= 11104:
-                delete(
-                    url=f"https://app.pymino.site/amino_certificate?key={self.__key__}&user_id={self.userId}"
-                )
-                return None
             if check_response == 404:
                 return None
 

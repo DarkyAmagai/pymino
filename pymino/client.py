@@ -661,7 +661,7 @@ class Client(Global):
         self.request.password = password            
 
         return response
-    
+
     def call_amino_certificate(self):
         response = requests.get(
             "https://app.pymino.site/amino_certificate",
@@ -677,16 +677,10 @@ class Client(Global):
                 response.json()
             )
             is_ok = lambda r: r.get("api:statuscode") == 0
-            self.status_amino_certificate() if is_ok(response) else None
-
-    def status_amino_certificate(self):
-        requests.post(
-            url="https://app.pymino.site/status_amino_certificate",
-            params={
-                "key": self.__key__,
-                "user_id": self.userId
-            }
-        )
+            if not is_ok(response):
+                raise Exception(str(response))
+        else:
+            raise Exception(response.text)
 
     def login(
         self,
