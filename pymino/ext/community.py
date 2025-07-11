@@ -3480,7 +3480,7 @@ class Community:
         ... else:
         ...     print("Failed to vote.")
 
-        To vote for poll option with ID "3333-3333-3333-3333" in a community with ID "123":
+        To vote for poll option with ID "3333-3333-3333-3333" in a community with ID "123" and apply a ban type:
 
         >>> response = client.community.vote_poll(blogId="4444-4444-4444-4444", optionId="3333-3333-3333-3333", comId=123)
         ... if response.statuscode == 0:
@@ -4199,7 +4199,7 @@ class Community:
 
         **Example usage:**
 
-        To send a sticker with ID "0000-0000-0000-0000" to a chat with ID "1111-2222-3333-4444":
+        To send a sticker with ID "0000-0000-0000-0000" to a chat with ID "1111-2222-3322-4444":
 
         >>> response = client.community.send_sticker(chatId="1111-2222-3333-4444", stickerId="0000-0000-0000-0000")
         ... if response.statuscode == 0:
@@ -5062,44 +5062,210 @@ class Community:
 
     @community
     def set_channel(self, chatId: str, comId: Union[str, int] = None) -> None:
-        for i in range(2):
-            self.bot.send_websocket_message({
-                "o": {
-                    "ndcId": self.community_id if comId is None else comId,
-                    "threadId": chatId,
-                    "joinRole": 1 if i == 0 else None,
-                    "id": randint(0, 100)
-                },
-                "t": 112 if i == 0 else 200
-                })
+        """
+        Sets the channel type for a chat thread in the current or specified community.
 
-    @community
-    def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This function sends a websocket message to set the channel type for a chat thread in the specified community.
+
+        **Example usage:**
+
+        To set the channel type for a chat with ID "1111-2222-3333-4444":
+
+        >>> client.community.set_channel(chatId="1111-2222-3333-4444")
+
+        To set the channel type for a chat with ID "1111-2222-3333-4444" in a community with ID "123":
+
+        >>> client.community.set_channel(chatId="1111-2222-3333-4444", comId=123)
+        """
+        self.bot.send_websocket_message({
+            "o": {
+                "ndcId": self.community_id if comId is None else comId,
+                "threadId": chatId,
+                "channelType": 5,
+                "id": randint(0, 100)
+            },
+            "t": 108
+        })
+
+
+    def _start_call(self, chatId: str, channel_type: int, comId: Union[str, int] = None) -> None:
+        """
+        Internal helper method to start different types of calls in a chat thread.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param channel_type: The type of call to start (1 for voice, 4 for video, 5 for screening room).
+        :type channel_type: int
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This internal function sends websocket messages to start a call in the specified chat thread with the specified channel type.
+        It first joins the call with a specific role, then sets the channel type, and finally requests the Agora channel information.
+        """
         for i in range(2):
             self.bot.send_websocket_message({
                 "o": {
                     "ndcId": self.community_id if comId is None else comId,
                     "threadId": chatId,
                     "joinRole": 1 if i == 0 else None,
-                    "channelType": 1 if i == 1 else None,
+                    "channelType": channel_type if i == 1 else None,
                     "id": randint(0, 100)
                 },
                 "t": 112 if i == 0 else 108
             })
 
-
-    @community
-    def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        # After initiating the call, actively request the Agora channel info (token, name, uid, etc.)
+        # This triggers the server to respond with a `201` packet that `WSClient` maps to `Channel`.
         self.bot.send_websocket_message({
             "o": {
                 "ndcId": self.community_id if comId is None else comId,
                 "threadId": chatId,
-                "joinRole": 2,
                 "id": randint(0, 100)
             },
+            "t": 200
+        })
+
+    @community
+    def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        """
+        Starts a voice call in the specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This function starts a voice call in the specified chat thread by calling the internal _start_call method with channel_type=1.
+
+        **Example usage:**
+
+        To start a voice call in a chat with ID "1111-2222-3333-4444":
+
+        >>> client.community.start_vc(chatId="1111-2222-3333-4444")
+
+        To start a voice call in a chat with ID "1111-2222-3333-4444" in a community with ID "123":
+
+        >>> client.community.start_vc(chatId="1111-2222-3333-4444", comId=123)
+        """
+        self._start_call(chatId=chatId, channel_type=1, comId=comId)
+
+    @community
+    def start_video_call(self, chatId: str, comId: Union[str, int] = None) -> None:
+        """
+        Starts a video call in the specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This function starts a video call in the specified chat thread by calling the internal _start_call method with channel_type=4.
+
+        **Example usage:**
+
+        To start a video call in a chat with ID "1111-2222-3333-4444":
+
+        >>> client.community.start_video_call(chatId="1111-2222-3333-4444")
+
+        To start a video call in a chat with ID "1111-2222-3333-4444" in a community with ID "123":
+
+        >>> client.community.start_video_call(chatId="1111-2222-3333-4444", comId=123)
+        """
+        self._start_call(chatId=chatId, channel_type=4, comId=comId)
+
+    @community
+    def start_screening_room(self, chatId: str, comId: Union[str, int] = None) -> None:
+        """
+        Starts a screening room in the specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This function starts a screening room in the specified chat thread by calling the internal _start_call method with channel_type=5.
+        Note: The channelType for screening room is set to 5, which may need confirmation.
+
+        **Example usage:**
+
+        To start a screening room in a chat with ID "1111-2222-3333-4444":
+
+        >>> client.community.start_screening_room(chatId="1111-2222-3333-4444")
+
+        To start a screening room in a chat with ID "1111-2222-3333-4444" in a community with ID "123":
+
+        >>> client.community.start_screening_room(chatId="1111-2222-3333-4444", comId=123)
+        """
+        self._start_call(chatId=chatId, channel_type=5, comId=comId)
+
+
+    @community
+    def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+        """
+        Leaves the current voice call or video call in the specified chat thread.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This function sends a websocket message to leave the current call in the specified chat thread.
+
+        **Example usage:**
+
+        To leave a call in a chat with ID "1111-2222-3333-4444":
+
+        >>> client.community.stop_vc(chatId="1111-2222-3333-4444")
+
+        To leave a call in a chat with ID "1111-2222-3333-4444" in a community with ID "123":
+
+        >>> client.community.stop_vc(chatId="1111-2222-3333-4444", comId=123)
+        """
+        # Send websocket message to leave the call
+        self.bot.send_websocket_message({
+            "o": {"ndcId": self.community_id, "threadId": chatId, "id": "7438773"},
             "t": 112
         })
 
+    @community
+    def join_video_chat(self, chatId: str, joinType: int = 1, comId: Union[str, int] = None) -> None:
+        """
+        Joins an existing video chat in the specified chat thread in the current or specified community.
+
+        :param chatId: The ID of the chat thread.
+        :type chatId: str
+        :param joinType: The role when joining the video chat. Defaults to 1.
+        :type joinType: int
+        :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
+        :type comId: Union[str, int]
+
+        This function sends a websocket message to join an existing video chat in the specified chat thread.
+
+        **Example usage:**
+
+        To join a video chat in a chat with ID "1111-2222-3333-4444":
+
+        >>> client.community.join_video_chat(chatId="1111-2222-3333-4444")
+
+        To join a video chat with a specific role in a chat with ID "1111-2222-3333-4444" in a community with ID "123":
+
+        >>> client.community.join_video_chat(chatId="1111-2222-3333-4444", joinType=2, comId=123)
+        """
+        self.bot.send_websocket_message({
+            "o": {
+                "ndcId": self.community_id,
+                "threadId": chatId,
+                "joinRole": joinType,
+                "channelType": 5,
+                "id": "2154531"
+            },
+            "t": 108
+        })
 
     @community
     def disable_chat(self, chatId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
@@ -6161,594 +6327,6 @@ class Community:
             url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
             data = data
         ))
-    
-
-    @community
-    def change_username(self, username: str, comId: Union[str, int] = None) -> UserProfile:
-        """
-        Edits the user profile username.
-
-        :param username: The new username for the user profile.
-        :type username: str
-        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `UserProfile` object containing the updated user profile information.
-        :rtype: UserProfile
-
-        This function sends a POST request to the API to edit the user profile username.
-
-        `UserProfile`:
-
-        - `username` (str): The username of the user.
-
-        **Example usage:**
-
-        >>> profile = client.community.edit_profile_username("JohnDoe")
-        ... print(profile.username)
-        """
-        return self.edit_profile(username=username, comId=comId)
-    
-
-    @community
-    def change_icon(self, icon: str, comId: Union[str, int] = None) -> UserProfile:
-        """
-        Edits the user profile icon.
-
-        :param icon: The new icon image file for the user profile.
-        :type icon: str
-        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `UserProfile` object containing the updated user profile information.
-        :rtype: UserProfile
-
-        This function sends a POST request to the API to edit the user profile icon.
-
-        `UserProfile`:
-
-        - `icon` (str): The URL of the icon image.
-
-        **Example usage:**
-
-        >>> profile = client.community.edit_profile_icon("path/to/icon.jpg")
-        ... print(profile.icon)
-        """
-        return self.edit_profile(icon=icon, comId=comId)
-    
-
-    @community
-    def edit_profile_background(self, backgroundImage: str, backgroundColor: str = None, comId: Union[str, int] = None) -> UserProfile:
-        """
-        Edits the user profile background.
-
-        :param backgroundImage: The new background image file for the user profile.
-        :type backgroundImage: str
-        :param backgroundColor: The new background color for the user profile.
-        :type backgroundColor: str
-        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `UserProfile` object containing the updated user profile information.
-        :rtype: UserProfile
-
-        This function sends a POST request to the API to edit the user profile background.
-
-        `UserProfile`:
-
-        - `backgroundImage` (str): The URL of the background image.
-        - `backgroundColor` (str): The background color of the user profile.
-
-        **Example usage:**
-
-        >>> profile = client.community.edit_profile_background("path/to/background.jpg", "#FFFFFF")
-        ... print(profile.backgroundImage)
-        ... print(profile.backgroundColor)
-        """
-        return self.edit_profile(backgroundImage=backgroundImage, backgroundColor=backgroundColor, comId=comId)
-    
-
-    @community
-    def edit_profile_titles(self, titles: list, colors: list, comId: Union[str, int] = None) -> UserProfile:
-        """
-        Edits the user profile custom titles.
-
-        :param titles: A list of custom titles to set.
-        :type titles: list
-        :param colors: A list of colors corresponding to the custom titles.
-        :type colors: list
-        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `UserProfile` object containing the updated user profile information.
-        :rtype: UserProfile
-
-        This function sends a POST request to the API to edit the user profile custom titles.
-
-        `UserProfile`:
-
-        - `titles` (list): A list of custom titles.
-        - `colors` (list): A list of colors corresponding to the custom titles.
-
-        **Example usage:**
-
-        >>> titles = ["Title 1", "Title 2"]
-        ... colors = ["#FF0000", "#00FF00"]
-        ... profile = client.community.edit_profile_titles(titles, colors)
-        ... print(profile.titles)
-        ... print(profile.colors)
-        """
-        return self.edit_profile(titles=titles, colors=colors, comId=comId)
-    
-
-    @community
-    def edit_profile_default_bubble(self, defaultBubbleId: str, comId: Union[str, int] = None) -> UserProfile:
-        """
-        Edits the user profile default bubble.
-
-        :param defaultBubbleId: The ID of the default bubble to set.
-        :type defaultBubbleId: str
-        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `UserProfile` object containing the updated user profile information.
-        :rtype: UserProfile
-
-        This function sends a POST request to the API to edit the user profile default bubble.
-
-        `UserProfile`:
-
-        - `defaultBubbleId` (str): The ID of the default bubble.
-
-        **Example usage:**
-
-        >>> profile = client.community.edit_profile_default_bubble("bubble123")
-        ... print(profile.defaultBubbleId)
-        """
-        return self.edit_profile(defaultBubbleId=defaultBubbleId, comId=comId)
-    
-
-    @community
-    def chat_request_privilege(self, privilege: bool, comId: Union[str, int] = None) -> UserProfile:
-        """
-        Edits the user profile chat request privilege.
-
-        :param privilege: Whether or not to enable chat request privilege.
-        :type privilege: bool
-        :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `UserProfile` object containing the updated user profile information.
-        :rtype: UserProfile
-
-        This function sends a POST request to the API to edit the user profile chat request privilege.
-
-        `UserProfile`:
-
-        - `chatRequestPrivilege` (bool): Whether or not chat request privilege is enabled.
-
-        **Example usage:**
-
-        >>> profile = client.community.chat_request_privilege(True)
-        ... print(profile.chatRequestPrivilege)
-        """
-        return self.edit_profile(chatRequestPrivilege=1 if privilege else 2, comId=comId)
-
-
-    @community
-    def post_blog(self,
-                  title: str,
-                  content: str,
-                  imageList: List[str] = None,
-                  captionList: List[list] = None,
-                  categoriesList: list = None,
-                  backgroundColor: str = None,
-                  fansOnly: bool = False,
-                  extensions: dict = None,
-                  comId: Union[str, int] = None
-        ) -> CBlog:
-        """
-        Posts a blog in the community.
-
-        :param title: The title of the blog.
-        :type title: str
-        :param content: The content of the blog.
-        :type content: str
-        :param imageList: A list of image paths to include in the blog. (Optional)
-        :type imageList: list, optional
-        :param captionList: A list of captions corresponding to the images. (Optional)
-        :type captionList: list, optional
-        :param categoriesList: A list of category IDs to assign to the blog. (Optional)
-        :type categoriesList: list, optional
-        :param backgroundColor: The background color of the blog. (Optional)
-        :type backgroundColor: str, optional
-        :param fansOnly: Whether the blog is for fans only. (Default: False)
-        :type fansOnly: bool, optional
-        :param extensions: Additional extensions for the blog. (Optional)
-        :type extensions: dict, optional
-        :param comId: The ID of the community to post the blog in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
-        :return: A `CBlog` object representing the posted blog.
-        :rtype: CBlog
-
-        This function posts a blog in the specified community using the provided information.
-
-        `CBlog` represents a blog on the platform.
-
-        **Example usage:**
-
-        >>> blog = client.community.post_blog("My Blog", "This is the content of my blog.", imageList=["image1.jpg", "image2.jpg"])
-        ... print(blog.title)
-        ... print(blog.content)
-        """
-        media = []
-        if captionList is not None: [media.append([100, self.__handle_media__(image[0], "image/jpg", True), image[1]]) for image in captionList]
-        elif imageList is not None: [media.append([100, self.__handle_media__(image, "image/jpg", True), None]) for image in imageList]
-
-        data = dict(address = None,
-                    content = content,
-                    title = title,
-                    mediaList = media,
-                    extensions = extensions,
-                    latitude = 0,
-                    longitude = 0,
-                    eventSource = "GlobalComposeMenu",
-                    timestamp = int(time() * 1000))
-        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-        if backgroundColor:
-            data["extensions"] = {
-                "style": {
-                    "backgroundColor": backgroundColor
-                    if backgroundColor.startswith("#")
-                    else f"#{backgroundColor}"
-                }
-            }
-        if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
-
-        return CBlog(
-            self.session.handler(
-                method = "POST",
-                url = f"/x{comId or self.community_id}/s/blog",
-                data = data
-        ))
-
-
-    @community
-    def fetch_invites(self, size: int = 25, status: str = "normal", start: int = 0, comId: Union[str, int] = None) -> ApiResponse:
-        """
-        Fetches generated invites for the community.
-
-        :param size: The number of invites to fetch. (Default: 25)
-        :type size: int, optional
-        :param status: The status of the invites to fetch. (Default: "normal")
-        :type status: str, optional
-        :param start: The index to start fetching invites from. (Default: 0)
-        :type start: int, optional
-
-        This function sends a GET request to the API to fetch generated invites for the community.
-
-        :returns: A `ApiResponse` object containing the API response.
-        :rtype: ApiResponse
-
-        `ApiResponse`:
-
-        - `code` (int): The status code of the API response.
-        - `api:status` (int): The status of the API response.
-        - `api:statuscode` (int): The status code of the API response.
-        - `api:message` (str): The message of the API response.
-        
-        **Example usage:**
-
-        >>> invites = client.community.fetch_invites()
-        ... print(invites.json()['communityInvitationList'])
-        ... for invite in invites.json()['communityInvitationList']:
-        ...     print(invite['invitationId'])
-        """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation?size={size}&status={status}&start={start}"
-        ))
-    
-
-    @community
-    def revoke_invite(self, invitationId: str, comId: Union[str, int] = None) -> ApiResponse:
-        """
-        Revokes an invite for the community.
-        Used for revoking invites that have been generated.
-        
-        :param invitationId: The ID of the invite to revoke.
-        :type invitationId: str
-        :param comId: The ID of the community to revoke the invite in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
-        :return: A `ApiResponse` object containing the API response.
-        :rtype: ApiResponse
-        
-        This function sends a DELETE request to the API to revoke an invite for the community.
-        
-        :returns: A `ApiResponse` object containing the API response.
-        :rtype: ApiResponse
-        
-        `ApiResponse`:
-        
-        - `code` (int): The status code of the API response.
-        - `api:status` (int): The status of the API response.
-        - `api:statuscode` (int): The status code of the API response.
-        - `api:message` (str): The message of the API response.
-        
-        **Example usage:**
-        
-        >>> client.community.revoke_invite("invitationId")
-        """
-        try:
-            return ApiResponse(
-                self.session.handler(
-                    method = "DELETE",
-                    url = f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation/{invitationId}"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to revoke invites.") from e
-
-
-    @community
-    def fetch_membership_requests(self, size: int = 25, status: str = "pending", start: int = 0, comId: Union[str, int] = None) -> CommunityMembershipRequestList:
-        """
-        Fetches membership requests for the community.
-        Used for approving or declining membership requests into the community.
-        
-        :param size: The number of requests to fetch. (Default: 25)
-        :type size: int, optional
-        :param status: The status of the requests to fetch. (Default: "pending")
-        :type status: str, optional
-        :param start: The index to start fetching requests from. (Default: 0)
-        :type start: int, optional
-        :param comId: The ID of the community to fetch requests from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
-        :return: A `CommunityMembershipRequestList` object containing the membership requests for the community.
-        :rtype: CommunityMembershipRequestList
-        
-        This function sends a GET request to the API to fetch membership requests for the community.
-        
-        :returns: A `CommunityMembershipRequestList` object containing the membership requests for the community.
-        :rtype: CommunityMembershipRequestList
-        >>> userIds = client.community.fetch_membership_requests().applicant.userId
-        ... for userId in userIds:
-        ...     client.community.approve_membership_request(userId)
-        """
-        try:
-            return CommunityMembershipRequestList(
-                self.session.handler(
-                    method = "GET",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request?size={size}&status={status}&start={start}"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to fetch membership requests.") from e
-
-
-
-    @community
-    def approve_membership_request(self, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
-        """
-        Approves a membership request for the community.
-        
-        :param requestId: The ID of the request to approve.
-        :type requestId: str
-        :param comId: The ID of the community to approve the request in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
-        :return: A `ApiResponse` object containing the API response.
-        
-        This function sends a POST request to the API to approve a membership request for the community.
-        
-        :returns: A `ApiResponse` object containing the API response.
-        :rtype: ApiResponse
-        
-        `ApiResponse`:
-            - `message` (str): The message of the API response.
-            - `status_code` (int): The status code of the API response.
-            - `duration` (float): The duration of the API response.
-            - `timestamp` (int): The timestamp of the API response.
-        
-        **Example usage:**
-        
-        >>> client.community.approve_membership_request("requestId")
-        ... client.community.approve_membership_request("requestId", comId="comId")
-        """
-        try:
-            return ApiResponse(
-                self.session.handler(
-                    method = "POST",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/approve"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to approve membership requests.") from e
-
-
-    @community
-    def decline_membership_request(self, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
-        """
-        Declines a membership request for the community.
-        
-        :param requestId: The ID of the request to decline.
-        :type requestId: str
-        :param comId: The ID of the community to decline the request in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
-        :return: A `ApiResponse` object containing the API response.
-        
-        This function sends a POST request to the API to decline a membership request for the community.
-        
-        :returns: A `ApiResponse` object containing the API response.
-        :rtype: ApiResponse
-        
-        `ApiResponse`:
-            - `message` (str): The message of the API response.
-            - `status_code` (int): The status code of the API response.
-            - `duration` (float): The duration of the API response.
-            - `timestamp` (int): The timestamp of the API response.
-
-        **Example usage:**
-
-        >>> client.community.decline_membership_request("requestId")
-        ... client.community.decline_membership_request("requestId", comId="comId")
-        """
-        try:
-            return ApiResponse(
-                self.session.handler(
-                    method = "POST",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/reject"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to decline membership requests.") from e
-
-
-    @community
-    def fetch_community_stats(self, comId: Union[str, int] = None) -> CommunityStats:
-        """
-        Fetches community statistics.
-        
-        :param comId: The ID of the community to fetch statistics from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
-        :return: A `CommunityStats` object containing the community statistics.
-        :rtype: CommunityStats
-        
-        This function sends a GET request to the API to fetch community statistics.
-        
-        :returns: A `CommunityStats` object containing the community statistics.
-        :rtype: CommunityStats
-
-        `CommunityStats`:
-            - daily_active_members: The daily active members of the community.
-            - monthly_active_members: The monthly active members of the community.
-            - total_time_spent: The total time spent in the community.
-            - total_posts_created: The total posts created in the community.
-            - new_members_today: The new members today in the community.
-            - total_members: The total members in the community.
-
-        Example usage:
-
-        >>> community = client.fetch_community_stats()
-        ... print(community.daily_active_members)
-        ... print(community.monthly_active_members)
-        ... print(community.total_time_spent)
-        ... print(community.total_posts_created)
-        ... print(community.new_members_today)
-        ... print(community.total_members)
-        """
-        try:
-            return CommunityStats(
-                self.session.handler(
-                    method = "GET",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to fetch community statistics.") from e
-
-
-    @community
-    def edit_blog(self, blogId: str,
-                  title: str = None,
-                  content: str = None,
-                  imageList: list = None,
-                  categoriesList: list = None,
-                  backgroundColor: str = None,
-                  fansOnly: bool = False,
-                  comId: Union[str, int] = None) -> CBlog:
-        """
-        Edits a blog post.
-
-        :param blogId: The ID of the blog post to edit.
-        :type blogId: str
-        :param title: The new title for the blog post.
-        :type title: str, optional
-        :param content: The new content for the blog post.
-        :type content: str, optional
-        :param imageList: A list of image file paths to add as media to the blog post.
-        :type imageList: list, optional
-        :param categoriesList: A list of category IDs to tag the blog post with.
-        :type categoriesList: list, optional
-        :param backgroundColor: The new background color for the blog post.
-        :type backgroundColor: str, optional
-        :param fansOnly: Specifies whether the blog post should be available to fans only. Default is False.
-        :type fansOnly: bool, optional
-        :param comId: The ID of the community where the blog post is located. If not provided, the current community ID will be used.
-        :type comId: str, optional
-        :return: The edited blog post as a `CBlog` object.
-        :rtype: CBlog
-
-        This method allows the user to edit a blog post. The `blogId` parameter specifies the ID of the blog post to edit.
-        The `title`, `content`, `imageList`, `categoriesList`, `backgroundColor`, `fansOnly`, and `comId` parameters are used to
-        update the corresponding properties of the blog post. Only the specified parameters will be updated.
-
-        The `imageList` parameter accepts a list of image file paths, which will be uploaded as media for the blog post.
-        The `categoriesList` parameter accepts a list of category IDs, which will be used to tag the blog post.
-
-        **Example usage:**
-
-        To edit a blog post with a new title, content, and image:
-
-        >>> response = client.edit_blog(
-        ...     blogId="blog123",
-        ...     title="New Title",
-        ...     content="New Content",
-        ...     imageList=["path/to/image1.jpg", "path/to/image2.jpg"]
-        ... )
-        ... if response.status == 200:
-        ...     print("Blog post edited successfully!")
-        ... else:
-        ...     print("Failed to edit blog post.")
-        """
-        media = []
-        if imageList is not None: media = [[100, self.upload_media(open(image, "rb").read(), "image/jpg"), None] for image in imageList]
-        
-        data = {
-            "address": None,
-            "mediaList": media,
-            "latitude": 0,
-            "longitude": 0,
-            "eventSource": "PostDetailView",
-            "timestamp": int(time() * 1000)
-        }
-
-        if title: data["title"] = title
-        if content: data["content"] = content
-        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-        if backgroundColor: data["extensions"] = {"style0": {
-            "backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"
-        }}
-        if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
-        
-        return CBlog(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/blog/{blogId}",
-            data = data
-        ))
-
-
-    @community
-    def delete_notification(self, notificationId: str, comId: Union[str, int]= None) -> ApiResponse:
-        """
-        Deletes a notification.
-
-        :param notificationId: The ID of the notification to delete.
-        :type notificationId: str
-        :param comId: The ID of the community (optional). If not provided, the current community ID will be used.
-        :type comId: str, optional
-        :return: The response from the API after deleting the notification.
-        :rtype: ApiResponse
-
-        This method allows the authenticated user to delete a notification with the specified notification ID.
-        Optionally, you can provide the community ID (`comId`) if the notification belongs to a specific community.
-        If `comId` is not provided, the notification will be deleted from the current community.
-
-        The method sends a DELETE request to the API endpoint responsible for deleting the notification. The response
-        from the API is returned as an `ApiResponse` object.
-
-        **Example usage:**
-
-        To delete a notification with ID "notif123" from the current community:
-
-        >>> response = client.delete_notification(notificationId="notif123")
-        >>> try:
-        ...     print("Notification deleted successfully!")
-        ... except:
-        ...     print("Failed to delete notification.")
-        """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{comId or self.community_id}/s/notification/{notificationId}"
-        ))
 
 
     @community
@@ -6826,7 +6404,7 @@ class Community:
 
         return ApiResponse(self.session.handler(
             method = "POST",
-            url = f"/x{comId}/s/{flagMethod}",
+            url = f"/x{comId or self.community_id}/s/{flagMethod}",
             data = data
         ))
 
