@@ -1,354 +1,284 @@
-from uuid import uuid4
-from json import loads, dumps
-from colorama import Fore, Style
-from typing import Optional, Union, Tuple, Callable
+import logging
+import urllib.parse
+import uuid
+from typing import Any, Dict, Optional, Tuple, Union
 
-from .generate import Generator
-from ..entities.handlers import orjson_exists
-from requests import delete, Session as Http, Response as HttpResponse
+import colorama
+import requests
+import ujson
 
-from ..entities import (
-    Forbidden,
-    BadGateway,
-    APIException,
-    ServiceUnavailable
-    )
+from pymino.ext import entities, global_client, utilities
 
-from requests.exceptions import (
-    ConnectionError,
-    ReadTimeout,
-    SSLError,
-    ProxyError,
-    ConnectTimeout
-    )
+__all__ = ("RequestHandler",)
 
-if orjson_exists():
-    from orjson import (
-        loads as orjson_loads,
-        dumps as orjson_dumps
-        )
+logger = logging.getLogger("pymino")
+
 
 class RequestHandler:
-    """
-    `RequestHandler` - A class that handles all requests
+    """A class that handles all requests"""
 
-    `**Parameters**``
-    - `bot` - The main bot class.
-    - `generator` - The generator class.    
-    - `proxy` - The proxy to use for requests.
+    __slots__ = (
+        "bot",
+        "generate",
+        "api_url",
+        "http_handler",
+        "response_map",
+        "email",
+        "password",
+    )
 
-    """
     def __init__(
         self,
-        bot,
-        generator: Generator,
-        KEY: Optional[str] = None,
-        proxy: Optional[str] = None
-        ) -> None:
-        self.bot             = bot
-        self.generate        = generator
-        self.api_url:        str = "https://service.aminoapps.com/api/v1"
-        self.http_handler:   Http = Http()
-        self.sid:            Optional[str] = None
-        self.device:         Optional[str] = None
-        self.userId:         Optional[str] = None
-        self.orjson:         bool = orjson_exists()
-        self.__key__:         Optional[str] = KEY
-
-        self.proxy = {
-            "http": proxy,
-            "https": proxy
-            } if proxy is not None else None
-
+        bot: "global_client.Global",
+        generator: utilities.Generator,
+    ) -> None:
+        self.bot = bot
+        self.generate = generator
+        self.api_url = "http://service.aminoapps.com/api/v1"
+        self.http_handler = requests.Session()
         self.response_map = {
-            403: Forbidden,
-            502: BadGateway,
-            503: ServiceUnavailable
-            }
+            403: entities.Forbidden,
+            502: entities.BadGateway,
+            503: entities.ServiceUnavailable,
+        }
+        self.email: Optional[str] = None
+        self.password: Optional[str] = None
 
     def service_url(self, url: str) -> str:
         """
-        `service_url` - Appends the endpoint to the service url
-        
+        Appends the endpoint to the service url
+
         `**Parameters**``
         - `url` - The endpoint to append to the service url.
-        
+
         `**Returns**``
         - `str` - The service url.
-        
+
         """
         return f"{self.api_url}{url}" if url.startswith("/") else url
-    
-    def service_headers(self) -> dict:
+
+    def service_headers(self) -> Dict[str, str]:
         """Returns the service headers"""
-        return {
+        headers = {
             "NDCLANG": "en",
             "ACCEPT-LANGUAGE": "en-US",
             "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 12; com.narvii.amino.master/3.5.35071)",
             "HOST": "service.aminoapps.com",
             "CONNECTION": "Keep-Alive",
             "ACCEPT-ENCODING": "gzip, deflate, br",
-            "NDCAUTH": f"sid={self.sid}",
-            "AUID": self.userId or str(uuid4())
-            }
-    
-    def fetch_request(self, method: str) -> Callable:
-        """
-        `fetch_request` - Returns the request method
-        
-        `**Parameters**``
-        - `method` - The request method to return.
-        
-        `**Returns**``
-        - `Callable` - The request method.
-        
-        """
-        request_methods = {
-            "GET": self.http_handler.get,
-            "POST": self.http_handler.post,
-            "DELETE": self.http_handler.delete,
-            }
-        return request_methods[method]
-    
+            "AUID": str(uuid.uuid4()),
+        }
+        if self.bot.sid:
+            headers["NDCAUTH"] = f"sid={self.bot.sid}"
+        if self.bot.userId:
+            headers["AUID"] = self.bot.userId
+        return headers
+
     def send_request(
-            self,
-            method: str,
-            url: str,
-            data: Union[dict, bytes, None],
-            headers: dict,
-            content_type: Optional[str]
-        ) -> Tuple[int, str]:
+        self,
+        method: str,
+        url: str,
+        data: Optional[Union[Dict[str, Any], bytes, str]],
+        headers: Dict[str, str],
+        content_type: Optional[str],
+    ) -> Tuple[int, str]:
         """
-        `send_request` - Sends a request
-        
+        Sends a request.
+
         `**Parameters**``
         - `method` - The request method to use.
         - `url` - The url to send the request to.
         - `data` - The data to send with the request.
         - `headers` - The headers to send with the request.
         - `content_type` - The content type of the data.
-        
+
         `**Returns**``
         - `Tuple[int, str]` - The status code and response from the request.
-        
+
         """
+        proxies = dict.fromkeys(["http", "https"], self.bot.proxy) if self.bot.proxy else None
         try:
-            response: HttpResponse = self.fetch_request(method)(
-                url, data=data, headers=headers, proxies=self.proxy
+            response = self.http_handler.request(
+                method,
+                url,
+                data=data,
+                headers=headers,
+                proxies=proxies,
             )
-            return response.status_code, response.text
-        except (
-            ConnectionError,
-            ReadTimeout,
-            SSLError,
-            ProxyError,
-            ConnectTimeout,
-        ) as e:
-            self.bot._log(f"Failed to send request: {e}")
-            return self.handler(method, url, data, content_type)
+        except requests.RequestException as e:
+            logger.debug(f"Failed to send request: {e}")
+            return self.send_request(method, url, data, headers, content_type)
+        return response.status_code, response.text
 
     def handler(
         self,
         method: str,
         url: str,
-        data: Union[dict, bytes, None] = None,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Union[Dict[str, Any], bytes, str]] = None,
         content_type: Optional[str] = None,
-        is_login_required: bool = True
-    ) -> dict:
+        is_login_required: bool = True,
+    ) -> Dict[str, Any]:
         """
-        `handler` - Handles all requests
-        
+        Handles all requests.
+
         `**Parameters**``
         - `method` - The request method to use.
         - `url` - The url to send the request to.
         - `data` - The data to send with the request.
         - `content_type` - The content type of the data.
         - `is_login_required` - Whether or not the request requires a login.
-        
+
         `**Returns**``
         - `dict` - The response from the request.
-        
+
         """
         url = self.service_url(url)
 
-        if isinstance(data, dict):
-            data.update({"uid": self.userId}) if self.userId else None
+        if isinstance(params, dict):
+            if "?" not in url:
+                url += "?"
+            elif not url.endswith(("&", "?")):
+                url += "&"
+            url += urllib.parse.urlencode(params)
+
+        if isinstance(data, dict) and self.bot.userId:
+            data.update({"uid": self.bot.userId})
 
         url, headers, binary_data = self.service_handler(url, data, content_type)
 
-        if all([method=="POST", data is None]):
+        if method == "POST" and data is None:
             headers["CONTENT-TYPE"] = "application/octet-stream"
 
         if not is_login_required:
-            headers.pop("NDCAUTH")
-            headers.pop("AUID")
+            headers.pop("NDCAUTH", None)
+            headers.pop("AUID", None)
 
-        try:
-            status_code, content = self.send_request(
-                method, url, binary_data, headers, content_type
-            )
-        except TypeError: # NOTE: Not sure if this is even needed.
-            return self.handler(method, url, data, content_type)
+        status_code, content = self.send_request(
+            method, url, binary_data, headers, content_type
+        )
 
         self.print_response(method=method, url=url, status_code=status_code)
 
         response = self.handle_response(status_code=status_code, response=content)
 
         if response is None:
-            return self.handler(method, url, data, content_type)
-        
+            response = self.handler(method, url, data=data, content_type=content_type)
+
         return response
 
     def service_handler(
         self,
         url: str,
-        data: Union[dict, bytes, None] = None,
-        content_type: Optional[str] = None
-    ) -> Tuple[str, dict, Union[dict, bytes, None]]:
+        data: Optional[Union[Dict[str, Any], bytes, str]] = None,
+        content_type: Optional[str] = None,
+    ) -> Tuple[str, Dict[str, Any], Optional[bytes]]:
         """
-        `service_handler` - Signs the request and returns the service url, headers and data
+        Signs the request and returns the service url, headers and data
 
         `**Parameters**``
         - `url` - The url to send the request to.
         - `data` - The data to send with the request.
         - `content_type` - The content type of the data.
-        
+
         `**Returns**``
         - `Tuple[str, dict, Union[dict, bytes, None]]` - The service url, headers and data.
 
         """
-        
-        headers = {"NDCDEVICEID": self.device or self.generate.device_id(), **self.service_headers()}
-
-        if data or content_type:
+        headers = self.service_headers()
+        headers.update({"NDCDEVICEID": self.generate.device_id()})
+        if data:
             headers, data = self.fetch_signature(data, headers, content_type)
-
-        return url, headers, self.ensure_utf8(data)
-
-    def ensure_utf8(self, data: Union[dict, bytes, None]) -> Union[dict, bytes, None]:
-        """
-        `ensure_utf8` - Ensures the data is utf-8 encoded
-        
-        `**Parameters**``
-        - `data` - The data to encode.
-        
-        `**Returns**``
-        - `Union[dict, bytes, None]` - The encoded data.
-        
-        """
-
-        if data is None: return data
-
-        def handle_dict(data: dict):
-            return {key: self.ensure_utf8(value) for key, value in data.items()}
-
-        def handle_str(data: str):
-            return data.encode("utf-8")
-
-        handlers = {
-            dict: handle_dict,
-            str: handle_str
-        }
-
-        return handlers.get(type(data), lambda x: x)(data)
+        else:
+            data = None
+        return url, headers, data
 
     def fetch_signature(
         self,
-        data: Union[dict, bytes, None],
-        headers: dict,
-        content_type: str = None
-    ) -> Tuple[dict, Union[str, bytes, None]]:
-        """
-        Fetches the signature and returns the updated headers and data.
-    
-        Parameters:
-        - data: The data to send with the request.
-        - headers: The headers to send with the request.
-        - content_type: The content type of the data.
-    
-        Returns:
-        - Tuple[dict, Union[str, bytes, None]]: The updated headers and data.
-        """
-    
-        if isinstance(data, dict):
-            data = dumps(data)
-    
-        ndc_message_signature, status_code = None, None
-        if self.userId and isinstance(data, (str, bytes)):
-            ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
-    
-            if status_code == 201:
-                self.bot.call_amino_certificate()
-                ndc_message_signature, status_code = self.generate.NdcMessageSignature(data, self.userId)
+        data: Union[Dict[str, Any], bytes, str],
+        headers: Dict[str, str],
+        content_type: Optional[str] = None,
+    ) -> Tuple[Dict[str, str], bytes]:
+        """Fetches the signature and returns the data and updated headers.
 
-        if ndc_message_signature and status_code == 200:
-            headers["NDC-MESSAGE-SIGNATURE"] = ndc_message_signature
-    
-        headers.update({
-            "CONTENT-LENGTH": str(len(data) if data else 0),
-            "CONTENT-TYPE": content_type or "application/json; charset=utf-8",
-            "NDC-MSG-SIG": self.generate.signature(data)
-        })
-    
+        `**Parameters**``
+        - `data` - The data to send with the request.
+        - `headers` - The headers to send with the request.
+        - `content_type` - The content type of the data.
+
+        `**Returns**``
+        - `Tuple[dict, bytes]` - The headers and data.
+
+        """
+        if isinstance(data, dict):
+            data = ujson.dumps(data)
+
+        if not isinstance(data, bytes):
+            data = data.encode("utf-8")
+
+        headers.update(
+            {
+                "CONTENT-LENGTH": str(len(data)),
+                "CONTENT-TYPE": content_type or "application/json; charset=utf-8",
+                "NDC-MSG-SIG": self.generate.signature(data),
+            }
+        )
+
+        if self.bot.userId:
+            headers["NDC-MESSAGE-SIGNATURE"] = self.generate.ndc_message_signature(
+                data, self.bot.userId
+            )
+
         return headers, data
 
-    def raise_error(self, response: dict) -> None:
+    def raise_error(self, response: Dict[str, Any]) -> None:
         """
-        `raise_error` - Raises an error if an error is in the response
-        
+        Raises an error if an error is in the response
+
         `**Parameters**``
         - `response` - The response from the request.
-        
+
         `**Returns**``
         - `None` - Raises an error if the status code is in the response map.
         - `404` - Returns 404 if the status code is 105 and the email and password is set.
-        
+
         """
-        statuscode = int(
-            response.get("api:statuscode", 200)
-        )
-        if all(
-            [
-                statuscode == 105,
-                hasattr(self, "email"),
-                hasattr(self, "password"),
-            ]
-        ):
+        if response.get("api:statuscode", 200) == 105 and self.email and self.password:
             self.bot.run(self.email, self.password, use_cache=False)
-            return 404
-        self.bot._log(f"Exception: {response}")
-        raise APIException(response)
-        
-    def handle_response(self, status_code: int, response: str) -> dict:
+            return None
+
+        logger.debug(f"Exception: {response}")
+        entities.APIException(response)
+
+    def handle_response(
+        self,
+        status_code: int,
+        response: str,
+    ) -> Optional[Dict[str, Any]]:
         """
-        `handle_response` - Handles the response and returns the response as a dict
-        
+        Handles the response and returns the response as a dict.
+
         `**Parameters**``
         - `status_code` - The status code of the response.
         - `response` - The response to handle.
-        
+
         `**Returns**``
         - `dict` - The response as a dict.
-        
+
         """
         if status_code in self.response_map:
             raise self.response_map[status_code]
-
-        try:
-            response = orjson_loads(response) if self.orjson else loads(response)
-        except Exception:
-            response = loads(response)
-
+        data = ujson.loads(response)
         if status_code != 200:
-            check_response = self.raise_error(response)
-            if check_response == 404:
-                return None
+            self.raise_error(data)
+            data = None
 
-        return response
+        return data
 
-    def print_response(self, method: str, url: str, status_code: int):
+    def print_response(self, method: str, url: str, status_code: int) -> None:
         """
-        `print_response` - Prints the response if debug is enabled
+        Prints the response if debug is enabled.
 
         `**Parameters**``
         - `method` - The request method used.
@@ -357,11 +287,18 @@ class RequestHandler:
         - `response` - The response to print.
 
         """
-        if self.bot.debug:
-            color = Fore.RED if status_code != 200 else {
-                "GET": Fore.BLUE,
-                "POST": Fore.GREEN,
-                "DELETE": Fore.MAGENTA,
-                "LITE": Fore.YELLOW
-                }.get(method, Fore.RED)
-            print(f"{color}{Style.BRIGHT}{method}{Style.RESET_ALL} - {url}")
+        if not self.bot.debug:
+            return
+        color = (
+            colorama.Fore.RED
+            if status_code != 200
+            else {
+                "GET": colorama.Fore.BLUE,
+                "POST": colorama.Fore.GREEN,
+                "DELETE": colorama.Fore.MAGENTA,
+                "LITE": colorama.Fore.YELLOW,
+            }.get(method, colorama.Fore.RED)
+        )
+        print(
+            f"{color}{colorama.Style.BRIGHT}{method}{colorama.Style.RESET_ALL} - {url}"
+        )

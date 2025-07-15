@@ -1,129 +1,105 @@
-from typing import Union
+from typing import Any, Dict, Optional
+
+__all__ = ("Member", "MemberAvatar")
 
 
 class MemberAvatar:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data
-        except AttributeError:
-            self.data = None
-    
-    def _check_member_avatar(F):
-        def wrapper(*args, **kwargs):
-            return None if args[0].data is None else F(*args, **kwargs)
-        return wrapper
-    
+    def __init__(self, data: Dict[str, Any]) -> None:
+        self.data = data
+
+    def __bool__(self) -> bool:
+        return bool(self.frameId)
+
     @property
-    @_check_member_avatar
-    def status(self) -> Union[int, None]:
+    def status(self) -> int:
         """Returns the status of the member avatar."""
-        return self.data.get("status")
-    
+        return self.data.get("status", 0)
+
     @property
-    @_check_member_avatar
-    def version(self) -> Union[int, None]:
+    def version(self) -> int:
         """Returns the version of the member avatar."""
-        return self.data.get("version")
-    
+        return self.data.get("version", 0)
+
     @property
-    @_check_member_avatar
-    def resourceUrl(self) -> Union[str, None]:
+    def resourceUrl(self) -> str:
         """Returns the resource URL of the member avatar."""
-        return self.data.get("resourceUrl")
-    
+        return self.data.get("resourceUrl", "")
+
     @property
-    @_check_member_avatar
-    def name(self) -> Union[str, None]:
+    def name(self) -> str:
         """Returns the name of the member avatar."""
-        return self.data.get("name")
-    
+        return self.data.get("name", "")
+
     @property
-    @_check_member_avatar
-    def icon(self) -> Union[str, None]:
+    def icon(self) -> str:
         """Returns the icon of the member avatar."""
-        return self.data.get("icon")
-    
+        return self.data.get("icon", "")
+
     @property
-    @_check_member_avatar
-    def frameType(self) -> Union[int, None]:
+    def frameType(self) -> int:
         """Returns the frame type of the member avatar."""
-        return self.data.get("frameType")
-    
+        return self.data.get("frameType", 0)
+
     @property
-    @_check_member_avatar
-    def frameId(self) -> Union[str, None]:
+    def frameId(self) -> str:
         """Returns the frame ID of the member avatar."""
-        return self.data.get("frameId")
+
+        return self.data.get("frameId", "")
 
 
 class Member:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data
-        except AttributeError:
-            self.data = None
-        
-    def _check_member(F):
-        def wrapper(*args, **kwargs):
-            return None if args[0].data is None else F(*args, **kwargs)
-        return wrapper
-    
+    def __init__(self, data: Dict[str, Any]) -> None:
+        self.data = data
+
+    def __bool__(self) -> bool:
+        return bool(self.uid)
+
     @property
-    @_check_member
-    def uid(self) -> Union[str, None]:
+    def uid(self) -> str:
         """Returns the uid of the member."""
-        return self.data.get("uid")
-    
+        return self.data.get("uid", "")
+
     @property
-    @_check_member
-    def userId(self) -> Union[str, None]:
+    def userId(self) -> str:
         """Returns the userId of the member."""
         return self.uid
-    
+
     @property
-    @_check_member
-    def status(self) -> Union[int, None]:
+    def status(self) -> int:
         """Returns the status of the member."""
-        return self.data.get("status")
-    
+        return self.data.get("status", 0)
+
     @property
-    @_check_member
-    def icon(self) -> Union[str, None]:
+    def icon(self) -> Optional[str]:
         """Returns the icon of the member."""
         return self.data.get("icon")
-    
+
     @property
-    @_check_member
-    def reputation(self) -> Union[int, None]:
+    def reputation(self) -> int:
         """Returns the reputation of the member."""
-        return self.data.get("reputation")
-    
+        return self.data.get("reputation", 0)
+
     @property
-    @_check_member
-    def role(self) -> Union[int, None]:
+    def role(self) -> int:
         """Returns the role of the member."""
-        return self.data.get("role")
-    
+        return self.data.get("role", 0)
+
     @property
-    @_check_member
-    def nickname(self) -> Union[str, None]:
+    def nickname(self) -> str:
         """Returns the nickname of the member."""
-        return self.data.get("nickname")
-    
+        return self.data.get("nickname", "")
+
     @property
-    @_check_member
-    def level(self) -> Union[int, None]:
+    def level(self) -> int:
         """Returns the level of the member."""
-        return self.data.get("level")
-    
+        return self.data.get("level", 0)
+
     @property
-    @_check_member
-    def membership_status(self) -> Union[int, None]:
+    def membership_status(self) -> int:
         """Returns the accountMembershipStatus of the member."""
-        return self.data.get("accountMembershipStatus")
-    
+        return self.data.get("accountMembershipStatus", 0)
+
     @property
-    @_check_member
-    def avatar(self) -> Union[MemberAvatar, None]:
+    def avatar(self) -> MemberAvatar:
         """Returns the avatar of the member."""
-        return MemberAvatar(self.data.get("avatarFrame"))
+        return MemberAvatar(self.data.get("avatarFrame") or {})

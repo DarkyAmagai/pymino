@@ -1,259 +1,279 @@
+import abc
+import logging
+import random
 import signal
-import os
-import re
+import threading
+import time
 import urllib.parse
-from random import randint
-from typing import Optional
-from threading import Thread
-from dotenv import load_dotenv
-from contextlib import suppress
-from urllib.parse import urlencode
-from time import sleep as delay, time
-from json import loads, dumps, JSONDecodeError
-load_dotenv
+from typing import Any, Dict, Optional, Set, Union
+
+import ujson
+import websocket
+
+from pymino.ext import context, dispatcher, entities, utilities
+
+__all__ = ("WSClient",)
+
+logger = logging.getLogger("pymino")
 
 
-from .entities import *
-from .context import EventHandler
-from .dispatcher import MessageDispatcher
-
-proxy_url = (
-    os.getenv('ALL_PROXY') or
-    os.getenv('all_proxy') or
-    os.getenv('HTTPS_PROXY') or
-    os.getenv('HTTP_PROXY')
-)
-
-if orjson_exists():
-    from orjson import (
-        loads as orjson_loads, dumps as orjson_dumps
-        )
-
-try:
-    from websocket import WebSocket, WebSocketApp
-except ImportError as e:
-    pipmain(["uninstall", "websocket", "-y"])
-    pipmain(["install", "websocket-client==1.6.1"])
-    raise WrongWebSocketPackage from e
-
-
-class WSClient(EventHandler):
+class WSClient(context.EventHandler):
     """
     WSClient class that handles websocket events.
 
     This class extends `EventHandler` class, allowing the bot to use event handler features.
-
-    Special Attributes:
-    __slots__ : tuple
-        A tuple containing a fixed set of attributes to optimize memory usage.
 
     Attributes:
     ws : WebSocketApp
         The websocket object.
     _communities : set
         A set containing the communities the bot is in.
-    event_types : dict
-        A dictionary containing the event types.
-    notif_types : dict
-        A dictionary containing the notification types.
     dispatcher : MessageDispatcher
         The message dispatcher object.
-    channel : Optional[Channel] 
+    channel : Optional[Channel]
         The agora channel.
     orjson : bool
         Whether or not orjson is installed.
 
     """
-    __slots__ = (
-        "ws",
-        "_communities",
-        "event_types",
-        "is_logging",
-        "notif_types",
-        "dispatcher",
-        "channel",
-        "orjson"
-    )
-    def __init__(self, **kwargs):
-        global proxy_url
-        self.ws:            WebSocketApp = None
-        self._communities:  set = set()
-        self.event_types:   dict =  EventTypes().events
-        self.is_logging:    bool = bool(self.logger)
-        self.notif_types:   dict =  NotifTypes().notifs
-        self.dispatcher:    MessageDispatcher = MessageDispatcher()
-        self.channel:       Optional[Channel] = None
-        self.orjson:        bool = orjson_exists()
 
-        self.dispatcher.register(10, self._handle_notification)
-        self.dispatcher.register(201, self._handle_agora_channel)
-        self.dispatcher.register(400, self._handle_user_online)
-        self.dispatcher.register(1000, self._handle_message)
-        
-        if kwargs.get("proxy", None):
-            proxy_url = kwargs.get("proxy")
+    __slots__ = (
+        "_communities",
+        "_task_runner_active",
+        "channel",
+        "dispatcher",
+        "ws",
+    )
+
+    @property
+    @abc.abstractmethod
+    def community_id(self) -> Optional[int]: ...
+
+    @property
+    @abc.abstractmethod
+    def generate(self) -> utilities.Generator: ...
+
+    @property
+    @abc.abstractmethod
+    def proxy(self) -> Optional[str]: ...
+
+    @property
+    @abc.abstractmethod
+    def userId(self) -> Optional[str]: ...
+
+    @property
+    @abc.abstractmethod
+    def sid(self) -> Optional[str]: ...
+
+    def __init__(self) -> None:
+        self.ws: Optional[websocket.WebSocket] = None
+        self.dispatcher: dispatcher.MessageDispatcher = dispatcher.MessageDispatcher()
+
+        self.dispatcher.register(
+            entities.WsMessageTypes.PUSH_NOTIFICATION_DTO, self._handle_notification
+        )
+        self.dispatcher.register(
+            entities.WsMessageTypes.AGORA_TOKEN_RESPONSE, self._handle_agora_channel
+        )
+        self.dispatcher.register(
+            entities.WsMessageTypes.LIVE_LAYER_USER_JOINED_EVENT,
+            self._handle_user_online,
+        )
+        self.dispatcher.register(
+            entities.WsMessageTypes.CHAT_MESSAGE_DTO, self._handle_message
+        )
+        self._communities: Set[int] = set()
+        self._task_runner_active: bool = False
+        self.channel: Optional[entities.Channel] = None
 
         signal.signal(signal.SIGINT, signal.SIG_DFL)
-        EventHandler.__init__(self)
+        super().__init__()
 
     def fetch_ws_url(self) -> str:
-        return f"wss://ws{randint(1, 4)}.aminoapps.com"
-    
-    def _log(self, message: str) -> None:
-        """
-        Logs a message to debug.log
-
-        :param message: The message to log.
-        :type message: str
-        :return: None
-
-        """
-        if self.is_logging:
-            try:
-                self.logger.debug(message)
-            except Exception:
-                self.is_logging = False
+        return f"wss://ws{random.randint(1, 4)}.aminoapps.com/"
 
     def connect(self) -> None:
         """Connects to the websocket."""
-        self.run_forever()
-        return self.emit("ready")
+        if not self.sid:
+            raise RuntimeError("Cannot connect websocket when the bot is not logged")
+        threading.Thread(target=self._run_forever).start()
+        while not self.connected:
+            time.sleep(1)
 
-    def run_forever(self) -> None:
+    @property
+    def connected(self) -> bool:
+        return bool(self.ws and self.ws.connected)
+
+    def _run_forever(self) -> None:
         """Runs the websocket forever."""
-        self._log("Initializing websocket.")
-        ws_data = f"{self.generate.device_id()}|{int(time() * 1000)}"
-        self.ws = WebSocketApp(
-            url = f"{self.fetch_ws_url()}/?{urlencode({'signbody': ws_data})}",
-            on_open=self.on_websocket_open,
-            on_message=self.on_websocket_message,
-            on_error=self.on_websocket_error,
-            on_close=self.on_websocket_close,
-            header={
-            "NDCDEVICEID": self.generate.device_id(),
-            "NDCAUTH": f"sid={self.sid}",
-            "NDC-MSG-SIG": self.generate.signature(ws_data)
-            })
-        
-        self.start_processes()
-        return self._log("Websocket connected.")
+        if not self.sid:
+            return
+        if self.connected:
+            return
+        while self.sid:
+            if not self.ws:
+                self.ws = websocket.WebSocket()
+            if not self.connected:
+                logger.debug("Initializing websocket.")
+                ws_data = f"{self.generate.device_id()}|{int(time.time() * 1000)}"
+                url = f"{self.fetch_ws_url()}?" + urllib.parse.urlencode(
+                    {"signbody": ws_data}
+                )
+                kwargs: Dict[str, Any] = {
+                    "header": {
+                        "NDCDEVICEID": self.generate.device_id(),
+                        "NDCAUTH": f"sid={self.sid}",
+                        "NDC-MSG-SIG": self.generate.signature(ws_data),
+                    }
+                }
+                if self.proxy:
+                    proxy = urllib.parse.urlparse(self.proxy)
+                    kwargs["http_proxy_host"] = proxy.hostname
+                    kwargs["http_proxy_port"] = proxy.port
+                    kwargs["http_proxy_auth"] = (proxy.username, proxy.password)
+                try:
+                    self.ws.connect(  # pyright: ignore[reportUnknownMemberType]
+                        url, **kwargs
+                    )
+                except websocket.WebSocketConnectionClosedException:
+                    time.sleep(1)
+                    logger.debug("Websocket handshake failed.")
+                    continue
+                self._on_websocket_open()
+            try:
+                message = self.ws.recv()
+            except websocket.WebSocketException as exc:
+                self._on_websocket_error(exc)
+                self.stop_websocket()
+                continue
+            self._on_websocket_message(message)
+        self.stop_websocket()
 
-    def start_processes(self) -> None:
-        """Starts the websocket processes."""
-        websocket_thread = Thread(
-                target=self.ws.run_forever,
-                kwargs = {
-                    "proxy_type": urllib.parse.urlparse(proxy_url).scheme if proxy_url else None,
-                    "http_proxy_host": urllib.parse.urlparse(proxy_url).hostname if proxy_url else None,
-                    "http_proxy_port": urllib.parse.urlparse(proxy_url).port if proxy_url else None,
-                    "http_proxy_auth": (urllib.parse.urlparse(proxy_url).username, urllib.parse.urlparse(proxy_url).password) if proxy_url else None,
+    def _on_websocket_error(self, error: Exception) -> None:
+        """Handles websocket errors."""
+        callback = self._events.get("error")
+        if callback:
+            threading.Thread(target=callback, args=(error,)).start()
+
+        logger.debug(f"Websocket error: {error}")
+
+    def _on_websocket_message(self, message: Union[bytes, str]) -> None:
+        """Receives websocket messages."""
+        threading.Thread(target=self._handle_websocket_message, args=message).start()
+
+    def _on_websocket_close(self) -> None:
+        """Handles websocket close events."""
+        logger.debug(f"Websocket closed unexpectedly.")
+
+    def _on_websocket_open(self) -> None:
+        """Handles websocket open events."""
+        threading.Thread(target=self._task_runner_loop).start()
+        self.emit("ready")
+        if self.community_id and "user_online" in self._events:
+            self.send_websocket_message(
+                {
+                    "t": entities.WsMessageTypes.LIVE_LAYER_SUBSCRIBE_REQUEST,
+                    "o": {
+                        "ndcId": self.community_id,
+                        "topic": f"ndtopic:x{self.community_id}:online-members",
+                        "id": int(time.monotonic() + random.randint(1, 100)),
+                    },
                 }
             )
-        websocket_thread.start()
 
-        aalive_thread = Thread(target=run_alive_loop, args=(self,))
-        aalive_thread.start()
+    def _handle_websocket_message(self, message: Union[bytes, str]) -> None:
+        """Handles websocket messages."""
+        self.dispatcher.handle(ujson.loads(message))
 
-    def on_websocket_error(self, ws: WebSocket, error: Exception) -> None:
-        """Handles websocket errors."""
-        with suppress(KeyError):
-            self._events["error"](error)
-
-        return self._log(f"Websocket error: {error}")
-
-    def on_websocket_message(self, ws: WebSocket, message: str) -> None:
-        """Receives websocket messages."""
-        return Thread(target=self._handle_websocket_message, args=(message,)).start()
-
-    def _handle_websocket_message(self, message: str) -> None:
-        """Handles websocket messages."""        
-        try:
-            raw_message = orjson_loads(message) if self.orjson else loads(message)
-        except JSONDecodeError:
-            raw_message = loads(message)
-
-        return self.dispatcher.handle(raw_message)
-
-    def _handle_message(self, message: dict) -> None:
+    def _handle_message(self, data: Dict[str, Any]) -> None:
         """Sends the message to the event handler."""
-        _message: Message = Message(message)
+        message = entities.Message(data)
 
-        if self.userId == _message.userId: return None
-        None if any(
-            [_message.ndcId is None, _message.ndcId == 0]
-        ) else self._communities.add(_message.ndcId)
+        if self.userId == message.userId:
+            return None
+        if message.comId:
+            self._communities.add(message.comId)
 
-        key = self.event_types.get(f"{_message.type}:{_message.mediaType}")
+        key = entities.EVENT_TYPES.get(f"{message.type}:{message.mediaType}")
 
-        return self._handle_event(key, _message) if key else None
+        if key:
+            self._handle_event(key, message)
 
-    def _handle_notification(self, message: dict) -> None:
+    def _handle_notification(self, message: Dict[str, Any]) -> None:
         """Handles notifications."""
-        notification: Notification = Notification(message)
-        key = self.notif_types.get(notification.notification_type)
-        
-        return self._handle_event(key, notification) if key else None
+        notification = entities.Notification(message)
+        key = entities.NOTIF_TYPES.get(notification.notification_type)
+        if key:
+            self._handle_event(key, notification)
 
-    def _handle_agora_channel(self, message: dict) -> None:
+    def _handle_agora_channel(self, message: Dict[str, Any]) -> None:
         """Sets the agora channel."""
-        self.channel: Channel = Channel(message)
+        self.channel = entities.Channel(message)
 
-    def _handle_user_online(self, message: dict) -> None:
-        """Handles user online events."""
-        return self._handle_event("user_online", OnlineMembers(message))
+    def _handle_user_online(self, message: Dict[str, Any]) -> None:
+        self._handle_event("user_online", entities.OnlineMembers(message))
 
-    def on_websocket_close(self, ws: WebSocket, close_status_code: int, close_msg: str) -> None:
-        """Handles websocket close events."""
-        if [close_status_code, close_msg] == [None, None]:
-            self._log("Websocket closed unexpectedly.")
-            return self.run_forever()
-
-    def send_websocket_message(self, message: dict) -> None:
+    def send_websocket_message(
+        self,
+        message: Union[Dict[str, Any], bytes, str],
+    ) -> None:
         """Sends a websocket message."""
-        return self.ws.send(orjson_dumps(message).decode() if self.orjson else dumps(message))
+        if not self.ws:
+            return None
+        if not isinstance(message, (bytes, str)):
+            message = ujson.dumps(message)
+        self.ws.send(ujson.dumps(message))
 
     def stop_websocket(self) -> None:
         """Stops the websocket."""
-        self._log("Websocket received stop signal.")
-        return self.ws.close()
-
-    def on_websocket_open(self, ws: WebSocket) -> None:
-        """Handles websocket open events."""
-        if all([self.community_id != None, "user_online" in self._events]):
-            return self.send_websocket_message({
-                "t": 300,
-                "o": {
-                    "ndcId": self.community_id,
-                    "topic": f"ndtopic:x{self.community_id}:online-members",
-                    "id": int(time() * 1000)
-                }})
+        if self.connected and self.ws:
+            self.ws.close()
+            logger.debug("Websocket received stop signal.")
+        self.ws = None
 
     def _last_active(self, last_activity_time: float) -> bool:
-        """Returns True if the last activity was 5 minutes ago."""""
-        return time() - last_activity_time >= 300
+        """Returns True if the last activity was 5 minutes ago."""
+        return time.time() - last_activity_time >= 300
 
-    def _last_message(self, last_message_time: float) -> bool:
-        """Returns True if the last message was 30 seconds ago."""
-        return time() - last_message_time >= 30
-
-    def _send_message(self) -> None:
-        self.send_websocket_message({
-            "o":{
-                "threadChannelUserInfoList": [],
-                "id": randint(1, 100)},
-                "t": 116
-                })
+    def _send_ping(self) -> None:
+        self.send_websocket_message(
+            {
+                "o": {
+                    "threadChannelUserInfoList": [],
+                    "id": random.randint(1, 100),
+                },
+                "t": entities.WsMessageTypes.CHANNEL_USER_PING_REQUEST,
+            }
+        )
 
     def _activity_status(self) -> None:
         """Sets the user's activity status to online."""
         for comId in self._communities:
-
             if self.online_status:
                 try:
-                    self.community.send_active(comId=comId,
-                    timers=[{"start": int(time()), "end": int(time()) + 300}]
+                    self.community.send_active(
+                        start=int(time.time()),
+                        end=int(time.time()) + 300,
+                        comId=comId,
                     )
                 except Exception:
                     self.online_status = False
 
-            delay(randint(5, 10))
+            time.sleep(random.randint(5, 10))
+
+    def _task_runner_loop(self) -> None:
+        """Handles websocket messages."""
+        if self._task_runner_active:
+            return
+        self._task_runner_active = True
+        while self.connected:
+            if not self._tasks:
+                continue
+            task, interval = self._tasks.pop(0)
+            threading.Thread(
+                target=self._handle_task,
+                args=(
+                    task,
+                    interval,
+                ),
+            ).start()

@@ -1,86 +1,69 @@
-from .entities import *
-from .utilities.generate import *
-from typing import Any, Callable, TypeVar
+import abc
+import time
+from collections.abc import Sequence
+from typing import Any, Dict, List, Literal, Optional, Union, cast
+
+from pymino.ext import entities, utilities
+
+__all__ = ("Global",)
 
 
-F = TypeVar("F", bound=Callable[..., Any])
+class Global(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def request(self) -> utilities.RequestHandler: ...
 
-class Global:
-    def __init__(self) -> None:
-        pass
+    @property
+    @abc.abstractmethod
+    def community_id(self) -> Optional[int]: ...
 
+    @property
+    @abc.abstractmethod
+    def debug(self) -> bool: ...
 
-    def authenticated(func: F) -> F:
-        """
-        A decorator that checks if the client is authenticated.
-        
-        :param func: The function to decorate.
-        :type func: F
-        :return: The decorated function.
-        :rtype: F
-        
-        This decorator is used to check if the client is authenticated.
-        If the client is not authenticated, a `LoginRequired` exception
-        will be raised.
-        """
-        def wrapper(*args, **kwargs) -> Any:
-            try:
-                if not args[0].is_authenticated:
-                    raise LoginRequired
-                return func(*args, **kwargs)
-            except AttributeError:
-                raise LoginRequired
-        return wrapper
+    @property
+    @abc.abstractmethod
+    def is_authenticated(self) -> bool: ...
 
+    @property
+    @abc.abstractmethod
+    def userId(self) -> Optional[str]: ...
 
-    def make_request(self, method: str, url: str, data: dict = None, is_login_required: bool = True) -> dict:
-        """
-        Makes a request to the API.
-        
-        :param method: The HTTP method to use.
-        :type method: str
-        :param url: The URL to make the request to.
-        :type url: str
-        :param data: The data to send with the request.
-        :type data: dict
-        :return: The response from the request.
-        :rtype: dict
-        :param is_login_required: Whether the request requires the client to be logged in.
-        :type is_login_required: bool
-        
-        This method is used to make requests to the API.
-        
-        Example usage:
-        
-        >>> client.make_request(
-            ...     method = "GET",
-            ...     url = "/g/s/user-profile/0000-000000-000000-0000-000000"
-            ...     is_login_required = True
-            ... )
-            
-        This will make a GET request to the URL `/g/s/user-profile/0000-000000-000000-0000-000000`.
-        """
-        return self.request.handler(
-            method = method,
-            url = url,
-            data = data,
-            is_login_required = is_login_required
-        )
+    @property
+    @abc.abstractmethod
+    def sid(self) -> Optional[str]: ...
 
+    @property
+    @abc.abstractmethod
+    def proxy(self) -> Optional[str]: ...
 
-    def fetch_user(self, userId: str) -> UserProfile:
+    @abc.abstractmethod
+    def send_websocket_message(self, message: Dict[str, Any]) -> None: ...
+
+    @abc.abstractmethod
+    def run(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        secret: Optional[str] = None,
+        sid: Optional[str] = None,
+        device_id: Optional[str] = None,
+        use_cache: bool = True,
+    ) -> Dict[str, Any]: ...
+
+    def fetch_user(self, userId: Optional[str] = None) -> "entities.UserProfile":
         """
         Fetches a user's profile.
-        
+
         :param userId: The ID of the user to fetch.
         :type userId: str
         :return: The user's profile.
         :rtype: UserProfile
-        
+
         This method is used to fetch a user's profile.
-        
+
         Example usage:
-        
+
         >>> x = client.fetch_user("0000-000000-000000-0000-000000")
         >>> print(x.nickname)
         "Example"
@@ -88,21 +71,20 @@ class Global:
         "This is an example profile."
         >>> print(x.icon)
         """
-        return UserProfile(self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}"
-        ))
-    
+        return entities.UserProfile(
+            self.request.handler("GET", f"/g/s/user-profile/{userId or self.userId}")
+        )
 
+    @utilities.authenticated
     def edit_profile(
         self,
-        nickname: str = None,
-        content: str = None,
-        icon: str = None,
-        backgroundColor: str = None,
-        backgroundImage: str = None,
-        defaultBubbleId: str = None
-        ) -> UserProfile:
+        nickname: Optional[str] = None,
+        content: Optional[str] = None,
+        icon: Optional[str] = None,
+        backgroundColor: Optional[str] = None,
+        backgroundImage: Optional[str] = None,
+        defaultBubbleId: Optional[str] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user's profile.
 
@@ -135,47 +117,71 @@ class Global:
         ... else:
         ...     print("Failed to edit profile.")
         """
-        data = {
-                "address": None,
-                "latitude": 0,
-                "longitude": 0,
-                "mediaList": None,
-                "eventSource": "UserProfileView",
-                "timestamp": int(time() * 1000),
+        data: Dict[str, Any] = {
+            "address": None,
+            "latitude": 0,
+            "longitude": 0,
+            "mediaList": None,
+            "eventSource": "UserProfileView",
+            "timestamp": int(time.time() * 1000),
         }
-
-        if nickname: data['nickname'] = nickname
-        if icon: data['icon'] = self.upload_image(icon)
-        if content: data['content'] = content
+        extensions: Dict[str, Any] = {}
+        if nickname:
+            data["nickname"] = nickname
+        if icon:
+            data["icon"] = self.upload_image(icon)
+        if content:
+            data["content"] = content
         if backgroundColor:
-            data["extensions"] = {
-                "style": {
-                    "backgroundColor": backgroundColor
-                    if backgroundColor.startswith("#")
-                    else f"#{backgroundColor}"
-                }
-            }
-
+            if not backgroundColor.startswith("#"):
+                backgroundColor = f"#{backgroundColor}"
+            extensions["style"] = {"backgroundColor": backgroundColor}
         if backgroundImage:
-            data["extensions"] = {
-                "style": {
-                    "backgroundMediaList": [
-                        [100, self.upload_image(backgroundImage), None, None, None]
-                    ]
-                }
+            extensions["style"] = {
+                "backgroundMediaList": [
+                    [100, self.upload_image(backgroundImage), None, None, None]
+                ]
             }
         if defaultBubbleId:
-            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
+            extensions["defaultBubbleId"] = defaultBubbleId
+        if extensions:
+            data["extensions"] = extensions
 
-        return UserProfile(self.make_request(
-            method = "POST",
-            url = f"/g/s/user-profile/{self.userId}",
-            data = data
-        ))
+        return entities.UserProfile(
+            self.request.handler(
+                method="POST",
+                url=f"/g/s/user-profile/{self.userId}",
+                data=data,
+            )
+        )
 
+    @utilities.authenticated
+    def upload_media(
+        self,
+        media: "entities.Media",
+        content_type: str = "image/jpg",
+    ) -> str:
+        response = entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                "/g/s/media/upload",
+                data=entities.read_media(media),
+                content_type=content_type,
+            )
+        )
+        return cast(str, response.media_value)
 
-    @authenticated
-    def send_message(self, content: str, chatId: str, **kwargs) -> CMessage:
+    def upload_image(self, image: "entities.Media") -> str:
+        return self.upload_media(image, "image/jpg")
+
+    @utilities.authenticated
+    def send_message(
+        self,
+        content: str,
+        chatId: str,
+        mediaType: int = 0,
+        type: int = 0,
+    ) -> "entities.CMessage":
         """
         Sends a message to a chat thread.
 
@@ -191,105 +197,31 @@ class Global:
         can be passed as keyword arguments. The method calls the `PrepareMessage` object's `json` method to prepare the message
         data. The result is a `CMessage` object containing the details of the sent message.
         """
-        return CMessage(self.make_request(
-            method="POST",
-            url=f"/g/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content=content, **kwargs).json()
-            ))
+        return entities.CMessage(
+            self.request.handler(
+                method="POST",
+                url=f"/g/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    content=content,
+                    mediaType=mediaType,
+                    type=type,
+                ).json(),
+            )
+        )
 
-
-    @authenticated
-    def edit_profile(
-        self,
-        nickname: str = None,
-        content: str = None,
-        icon: str = None,
-        backgroundColor: str = None,
-        backgroundImage: str = None,
-        defaultBubbleId: str = None
-        ) -> UserProfile:
-        """
-        Edits the user's profile.
-
-        :param nickname: The new nickname for the user.
-        :type nickname: str
-        :param content: The new content for the user's profile.
-        :type content: str
-        :param icon: The new icon image file for the user.
-        :type icon: str
-        :param backgroundColor: The new background color for the user's profile.
-        :type backgroundColor: str
-        :param backgroundImage: The new background image file for the user's profile.
-        :type backgroundImage: str
-        :param defaultBubbleId: The ID of the default bubble for the user's profile.
-        :type defaultBubbleId: str
-        :return: The response from the account's `edit_profile` method.
-        :rtype: Response
-
-        This method allows the authenticated user to edit their profile settings. Different aspects of the profile can be modified,
-        such as the nickname, content, icon, background color, background image, and default bubble. Only the specified parameters will
-        be updated. The `userId` parameter is set to the authenticated user's ID automatically.
-
-        **Example usage:**
-
-        To change the nickname and icon for the user:
-
-        >>> response = client.edit_profile(nickname="New Nickname", icon="path/to/icon.jpg")
-        ... if response.status == 200:
-        ...     print("Profile edited successfully!")
-        ... else:
-        ...     print("Failed to edit profile.")
-        """
-        data = {
-                "address": None,
-                "latitude": 0,
-                "longitude": 0,
-                "mediaList": None,
-                "eventSource": "UserProfileView",
-                "timestamp": int(time() * 1000),
-        }
-
-        if nickname: data['nickname'] = nickname
-        if icon: data['icon'] = self.upload_image(icon)
-        if content: data['content'] = content
-        if backgroundColor:
-            data["extensions"] = {
-                "style": {
-                    "backgroundColor": backgroundColor
-                    if backgroundColor.startswith("#")
-                    else f"#{backgroundColor}"
-                }
-            }
-
-        if backgroundImage:
-            data["extensions"] = {
-                "style": {
-                    "backgroundMediaList": [
-                        [100, self.upload_image(backgroundImage), None, None, None]
-                    ]
-                }
-            }
-        if defaultBubbleId:
-            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
-
-        return UserProfile(self.make_request(
-            method = "POST", url = f"/g/s/user-profile/{self.userId}",
-            data = data
-        ))
-
-
-    @authenticated
+    @utilities.authenticated
     def start_chat(
         self,
-        userId: Union[str, list],
+        userId: Union["Sequence[str]", str],
         message: str,
-        title: str = None,
-        content: str = None,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
         isGlobal: bool = False,
-        publishToGlobal: bool = False
-        ) -> ChatThread:
+        publishToGlobal: bool = False,
+    ) -> entities.ChatThread:
         """
         Starts a chat thread.
+
         :param userId: The ID or list of IDs of the users to invite to the chat.
         :type userId: Union[str, list]
         :param message: The initial message content.
@@ -305,34 +237,30 @@ class Global:
         :return: A `ChatThread` object representing the created chat thread.
         :rtype: ChatThread
         """
-        try:
-            userIds = [userId] if isinstance(userId, str) else userId
-        except Exception as e:
-            raise ValueError("Incorrect type for userId. <--- userId can be only a string or a list.") from e
-
-        data = dict(
-            title = title,
-            inviteeUids = userIds,
-            initialMessageContent = message,
-            content = content,
-            timestamp = int(time() * 1000),
-            publishToGlobal = 0
+        userIds = [userId] if isinstance(userId, str) else userId
+        data = {
+            "title": title,
+            "inviteeUids": list(userIds),
+            "initialMessageContent": message,
+            "content": content,
+            "timestamp": int(time.time() * 1000),
+            "publishToGlobal": 0,
+        }
+        if isGlobal:
+            data.update({"type": 2, "eventSource": "GlobalComposeMenu"})
+        else:
+            data["type"] = 0
+        if publishToGlobal:
+            data["publishToGlobal"] = 1
+        return entities.ChatThread(
+            self.request.handler("POST", "/g/s/chat/thread", data=data)
         )
 
-        if isGlobal: data.update({"type": 2, "eventSource": "GlobalComposeMenu"})
-        else: data["type"] = 0
-
-        if publishToGlobal: data["publishToGlobal"] = 1
-
-        return ChatThread(
-            self.make_request(method="POST", url="/g/s/chat/thread", data=data)
-        )
-
-
-    @authenticated
+    @utilities.authenticated
     def blocker_users(self, start: int = 0, size: int = 25) -> List[str]:
         """
         Retrieves a list of users what are blocking the logged account.
+
         :param start: The index to start retrieving the list from (optional, default: 0).
         :type start: int, optional
         :param size: The number of users to retrieve (optional, default: 25).
@@ -340,13 +268,23 @@ class Global:
         :return: A list of user IDs representing the blocker users.
         :rtype: list
         """
-        return self.make_request(
-            method = "GET",
-            url = f"/g/s/block/full-list?start={start}&size={size}"
-        )["blockerUidList"]
+        response = self.request.handler(
+            "GET",
+            f"/g/s/block/full-list",
+            params={
+                "start": start,
+                "size": size,
+            },
+        )
+        return response["blockerUidList"] or []
 
-
-    def fetch_wall_comments(self, userId: str, sorting: str = "newest", start: int = 0, size: int = 25) -> CommentList:
+    def fetch_wall_comments(
+        self,
+        userId: str,
+        sorting: Literal["newest", "oldest", "top"] = "newest",
+        start: int = 0,
+        size: int = 25,
+    ) -> entities.CommentList:
         """
         Fetches wall comments for a user.
 
@@ -374,19 +312,23 @@ class Global:
         >>> for comment in comments:
         ...     print(comment.content)
         """
-        if sorting.lower() == "newest": sorting = "newest"
-        elif sorting.lower() == "oldest": sorting = "oldest"
-        elif sorting.lower() == "top": sorting = "vote"
-        else: raise ValueError("Incorrect sorting method.")
+        if sorting not in ("newest", "oldest", "top"):
+            raise ValueError("Incorrect sorting method.")
+        sort = "vote" if sorting == "top" else sorting
+        return entities.CommentList(
+            self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{userId}/g-comment",
+                params={
+                    "sort": sort,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-        return CommentList(self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}"
-        ))
-
-
-    @authenticated
-    def delete_message(self, chatId: str, messageId: str) -> ApiResponse:
+    @utilities.authenticated
+    def delete_message(self, chatId: str, messageId: str) -> entities.ApiResponse:
         """
         Deletes a message in a chat thread.
 
@@ -413,32 +355,33 @@ class Global:
         ... else:
         ...     print("Failed to delete message.")
         """
-        return ApiResponse(self.make_request(
-            method = "DELETE",
-            url = f"/g/s/chat/thread/{chatId}/message/{messageId}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                f"/g/s/chat/thread/{chatId}/message/{messageId}",
+            )
+        )
 
-
-    @authenticated
+    @utilities.authenticated
     def edit_chat(
         self,
         chatId: str,
-        doNotDisturb: bool = None,
-        pinChat: bool = None,
-        title: str = None,
-        icon: str = None,
-        backgroundImage: str = None,
-        content: str = None,
-        announcement: str = None,
-        coHosts: list = None,
-        keywords: list = None,
-        pinAnnouncement: bool = None,
-        publishToGlobal: bool = None,
-        canTip: bool = None,
-        viewOnly: bool = None,
-        canInvite: bool = None,
-        fansOnly: bool = None
-        ) -> list:
+        doNotDisturb: Optional[bool] = None,
+        pinChat: Optional[bool] = None,
+        title: Optional[str] = None,
+        icon: Optional[str] = None,
+        backgroundImage: Optional[str] = None,
+        content: Optional[str] = None,
+        announcement: Optional[str] = None,
+        coHosts: Optional["Sequence[str]"] = None,
+        keywords: Optional["Sequence[str]"] = None,
+        pinAnnouncement: Optional[bool] = None,
+        publishToGlobal: Optional[bool] = None,
+        canTip: Optional[bool] = None,
+        viewOnly: Optional[bool] = None,
+        canInvite: Optional[bool] = None,
+        fansOnly: Optional[bool] = None,
+    ) -> List[int]:
         """
         Edits the settings of a chat.
 
@@ -494,85 +437,117 @@ class Global:
         ... else:
         ...     print("Failed to edit chat.")
         """
-        data = {"timestamp": int(time() * 1000)}
-
-        if title: data["title"] = title
-        if content: data["content"] = content
-        if icon: data["icon"] = self.upload_image(icon)
-        if keywords: data["keywords"] = keywords
-        if announcement: data["extensions"] = {"announcement": announcement}
-        if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
-        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-        if publishToGlobal: data["publishToGlobal"] = 0
-        if not publishToGlobal: data["publishToGlobal"] = 1
-
-        responses = []
-
+        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        extensions: Dict[str, Any] = {}
+        if title:
+            data["title"] = title
+        if content:
+            data["content"] = content
+        if icon:
+            data["icon"] = self.upload_image(icon)
+        if keywords is not None:
+            data["keywords"] = list(keywords)
+        if announcement:
+            extensions["announcement"] = announcement
+        if isinstance(pinAnnouncement, bool):
+            extensions["pinAnnouncement"] = pinAnnouncement
+        if isinstance(fansOnly, bool):
+            extensions["fansOnly"] = fansOnly
+        if isinstance(publishToGlobal, bool):
+            data["publishToGlobal"] = int(publishToGlobal)
+        if extensions:
+            data["extensions"] = extensions
+        responses: List[int] = []
         if doNotDisturb is not None:
-            responses.append(ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert",
-                data = {
-                    "alertOption": 2 if doNotDisturb else 1,
-                    "timestamp": int(time() * 1000)
-                }
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert",
+                        data={
+                            "alertOption": 2 if doNotDisturb else 1,
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    )
+                ).status_code
+            )
         if pinChat is not None:
-            responses.append(ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/{'pin' if pinChat else 'unpin'}"
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/chat/thread/{chatId}/{'pin' if pinChat else 'unpin'}",
+                    )
+                ).status_code
+            )
         if backgroundImage is not None:
-            responses.append(ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/member/{self.userId}/background",
-                data = {
-                    "media": [100, self.upload_image(backgroundImage), None],
-                    "timestamp": int(time() * 1000)
-                }
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/chat/thread/{chatId}/member/{self.userId}/background",
+                        data={
+                            "media": [100, self.upload_image(backgroundImage), None],
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    )
+                ).status_code
+            )
         if coHosts is not None:
-            responses.append(ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/co-host",
-                data = {
-                    "uidList": coHosts,
-                    "timestamp": int(time() * 1000)
-                }
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/chat/thread/{chatId}/co-host",
+                        data={
+                            "uidList": list(coHosts),
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    )
+                ).status_code
+            )
         if viewOnly is not None:
-            responses.append(ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
-            )).status_code)
-        
+            endpoint = "enable" if viewOnly else "disable"
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST", f"/g/s/chat/thread/{chatId}/view-only/{endpoint}"
+                    )
+                ).status_code
+            )
         if canInvite is not None:
-            responses.append(ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
-            )).status_code)
-        
+            endpoint = "enable" if canInvite else "disable"
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/chat/thread/{chatId}/members-can-invite/{endpoint}",
+                    )
+                ).status_code
+            )
         if canTip is not None:
-            responses.append(ApiResponse(
-                method = "POST",
-                url = f"/g/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
-            ).status_code)
-        
-        responses.append(ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/chat/thread/{chatId}",
-            data = data
-        )).status_code)
-
+            endpoint = "enable" if canTip else "disable"
+            responses.append(
+                entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/chat/thread/{chatId}/tipping-perm-status/{endpoint}",
+                    )
+                ).status_code
+            )
+        responses.append(
+            entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/chat/thread/{chatId}",
+                    data=data,
+                )
+            ).status_code
+        )
         return responses
 
-
-    @authenticated
-    def follow(self, userId: Union[str, list]) -> ApiResponse:
+    @utilities.authenticated
+    def follow(self, userId: Union["Sequence[str]", str]) -> entities.ApiResponse:
         """
         Follows a user or a list of users.
 
@@ -611,23 +586,22 @@ class Global:
         ...     print("Failed to follow users.")
         """
         if isinstance(userId, str):
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/user-profile/{userId}/member"
-            ))
-        if isinstance(userId, list):
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/user-profile/{self.userId}/joined",
-                data = {
-                    "targetUidList": userId,
-                    "timestamp": int(time() * 1000)
-                }
-            ))
+            return entities.ApiResponse(
+                self.request.handler("POST", f"/g/s/user-profile/{userId}/member")
+            )
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/user-profile/{self.userId}/joined",
+                data={
+                    "targetUidList": list(userId),
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @authenticated
-    def fetch_chats(self, start: int = 0, size: int = 25) -> ChatThreadList:
+    @utilities.authenticated
+    def fetch_chats(self, start: int = 0, size: int = 25) -> entities.ChatThreadList:
         """
         Fetches the chat threads for the authenticated user.
 
@@ -648,14 +622,20 @@ class Global:
         ... for thread in threads:
         ...     print(thread.title)
         """
-        return ChatThreadList(self.make_request(
-            method = "GET",
-            url = f"/g/s/chat/thread?type=joined-me&start={start}&size={size}"
-        ))
+        return entities.ChatThreadList(
+            self.request.handler(
+                "GET",
+                f"/g/s/chat/thread",
+                params={
+                    "type": "joined-me",
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @authenticated
-    def fetch_chat(self, chatId: str) -> ChatThread:
+    @utilities.authenticated
+    def fetch_chat(self, chatId: str) -> entities.ChatThread:
         """
         Fetches a chat thread by its ID.
 
@@ -674,14 +654,20 @@ class Global:
         ... print(chat.thread_id)
         ... print(chat.messages)
         """
-        return ChatThread(self.make_request(
-            method = "GET",
-            url = f"/g/s/chat/thread/{chatId}"
-        ))
+        return entities.ChatThread(
+            self.request.handler(
+                "GET",
+                f"/g/s/chat/thread/{chatId}",
+            )
+        )
 
-
-    @authenticated
-    def fetch_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> CChatMembers:
+    @utilities.authenticated
+    def fetch_chat_users(
+        self,
+        chatId: str,
+        start: int = 0,
+        size: int = 25,
+    ) -> entities.CChatMembers:
         """
         Fetches the users in a chat.
 
@@ -704,14 +690,25 @@ class Global:
         ... for member in chat_members.nickname:
         ...     print(member)
         """
-        return CChatMembers(self.make_request(
-            method = "GET",
-            url = f"/g/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
-        ))
+        return entities.CChatMembers(
+            self.request.handler(
+                "GET",
+                f"/g/s/chat/thread/{chatId}/member",
+                params={
+                    "type": "default",
+                    "cv": 1.2,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @authenticated
-    def invite_to_chat(self, chatId: str, userId: Union[str, list]) -> ApiResponse:
+    @utilities.authenticated
+    def invite_to_chat(
+        self,
+        chatId: str,
+        userId: Union["Sequence[str]", str],
+    ) -> entities.ApiResponse:
         """
         Invites user(s) to a chat.
 
@@ -734,22 +731,24 @@ class Global:
         >>> response = client.invite_to_chat("chat123", "user456")
         ... print(response.status_code)
         """
-        if isinstance(userId, str): userIds = [userId]
-        elif isinstance(userId, list): userIds = userId
-        else: raise TypeError("UserId must be a string or a list of strings.")
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/chat/thread/{chatId}/member/invite",
+                data={
+                    "timestamp": int(time.time() * 1000),
+                    "uids": [userId] if isinstance(userId, str) else list(userId),
+                },
+            )
+        )
 
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/chat/thread/{chatId}/member/invite",
-            data = {
-                "timestamp": int(time() * 1000),
-                "uids": userIds
-            }
-        ))
-
-
-    @authenticated
-    def kick(self, chatId: str, userId: str, allowRejoin: bool = True) -> ApiResponse:
+    @utilities.authenticated
+    def kick(
+        self,
+        chatId: str,
+        userId: str,
+        allowRejoin: bool = True,
+    ) -> entities.ApiResponse:
         """
         Kicks a user from a chat.
 
@@ -772,14 +771,21 @@ class Global:
         ... print(response.status_code)
         ... print(response.json())
         """
-        return ApiResponse(self.make_request(
-            method = "DELETE",
-            url = f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={allowRejoin}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                f"/g/s/chat/thread/{chatId}/member/{userId}",
+                params={"allowRejoin": allowRejoin},
+            )
+        )
 
-
-    @authenticated
-    def fetch_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> CMessages:
+    @utilities.authenticated
+    def fetch_messages(
+        self,
+        chatId: str,
+        size: int = 25,
+        pageToken: Optional[str] = None,
+    ) -> "entities.CMessages":
         """
         Fetches messages from a chat.
 
@@ -803,18 +809,32 @@ class Global:
         ...     print(message.text)
         """
         if pageToken is not None:
-            return CMessages(self.make_request(
-                method = "GET",
-                url = f"/g/s/chat/thread/{chatId}/message?v=2&pagingType=t&pageToken={pageToken}&size={size}"
-            ))
-        return CMessages(self.make_request(
-            method = "GET",
-            url = f"/g/s/chat/thread/{chatId}/message?v=2&pagingType=t&size={size}"
-        ))
+            return entities.CMessages(
+                self.request.handler(
+                    "GET",
+                    f"/g/s/chat/thread/{chatId}/message",
+                    params={
+                        "v": 2,
+                        "pagingType": "t",
+                        "pageToken": pageToken,
+                        "size": size,
+                    },
+                )
+            )
+        return entities.CMessages(
+            self.request.handler(
+                "GET",
+                f"/g/s/chat/thread/{chatId}/message",
+                params={
+                    "v": 2,
+                    "pagingType": "t",
+                    "size": size,
+                },
+            )
+        )
 
-
-    @authenticated
-    def fetch_message(self, chatId: str, messageId: str) -> Message:
+    @utilities.authenticated
+    def fetch_message(self, chatId: str, messageId: str) -> "entities.Message":
         """
         Fetches a specific message from a chat thread.
 
@@ -835,14 +855,15 @@ class Global:
         ... print(message.text)
         ... print(message.timestamp)
         """
-        return Message(self.make_request(
-            method = "GET",
-            url = f"/g/s/chat/thread/{chatId}/message/{messageId}"
-        ))
+        return entities.Message(
+            self.request.handler(
+                "GET",
+                f"/g/s/chat/thread/{chatId}/message/{messageId}",
+            )
+        )
 
-
-    @authenticated
-    def search_community(self, aminoId: str) -> dict:
+    @utilities.authenticated
+    def search_community(self, aminoId: str) -> Dict[str, Any]:
         """
         Search for a community by Amino ID or link.
 
@@ -858,14 +879,19 @@ class Global:
         >>> search_results = client.search_community("example_community").title
         ... print(search_results)
         """
-        return self.make_request(
-            method = "GET",
-            url = f"/g/s/search/amino-id-and-link?q={aminoId}"
+        return self.request.handler(
+            "GET",
+            f"/g/s/search/amino-id-and-link",
+            params={"q": aminoId},
         )
 
-
-    @authenticated
-    def fetch_followers(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
+    @utilities.authenticated
+    def fetch_followers(
+        self,
+        userId: str,
+        start: int = 0,
+        size: int = 25,
+    ) -> "entities.UserProfileList":
         """
         Fetches the followers of a user.
 
@@ -888,13 +914,23 @@ class Global:
         ... for follower in followers.userId:
         ...     print(follower)
         """
-        return UserProfileList(self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/member?start={start}&size={size}"
-        ))
+        return entities.UserProfileList(
+            self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{userId}/member",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    def fetch_following(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
+    def fetch_following(
+        self,
+        userId: str,
+        start: int = 0,
+        size: int = 25,
+    ) -> "entities.UserProfileList":
         """
         Fetches the user profiles of the users that the specified user is following.
 
@@ -917,15 +953,27 @@ class Global:
         ... for profile in following.userId:
         ...     print(profile)
         """
-        
-        return UserProfileList(self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/joined?start={start}&size={size}"
-        ))
+        return entities.UserProfileList(
+            self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{userId}/joined",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-    def large_fetch_following(self, userId: str, size: int = 25, pageToken: str = None, ignoreMembership: bool = True) -> FollowerList:
+    def large_fetch_following(
+        self,
+        userId: str,
+        size: int = 25,
+        pageToken: Optional[str] = None,
+        ignoreMembership: bool = True,
+    ) -> "entities.FollowerList":
         """
         Fetches the user profiles of the users that the specified user is following.
+
         :param userId: The ID of the user.
         :type userId: str
         :param size: The number of user profiles to fetch. (Default: 25)
@@ -936,29 +984,39 @@ class Global:
         :type ignoreMembership: bool, optional
         :return: A `FollowerList` object containing the user profiles.
         :rtype: FollowerList
-        
+
         This function sends a GET request to the API to fetch the user profiles of the users that the specified user is following.
-        
+
         `FollowerList` represents a list of user profiles.
-        
+
         **Example usage:**
-    
+
         >>> following = client.large_fetch_following("user123")
         ... for userId in following.members.userId:
         ...     print(userId)
         """
+        params = {
+            "ignoreMembership": int(ignoreMembership),
+            "pagingType": "t",
+            "pageToken": pageToken,
+            "size": size,
+        }
         if pageToken:
-            return FollowerList(self.make_request(
-                method = "GET",
-                url = f"/g/s/user-profile/{userId}/joined?size={size}&pageToken={pageToken}&pagingType=t&ignoreMembership={1 if ignoreMembership else 0}"
-            ))
+            params["pageToken"] = pageToken
+        return entities.FollowerList(
+            self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{userId}/joined",
+                params=params,
+            )
+        )
 
-        return FollowerList(self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/joined?pagingType=t&size={size}&ignoreMembership={1 if ignoreMembership else 0}"
-        ))
-
-    def fetch_visitors(self, userId: str, start: int = 0, size: int = 25) -> UserProfileList:
+    def fetch_visitors(
+        self,
+        userId: str,
+        start: int = 0,
+        size: int = 25,
+    ) -> "entities.UserProfileList":
         """
         Fetches the visitors of a user profile.
 
@@ -981,14 +1039,19 @@ class Global:
         ... for visitor in visitors.userId:
         ...     print(visitor)
         """
-        return UserProfileList(self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/visitors?start={start}&size={size}"
-        ))
+        return entities.UserProfileList(
+            self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{userId}/visitors",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @authenticated
-    def blocked_users(self, start: int = 0, size: int = 25):
+    @utilities.authenticated
+    def blocked_users(self, start: int = 0, size: int = 25) -> "entities.UserProfileList":
         """
         Retrieves a list of blocked users.
 
@@ -1009,78 +1072,86 @@ class Global:
         ... for user in blocked_users.userId:
         ...     print(user)
         """
-        return UserProfileList(self.make_request(
-            method = "GET",
-            url = f"/g/s/block?start={start}&size={size}"
-        ))
+        return entities.UserProfileList(
+            self.request.handler(
+                "GET",
+                "/g/s/block",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @authenticated
-    def mark_as_read(self, chatId: str, messageId: str) -> ApiResponse:
+    @utilities.authenticated
+    def mark_as_read(self, chatId: str, messageId: str) -> entities.ApiResponse:
         """
         Marks a message as read.
-        
+
         :param chatId: The ID of the chat to mark the message as read in.
         :type chatId: str
         :param messageId: The ID of the message to mark as read.
         :type messageId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to mark a message as read.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.mark_as_read("000000-0000-0000-000000", "000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/chat/thread/{chatId}/mark-as-read",
-            data = {
-                "messageId": messageId,
-                "timestamp": int(time() * 1000)
-            }
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/chat/thread/{chatId}/mark-as-read",
+                data={
+                    "messageId": messageId,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @authenticated
-    def visit(self, userId: str) -> ApiResponse:
+    @utilities.authenticated
+    def visit(self, userId: str) -> entities.ApiResponse:
         """
         Visits a user profile.
-        
+
         :param userId: The ID of the user profile to visit.
         :type userId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to visit a user profile.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.visit("000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/user-profile/{userId}?action=visit"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/user-profile/{userId}",
+                params={"action": "visit"},
+            )
+        )
 
-
-    @authenticated
-    def block(self, userId: str) -> ApiResponse:
+    @utilities.authenticated
+    def block(self, userId: str) -> entities.ApiResponse:
         """
         Blocks a user.
-        
+
         :param userId: The ID of the user to block.
         :type userId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to block a user.
 
         `ApiResponse` represents a response from the API.
@@ -1090,47 +1161,53 @@ class Global:
         >>> x = client.block("000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/block/{userId}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/block/{userId}",
+            )
+        )
 
-
-    @authenticated
-    def unblock(self, userId: str) -> ApiResponse:
+    @utilities.authenticated
+    def unblock(self, userId: str) -> entities.ApiResponse:
         """
         Unblocks a user.
-        
+
         :param userId: The ID of the user to unblock.
         :type userId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a DELETE request to the API to unblock a user.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.unblock("000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "DELETE",
-            url = f"/g/s/block/{userId}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                f"/g/s/block/{userId}",
+            )
+        )
 
-
-    @authenticated
-    def join_request(self, comId: str, message: str = None):
+    @utilities.authenticated
+    def join_request(
+        self,
+        comId: int,
+        message: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Sends a join request to a community.
-        
+
         :param comId: The ID of the community to send the join request to.
         :type comId: str
         :param message: The message to send with the join request.
         :type message: str, optional
-        
+
         This function sends a POST request to the API to send a join request to a community.
 
         `ApiResponse` represents a response from the API.
@@ -1140,27 +1217,28 @@ class Global:
         >>> x = client.join_request("000000-0000-0000-000000", "Hello! I would like to join this community.")
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/x{comId}/s/community/membership-request",
-            data = {
-                "message": message,
-                "timestamp": int(time() * 1000)
-            }
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/x{comId}/s/community/membership-request",
+                data={
+                    "message": message,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @authenticated
+    @utilities.authenticated
     def flag_community(
         self,
-        comId: str,
+        comId: int,
         reason: str,
-        flagType: FlagTypes = FlagTypes.OFFTOPIC,
-        isGuest: bool = False
-        ) -> ApiResponse:
+        flagType: Union[entities.FlagTypes, int] = entities.FlagTypes.OFFTOPIC,
+        isGuest: bool = False,
+    ) -> entities.ApiResponse:
         """
         Flags a community.
-        
+
         :param comId: The ID of the community to flag.
         :type comId: str
         :param reason: The reason for flagging the community.
@@ -1169,159 +1247,168 @@ class Global:
         :type flagType: FlagTypes, optional
         :param isGuest: Whether or not the flag is from a guest account.
         :type isGuest: bool, optional
-        
+
         This function sends a POST request to the API to flag a community.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.flag_community("000000-0000-0000-000000", "This community is offensive.", 1)
         ... print(x.status_code)
         """
-        if reason is None: raise ValueError("Reason must be specified.")
-        if flagType is None: raise ValueError("Flag type must be specified.")
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/x{comId}/s/item-flag",
+                data={
+                    "flagType": flagType,
+                    "reason": reason,
+                    "timestamp": int(time.time() * 1000),
+                    "isGuest": "g-flag" if isGuest else "flag",
+                },
+            )
+        )
 
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/x{comId}/s/item-flag",
-            data = {
-                "flagType": flagType.value if isinstance(flagType, FlagTypes) else flagType,
-                "reason": reason,
-                "timestamp": int(time() * 1000),
-                "isGuest": "g-flag" if isGuest else "flag"
-            }
-        ))
-
-
-    def fetch_linked_communities(self, userId: str) -> list:
+    def fetch_linked_communities(self, userId: str) -> List[Dict[str, Any]]:
         """
         Fetches a user's linked communities.
-        
+
         :param userId: The ID of the user to fetch the linked communities of.
         :type userId: str
         :return: A list of linked communities.
         :rtype: list
-        
+
         This function sends a GET request to the API to fetch a user's linked communities.
-        
+
         **Example usage:**
-        
+
         >>> x = client.fetch_linked_communities("000000-0000-0000-000000")
         ... print(x)
         """
-        return self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/linked-community"
+        return (
+            self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{userId}/linked-community",
+            )
         )["linkedCommunityList"]
 
-
-    def fetch_unlinked_communities(self, userId: str) -> list:
+    def fetch_unlinked_communities(self, userId: str) -> List[Dict[str, Any]]:
         """
         Fetches a user's unlinked communities.
-        
+
         :param userId: The ID of the user to fetch the unlinked communities of.
         :type userId: str
         :return: A list of unlinked communities.
         :rtype: list
-        
+
         This function sends a GET request to the API to fetch a user's unlinked communities.
-        
+
         **Example usage:**
-        
+
         >>> x = client.fetch_unlinked_communities("000000-0000-0000-000000")
         ... print(x)
         """
-        return self.make_request(
-            method = "GET",
-            url = f"/g/s/user-profile/{userId}/unlinked-community"
+        return (
+            self.request.handler(
+                "GET", f"/g/s/user-profile/{userId}/unlinked-community"
+            )
         )["unlinkedCommunityList"]
 
-
-    @authenticated
-    def reorder_linked_communities(self, comIds: List[int]) -> ApiResponse:
+    @utilities.authenticated
+    def reorder_linked_communities(self, comIds: "Sequence[int]") -> entities.ApiResponse:
         """
         Reorders a user's linked communities.
-        
+
         :param comIds: A list of community IDs to reorder.
         :type comIds: List[int]
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to reorder a user's linked communities.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.reorder_linked_communities([3, 2, 1])
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/user-profile/{self.userId}/linked-community/reorder",
-            data = {
-                "timestamp": int(time() * 1000),
-                "comIds": comIds
-            }
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/user-profile/{self.userId}/linked-community/reorder",
+                data={
+                    "timestamp": int(time.time() * 1000),
+                    "comIds": list(comIds),
+                },
+            )
+        )
 
-
-    @authenticated
-    def add_linked_community(self, comId: int) -> ApiResponse:
+    @utilities.authenticated
+    def add_linked_community(self, comId: int) -> entities.ApiResponse:
         """
         Adds a linked community to a user's profile.
-        
+
         :param comId: The ID of the community to add.
         :type comId: int
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to add a linked community to a user's profile.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.add_linked_community(3)
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "POST",
-            url = f"/g/s/user-profile/{self.userId}/linked-community/{comId}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/user-profile/{self.userId}/linked-community/{comId}",
+            )
+        )
 
-
-    @authenticated
-    def remove_linked_community(self, comId: int) -> ApiResponse:
+    @utilities.authenticated
+    def remove_linked_community(self, comId: int) -> entities.ApiResponse:
         """
         Removes a linked community from a user's profile.
-        
+
         :param comId: The ID of the community to remove.
         :type comId: int
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a DELETE request to the API to remove a linked community from a user's profile.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.remove_linked_community(1)
         ... print(x.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "DELETE",
-            url = f"/g/s/user-profile/{self.userId}/linked-community/{comId}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                f"/g/s/user-profile/{self.userId}/linked-community/{comId}",
+            )
+        )
 
-
-    @authenticated
-    def comment(self, message: str, userId: str = None, blogId: str = None, wikiId: str = None, replyTo: str = None) -> ApiResponse:
+    @utilities.authenticated
+    def comment(
+        self,
+        message: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        replyTo: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Comments on a user's profile, blog, or wiki.
-        
+
         :param message: The message to comment.
         :type message: str
         :param userId: The ID of the user to comment on.
@@ -1334,60 +1421,64 @@ class Global:
         :type replyTo: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to comment on a user's profile, blog, or wiki.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.comment("Hello, world!", userId = "000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        if message is None: raise ValueError("Message must be specified.")
-
         data = {
             "content": message,
             "stickerId": None,
             "type": 0,
-            "timestamp": int(time() * 1000)
+            "timestamp": int(time.time() * 1000),
         }
-
-        if replyTo: data["respondTo"] = replyTo
-
+        if replyTo:
+            data["respondTo"] = replyTo
         if userId:
             data["eventSource"] = "UserProfileView"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/user-profile/{userId}/g-comment",
-                data = data
-            ))
-
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/user-profile/{userId}/g-comment",
+                    data=data,
+                )
+            )
         elif blogId:
             data["eventSource"] = "PostDetailView"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/blog/{blogId}/g-comment",
-                data = data
-            ))
-        
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/blog/{blogId}/g-comment",
+                    data=data,
+                )
+            )
         elif wikiId:
             data["eventSource"] = "PostDetailView"
-            url = f"/g/s/item/{wikiId}/g-comment"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/item/{wikiId}/g-comment"
-            ))
-        
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/item/{wikiId}/g-comment",
+                )
+            )
         else:
             raise ValueError("Either userId, blogId or wikiId must be specified.")
 
-
-    @authenticated
-    def delete_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> ApiResponse:
+    @utilities.authenticated
+    def delete_comment(
+        self,
+        commentId: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a comment on a user's profile, blog, or wiki.
-        
+
         :param commentId: The ID of the comment to delete.
         :type commentId: str
         :param userId: The ID of the user to delete the comment from.
@@ -1398,118 +1489,147 @@ class Global:
         :type wikiId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
-        This function sends a DELETE request to the API to delete a comment on a user's profile, blog, or wiki."""
+
+        This function sends a DELETE request to the API to delete a comment on a user's profile, blog, or wiki.
+        """
         if userId:
-            return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/user-profile/{userId}/g-comment/{commentId}"
-            ))
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/user-profile/{userId}/g-comment/{commentId}",
+                )
+            )
         elif blogId:
-            return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/blog/{blogId}/g-comment/{commentId}"
-            ))
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/blog/{blogId}/g-comment/{commentId}",
+                )
+            )
         elif wikiId:
-            return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/item/{wikiId}/g-comment/{commentId}"
-            ))
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/item/{wikiId}/g-comment/{commentId}",
+                )
+            )
         else:
             raise ValueError("Either userId, blogId or wikiId must be specified.")
 
-
-    @authenticated
-    def like_blog(self, blogId: Union[str, list] = None, wikiId: str = None) -> ApiResponse:
+    @utilities.authenticated
+    def like_blog(
+        self,
+        blogId: Optional[Union["Sequence[str]", str]] = None,
+        wikiId: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Likes a blog or wiki.
-        
+
         :param blogId: The ID of the blog to like.
         :type blogId: Union[str, list]
         :param wikiId: The ID of the wiki to like.
         :type wikiId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to like a blog or wiki.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.like_blog("000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        data = {"value": 4, "timestamp": int(time() * 1000)}
-
+        data: Dict[str, Any] = {"value": 4, "timestamp": int(time.time() * 1000)}
         if blogId:
             if isinstance(blogId, str):
-                data["eventSource"] = "UserProfileView",
-                return ApiResponse(self.make_request(
-                    method = "POST",
-                    url = f"/g/s/blog/{blogId}/g-vote?cv=1.2",
-                    data = data
-                ))
-            elif isinstance(blogId, list):
-                data["targetIdList"] = blogId,
-                return ApiResponse(
-                    self.make_request(
-                        method = "POST", url="/g/s/feed/g-vote",
-                        data = data
+                data["eventSource"] = ("UserProfileView",)
+                return entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        f"/g/s/blog/{blogId}/g-vote",
+                        params={"cv": 1.2},
+                        data=data,
                     )
                 )
-            else: raise TypeError("blogId must be a string or a list.")
-
+            else:
+                data["targetIdList"] = list(blogId)
+                return entities.ApiResponse(
+                    self.request.handler(
+                        "POST",
+                        "/g/s/feed/g-vote",
+                        data=data,
+                    )
+                )
         elif wikiId:
             data["eventSource"] = "PostDetailView"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/item/{wikiId}/g-vote?cv=1.2",
-                data = data
-            ))
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/item/{wikiId}/g-vote",
+                    params={"cv": 1.2},
+                    data=data,
+                )
+            )
         else:
             raise ValueError("Either blogId or wikiId must be specified.")
 
-
-    @authenticated
-    def unlike_blog(self, blogId: str = None, wikiId: str = None) -> ApiResponse:
+    @utilities.authenticated
+    def unlike_blog(
+        self,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Unlikes a blog or wiki.
-        
+
         :param blogId: The ID of the blog to unlike.
         :type blogId: str
         :param wikiId: The ID of the wiki to unlike.
         :type wikiId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a DELETE request to the API to unlike a blog or wiki.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.unlike_blog("000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        
-        if blogId: return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"{self.api}/g/s/blog/{blogId}/g-vote?eventSource=UserProfileView"
-            ))
-        elif wikiId: return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/item/{wikiId}/g-vote?eventSource=PostDetailView"
-            ))
+        if blogId:
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/blog/{blogId}/g-vote",
+                    params={"eventSource": "UserProfileView"},
+                )
+            )
+        elif wikiId:
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/item/{wikiId}/g-vote",
+                    params={"eventSource": "PostDetailView"},
+                )
+            )
         else:
             raise ValueError("Either blogId or wikiId must be specified.")
 
-
-    @authenticated
-    def like_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> ApiResponse:
+    @utilities.authenticated
+    def like_comment(
+        self,
+        commentId: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Likes a comment on a user's profile, blog, or wiki.
-        
+
         :param commentId: The ID of the comment to like.
         :type commentId: str
         :param userId: The ID of the user to like the comment on.
@@ -1530,40 +1650,51 @@ class Global:
         >>> x = client.like_comment("000000-0000-0000-000000", userId="000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        data = {"value": 4, "timestamp": int(time() * 1000)}
-
+        data: Dict[str, Any] = {"value": 4, "timestamp": int(time.time() * 1000)}
         if userId:
             data["eventSource"] = "UserProfileView"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/user-profile/{userId}/comment/{commentId}/g-vote?cv=1.2&value=1",
-                data = data
-                ))
-        
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/user-profile/{userId}/comment/{commentId}/g-vote",
+                    params={"cv": 1.2, "value": 1},
+                    data=data,
+                )
+            )
         elif blogId:
             data["eventSource"] = "PostDetailView"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/blog/{blogId}/comment/{commentId}/g-vote?cv=1.2&value=1",
-                data = data
-            ))
-        
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/blog/{blogId}/comment/{commentId}/g-vote",
+                    params={"cv": 1.2, "value": 1},
+                    data=data,
+                )
+            )
         elif wikiId:
             data["eventSource"] = "PostDetailView"
-            return ApiResponse(self.make_request(
-                method = "POST",
-                url = f"/g/s/item/{wikiId}/comment/{commentId}/g-vote?cv=1.2&value=1",
-                data = data
-            ))
-        
-        else: raise ValueError("Either userId, blogId or wikiId must be specified.")
+            return entities.ApiResponse(
+                self.request.handler(
+                    "POST",
+                    f"/g/s/item/{wikiId}/comment/{commentId}/g-vote",
+                    params={"cv": 1.2, "value": 1},
+                    data=data,
+                )
+            )
+        else:
+            raise ValueError("Either userId, blogId or wikiId must be specified.")
 
-
-    @authenticated
-    def unlike_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> ApiResponse:
+    @utilities.authenticated
+    def unlike_comment(
+        self,
+        commentId: str,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Unlikes a comment on a user's profile, blog, or wiki.
-        
+
         :param commentId: The ID of the comment to unlike.
         :type commentId: str
         :param userId: The ID of the user to unlike the comment on.
@@ -1574,56 +1705,75 @@ class Global:
         :type wikiId: str
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
-        
+
         This function sends a DELETE request to the API to unlike a comment on a user's profile, blog, or wiki.
-        
+
         `ApiResponse` represents a response from the API.
-        
+
         **Example usage:**
-        
+
         >>> x = client.unlike_comment("000000-0000-0000-000000", userId="000000-0000-0000-000000")
         ... print(x.status_code)
         """
         if userId:
-            return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/user-profile/{userId}/comment/{commentId}/g-vote?eventSource=UserProfileView"
-            ))
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/user-profile/{userId}/comment/{commentId}/g-vote",
+                    params={"eventSource": "UserProfileView"},
+                )
+            )
         elif blogId:
-            return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/blog/{blogId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
-            ))
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/blog/{blogId}/comment/{commentId}/g-vote",
+                    params={"eventSource": "PostDetailView"},
+                )
+            )
         elif wikiId:
-            return ApiResponse(self.make_request(
-                method = "DELETE",
-                url = f"/g/s/item/{wikiId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
-            ))
-        else: raise ValueError("Either userId, blogId or wikiId must be specified.")
-
+            return entities.ApiResponse(
+                self.request.handler(
+                    "DELETE",
+                    f"/g/s/item/{wikiId}/comment/{commentId}/g-vote",
+                    params={"eventSource": "PostDetailView"},
+                )
+            )
+        else:
+            raise ValueError("Either userId, blogId or wikiId must be specified.")
 
     def fetch_supported_languages(self) -> List[str]:
         """
         Fetches a list of supported languages for the API.
-        
+
         :return: A list of supported languages.
         :rtype: List[str]
-        
+
         This function sends a GET request to the API to fetch a list of supported languages.
-        
+
         **Example usage:**
-        
+
         >>> x = client.fetch_supported_languages()
         ... print(x)
         """
-        return self.make_request(
-            method="GET",
-            url="/g/s/community-collection/supported-languages?start=0&size=100",
+        return (
+            self.request.handler(
+                "GET",
+                "/g/s/community-collection/supported-languages",
+                params={
+                    "start": 0,
+                    "size": 100,
+                },
+            )
         )["supportedLanguages"]
 
-
-    @authenticated
-    def fetch_ta_announcement(self, language: str = "en", start: int = 0, size: int = 25) -> dict:
+    @utilities.authenticated
+    def fetch_ta_announcement(
+        self,
+        language: str = "en",
+        start: int = 0,
+        size: int = 25,
+    ) -> Dict[str, Any]:
         """
         Fetches the latest announcements from the API.
 
@@ -1645,15 +1795,18 @@ class Global:
         """
         if language not in self.fetch_supported_languages():
             raise ValueError("Invalid language.")
-        
-        return self.make_request(
-            method = "GET",
-            url = f"/g/s/announcement?language={language}&start={start}&size={size}"
+        return self.request.handler(
+            "GET",
+            "/g/s/announcement",
+            params={
+                "language": language,
+                "start": start,
+                "size": size,
+            },
         )
 
-
-    @authenticated
-    def join_chat(self, chatId: str) -> ApiResponse:
+    @utilities.authenticated
+    def join_chat(self, chatId: str) -> entities.ApiResponse:
         """
         Joins the authenticated user to a chat thread.
 
@@ -1668,14 +1821,15 @@ class Global:
         **Note:** This method requires authentication. If the client is not authenticated, a `LoginRequired` exception will
         be raised.
         """
-        return ApiResponse(self.make_request(
-            method="POST",
-            url=f"/g/s/chat/thread/{chatId}/member/{self.userId}"
-            ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/g/s/chat/thread/{chatId}/member/{self.userId}",
+            )
+        )
 
-
-    @authenticated
-    def leave_chat(self, chatId: Union[str, List[str]]) -> ApiResponse:
+    @utilities.authenticated
+    def leave_chat(self, chatId: Union["Sequence[str]", str]) -> entities.ApiResponse:
         """
         Removes the authenticated user from a chat thread.
 
@@ -1690,14 +1844,21 @@ class Global:
         **Note:** This method requires authentication. If the client is not authenticated, a `LoginRequired` exception will
         be raised.
         """
-        return ApiResponse(self.make_request(
-            method="DELETE",
-            url = f"/g/s/chat/thread/leave?threadIds={','.join(chatId) if isinstance(chatId, list) else chatId}"
-            ))
+        threadIds = chatId if isinstance(chatId, str) else ",".join(chatId)
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                "/g/s/chat/thread/leave",
+                params={"threadIds": threadIds},
+            )
+        )
 
-
-    @authenticated
-    def join_community(self, community_id: int, invitationId = None) -> ApiResponse:
+    @utilities.authenticated
+    def join_community(
+        self,
+        community_id: int,
+        invitationId: Optional[str] = None,
+    ) -> entities.ApiResponse:
         """
         Joins the user to a community with the provided community ID.
 
@@ -1720,20 +1881,19 @@ class Global:
         **Note:** This function can be used to join the user to a community with the provided community ID. Once joined,
         the user can make API calls related to the community, such as posting or retrieving posts.
         """
-        data = {"timestamp": int(time() * 1000)}
+        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
         if invitationId:
             data["invitationId"] = invitationId
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/x{community_id}/s/community/join",
+                data=data,
+            )
+        )
 
-        return ApiResponse(
-            self.make_request(
-                method="POST",
-                url=f"/x{community_id}/s/community/join",
-                data = data
-        ))
-
-
-    @authenticated
-    def leave_community(self, community_id: int) -> ApiResponse:
+    @utilities.authenticated
+    def leave_community(self, community_id: int) -> entities.ApiResponse:
         """
         Leaves the user from a community with the provided community ID.
 
@@ -1754,13 +1914,15 @@ class Global:
         **Note:** This function can be used to leave the user from a community with the provided community ID. Once left,
         the user will no longer have access to the community and will not be able to make API calls related to the community.
         """
-        return ApiResponse(self.make_request(
-            method="POST",
-            url=f"/x{community_id}/s/community/leave"
-            ))
-    
+        return entities.ApiResponse(
+            self.request.handler(
+                "POST",
+                f"/x{community_id}/s/community/leave",
+                data={"timestamp": int(time.time() * 1000)},
+            )
+        )
 
-    def fetch_community(self, community_id: int) -> CCommunity:
+    def fetch_community(self, community_id: int) -> entities.CCommunity:
         """
         Fetches the community information for the community with the provided community ID.
 
@@ -1779,14 +1941,23 @@ class Global:
         information can be used to display information about the community such as the community's name, description, and
         other information.
         """
-        return CCommunity(self.make_request(
-            method="GET",
-            url=f"/g/s-x{community_id}/community/info"
-            ))
-    
+        key = str((community_id, "COMMUNITY_INFO"))
+        with entities.cache as cache:
+            response = cache.get(key)
+            if not response:
+                response = self.request.handler(
+                    "GET",
+                    f"/g/s-x{community_id}/community/info",
+                )
+                cache.set(key, response, expire=60 * 60)
+        return entities.CCommunity(response)
 
-    @authenticated
-    def joined_communities(self) -> CCommunityList:
+    @utilities.authenticated
+    def joined_communities(
+        self,
+        start: int = 0,
+        size: int = 50,
+    ) -> entities.CCommunityList:
         """
         Retrieves the list of communities that the authenticated user has joined.
 
@@ -1799,11 +1970,17 @@ class Global:
         **Note:** This method requires authentication. If the client is not authenticated, a `LoginRequired` exception will
         be raised.
         """
-        return CCommunityList(self.make_request(
-            method="GET",
-            url="/g/s/community/joined"
-            ))
-
+        return entities.CCommunityList(
+            self.request.handler(
+                "GET",
+                "/g/s/community/joined",
+                params={
+                    "v": 1,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
     def fetch_object_id(self, link: str) -> str:
         """
@@ -1824,17 +2001,19 @@ class Global:
         >>> object_id = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
         >>> print(object_id)
         """
+        key = str((link, "OBJECT_ID"))
+        with entities.cache as cache:
+            response = cache.get(key)
+            if not response:
+                response = self.request.handler(
+                    "GET",
+                    "/g/s/link-resolution",
+                    params={"q": link},
+                )
+                cache.set(key, response)
+        return entities.LinkInfo(response).objectId
 
-        KEY = str((link, "OBJECT_ID"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.make_request(
-                method = "GET",
-                url = f"/g/s/link-resolution?q={link}"
-                ))
-        return LinkInfo(self.cache.get(KEY)).objectId
-
-
-    def fetch_object_info(self, link: str) -> LinkInfo:
+    def fetch_object_info(self, link: str) -> "entities.LinkInfo":
         """
         Fetches information about an object given its link.
 
@@ -1868,16 +2047,22 @@ class Global:
         >>> object_info = client.community.fetch_object_info(link="https://aminoapps.com/p/w2Fs6H")
         >>> print(object_info.objectId)
         """
+        key = str((link, "OBJECT_INFO"))
+        with entities.cache as cache:
+            response = cache.get(key)
+            if not response:
+                response = self.request.handler(
+                    "GET",
+                    "/g/s/link-resolution",
+                    params={"q": link},
+                )
+                cache.set(key, response)
+        return entities.LinkInfo(response)
 
-        KEY = str((link, "OBJECT_INFO"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.make_request(
-                method = "GET",
-                url = f"/g/s/link-resolution?q={link}"
-                ))
-        return LinkInfo(self.cache.get(KEY))
-
-    def fetch_public_communities(self, type: str = "discover") -> CCommunityList:
+    def fetch_public_communities(
+        self,
+        type: str = "discover",
+    ) -> entities.CCommunityList:
         """
         Fetches a list of public communities.
 
@@ -1887,19 +2072,31 @@ class Global:
         :type type: str
         :return: A `CCommunityList` object containing the list of public communities.
         :rtype: CCommunityList
-        
+
         **example usage:**
-        
+
         >>> communities = client.fetch_public_communities()
         >>> for community in communities.name:
         >>>     print(community)
         """
-        return CCommunityList(self.make_request(
-            method = "GET",
-            url = f"/g/s/topic/0/feed/community?type={type}&categoryKey=recommendation&moduleId=0c56a709-1f96-474d-ae2f-4225d0e998e5"
-        ))
-    
-    def fetch_available_communities(self, start: int = 0, size: int = 25, language: str = "en") -> CCommunityList:
+        return entities.CCommunityList(
+            self.request.handler(
+                "GET",
+                f"/g/s/topic/0/feed/community",
+                params={
+                    "type": type,
+                    "categoryKey": "recommendation",
+                    "moduleId": "0c56a709-1f96-474d-ae2f-4225d0e998e5",
+                },
+            )
+        )
+
+    def fetch_available_communities(
+        self,
+        start: int = 0,
+        size: int = 25,
+        language: str = "en",
+    ) -> entities.CCommunityList:
         """
         Fetches a list of available communities.
 
@@ -1927,34 +2124,53 @@ class Global:
         >>> for name, comId in zip(community_list.name, community_list.comId):
         >>>     print(name, comId])
         """
-        return CCommunityList(self.make_request(
-            method = "GET",
-            url = f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&start={start}&size={size}&pagingType=t"
-        ))
+        return entities.CCommunityList(
+            self.request.handler(
+                "GET",
+                "/g/s/topic/0/feed/community",
+                params={
+                    "language": language,
+                    "type": "web-explore",
+                    "categoryKey": "recommendation",
+                    "start": start,
+                    "size": size,
+                    "pagingType": "t",
+                },
+            )
+        )
 
-    @authenticated
-    def unfollow(self, userId: str) -> ApiResponse:
+    @utilities.authenticated
+    def unfollow(self, userId: str) -> entities.ApiResponse:
         """
         Unfollows a user.
+
         :param userId: The ID of the user to unfollow.
         :type userId: str
         :return: An ApiResponse object containing the response data from the API.
         :rtype: ApiResponse
         This function allows the logged-in user to unfollow another user specified by their ID.
         After successful execution, the user will no longer be following the specified user.
+
         **Example usage:**
         >>> response = client.unfollow(userId="user123")
         >>> print(response.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "DELETE",
-            url = f"/g/s/user-profile/{userId}/member/{self.userId}"
-        ))
-    
-    @authenticated
-    def fetch_notifications(self, start: int = 0, size: int = 25):
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                f"/g/s/user-profile/{userId}/member/{self.userId}",
+            )
+        )
+
+    @utilities.authenticated
+    def fetch_notifications(
+        self,
+        start: int = 0,
+        size: int = 25,
+    ) -> entities.GlobalNotificationList:
         """
         Fetches the notifications for the authenticated user.
+
         :param start: The starting index of the notifications to fetch (default is 0).
         :type start: int
         :param size: The number of notifications to fetch in a single request (default is 25).
@@ -1962,31 +2178,41 @@ class Global:
         :return: A list of notifications.
         :rtype: list
         This function allows the logged-in user to fetch their notifications.
+
         **Example usage:**
         >>> notifications = client.fetch_notifications(start=0, size=25)
         >>> for notification in notifications:
         >>>     print(notification)
         """
-        return GlobalNotificationList(self.make_request(
-            method = "GET",
-            url = f"/g/s/notification?start={start}&size={size}"
-        ))
-    
-    
-    @authenticated
-    def delete_notification(self, notificationId: str) -> ApiResponse:
+        return entities.GlobalNotificationList(
+            self.request.handler(
+                "GET",
+                "/g/s/notification",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
+
+    @utilities.authenticated
+    def delete_notification(self, notificationId: str) -> entities.ApiResponse:
         """
         Deletes a notification.
+
         :param notificationId: The ID of the notification to delete.
         :type notificationId: str
         :return: An ApiResponse object containing the response data from the API.
         :rtype: ApiResponse
         This function allows the logged-in user to delete a notification.
+
         **Example usage:**
         >>> response = client.delete_notification(notificationId="notification123")
         >>> print(response.status_code)
         """
-        return ApiResponse(self.make_request(
-            method = "DELETE",
-            url = f"/g/s/notification/{notificationId}"
-        ))
+        return entities.ApiResponse(
+            self.request.handler(
+                "DELETE",
+                f"/g/s/notification/{notificationId}",
+            )
+        )

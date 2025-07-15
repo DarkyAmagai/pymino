@@ -1,14 +1,32 @@
+import contextlib
 import sys
+from typing import Dict, List, Optional, Tuple
+
+from pymino.ext import console, context
+
+__all__ = ("ChatConsole",)
+
+HELP_MESSAGE = """
+Chatroom Help:
+    - Type any message to send it to the chat.
+    - Type 'reply' to reply to a message.
+    - Type 'sticker' to send a sticker.
+    - Type 'leave' to leave the chat.
+    - Type 'exit' to return to the main menu.
+    - Type 'help' to see this message again.
+    - Type 'clear' to clear the chat.
+"""
 
 
 class ChatConsole:
-    def __init__(self, console):
+    def __init__(self, console: "console.Console") -> None:
         """
         The ChatConsole class handles chat related operations in the application.
 
         :param console: An instance of the Console class for inter-component communication.
         :type console: Console
         """
+
         self.console = console
         self.stickers = {
             1: {"Laughing emoji": "e/f09f9882"},
@@ -21,26 +39,17 @@ class ChatConsole:
             8: {"Cowboy emoji": "e/f09fa4a0"},
             9: {"Clown emoji": "e/f09fa4a1"},
             10: {"Smirk emoji": "e/f09f988f"},
-
         }
-        self.help_message = """
-Chatroom Help:
-    - Type any message to send it to the chat.
-    - Type 'reply' to reply to a message.
-    - Type 'sticker' to send a sticker.
-    - Type 'leave' to leave the chat.
-    - Type 'exit' to return to the main menu.
-    - Type 'help' to see this message again.
-    - Type 'clear' to clear the chat.
-"""
+        self.help_message = HELP_MESSAGE
+        self.replies: Dict[int, str] = {}
 
-    def join_public_chat(self):
+    def join_public_chat(self) -> None:
         """
         Handles joining of a public chat.
         """
         if not self.console.bot.community_id:
-            return self.console.on_error("You must select a community first.")
-
+            self.console.on_error("You must select a community first.")
+            return None
         self.console.print("Join Public Chat")
         self.console.print("""
     1. Join by Chat ID
@@ -48,102 +57,98 @@ Chatroom Help:
     3. Find Public Chats To Join
     4. Back
     """)
-        choice = self.console.input(">>> ")
+        back_option, choice = 4, 0
+        while choice not in range(1, back_option + 1):
+            with contextlib.suppress(ValueError):
+                choice = int(self.console.input(">>> "))
+        if choice == back_option:
+            return
         self.console.print()
 
         try:
-            if choice == "1":
-                chat_id = self.console.input("Enter chat ID: ")
-            elif choice == "2":
-                chat_link = self.console.input("Enter chat link: ")
+            if choice == 1:
+                chat_id = None
+                while not chat_id:
+                    chat_id = self.console.input("Enter chat ID: ")
+            elif choice == 2:
+                chat_link = None
+                while not chat_link:
+                    chat_link = self.console.input("Enter chat link: ")
                 chat_id = self.console.bot.community.fetch_object_id(chat_link)
-            elif choice == "3":
+            else:
                 self.console.clear()
                 self.console.print("Find Public Chats To Join")
-
-                public_chats = self.console.bot.community.fetch_public_chats(size=25)
-                for index, (chat_id, chat_title) in enumerate(zip(public_chats.chatId, public_chats.title)):
-                    self.console.print(f"{index+1}. {chat_title}({chat_id})")
-
-                self.console.print()
-                choice = self.console.input(">>> ")
-                self.console.print()
-
-                try:
-                    choice = int(choice)
-                    if not (1 <= choice <= len(public_chats.chatId)):
-                        raise ValueError
-                    chat_id = public_chats.chatId[choice-1]
-                except ValueError:
-                    self.console.print("Invalid option. Please try again.")
-                    return self.join_public_chat()
-
-            elif choice == "4":
-                return self.console.menu.display()
-
-            else:
-                self.console.print("Invalid option. Please try again.")
-                return self.join_public_chat()
-
-            self.console.bot.community.join_chat(chatId=chat_id)
+                public_chats = self.console.bot.community.fetch_public_chats(
+                    size=25
+                )
+                if not public_chats.chatId:
+                    self.console.print("Public Chats Not Found")
+                    self.console.sleep(2)
+                    return
+                for index, (chat_id, chat_title) in enumerate(
+                    zip(public_chats.chatId, public_chats.title), 1
+                ):
+                    self.console.print(f"{index}. {chat_title} ({chat_id})")
+                self.console.print(f"{back_option}. Back\n")
+                back_option, choice = len(public_chats.chatId) + 1, 0
+                while choice not in range(1, back_option + 1):
+                    with contextlib.suppress(ValueError):
+                        choice = int(self.console.input(">>> "))
+                if choice == back_option:
+                    return
+                chat_id = public_chats.chatId[choice - 1]
+            self.console.bot.community.join_chat(chat_id)
             self.console.print("Joined chat successfully.")
+        except Exception as exc:
+            self.console.print(f"Error: {exc}")
+        finally:
             self.console.sleep(2)
 
-        except Exception as e:
-            self.console.print(f"Error: {e}")
-            self.console.sleep(2)
-
-        return self.console.menu.display()
-
-    def my_chats(self):
+    def my_chats(self) -> None:
         """
         Lists the user's chats and allows them to interact with selected chat.
         """
         if not self.console.bot.community_id:
-            return self.console.on_error("You must select a community first.")
-        self.print_chats()
+            self.console.on_error("You must select a community first.")
+            return
         chat_id, chat_title = self.select_chat()
         if chat_id and chat_title:
             self.interact_with_chat(chat_id, chat_title)
-        else:
-            return self.console.menu.display()
 
-    def print_chats(self):
+    def select_chat(self) -> Tuple[Optional[str], Optional[str]]:
         """
         Prints the user's chats.
         """
         self.console.print("My Chats")
         chats = self.console.bot.community.fetch_chats()
-        for index, (chat_id, chat_title) in enumerate(zip(chats.chatId, chats.title)):
-            if chat_title is None:
-                chat_users = self.console.bot.community.fetch_chat_members(chat_id).members.nickname[:3]
-                chat_title = ", ".join(chat_users) + "[Private Chat]"
+        chat_titles: List[str] = []
+        chat_ids: List[str] = []
+        for index, (chatId, title) in enumerate(zip(chats.chatId, chats.title), 1):
+            if title is None:
+                chat_users = self.console.bot.community.fetch_chat_members(chatId)
+                title = ", ".join(chat_users.members.nickname[:3]) + " [Private Chat]"
             else:
-                chat_title = f"{chat_title}[Public Chat]"
-            self.console.print(f"{index+1}. {chat_title}({chat_id})")
+                title = f"{title} [Public Chat]"
+            self.console.print(f"{index}. {title}({chatId})")
+            chat_titles.append(title)
+            chat_ids.append(chatId)
         self.console.print("\nType 'back' to go back to the menu.\n")
-
-    def select_chat(self):
-        """
-        Allows the user to select a chat.
-
-        :return: Tuple containing chat ID and chat title, or (None, None) if back was selected.
-        :rtype: Tuple[str, str]
-        """
-        choice = self.console.input(">>> ")
-        self.console.print()
-        if choice == "back":
-            return None, None
-        try:
-            choice = int(choice)
-            chats = self.console.bot.community.fetch_chats()
-            if not (1 <= choice <= len(chats.chatId)):
-                raise ValueError
-            chat_id, chat_title = chats.chatId[choice-1], chats.title[choice-1]
-            return chat_id, chat_title
-        except ValueError:
-            self.console.print("Invalid option. Please try again.")
-            return self.select_chat()
+        # target selector
+        chat_id, chat_title = None, None
+        while not chat_id:
+            choice_raw = self.console.input(">>> ")
+            if choice_raw == "back":
+                break
+            try:
+                choice = int(choice_raw)
+            except ValueError:
+                self.console.print("Invalid option. Please try again.")
+                continue
+            if choice not in range(1, len(chat_ids) + 1):
+                self.console.print("Invalid option. Please try again.")
+                continue
+            chat_id, chat_title = chat_ids[choice - 1], chat_titles[choice - 1]
+        return chat_id, chat_title
 
     def interact_with_chat(self, chat_id: str, chat_title: str):
         """
@@ -155,108 +160,85 @@ Chatroom Help:
         :type chat_title: str
         :return: None
         """
-        self.replies = {}
         self.console.clear()
         self.console.print(f"Chat: {chat_title}")
-
         self.initiate_message_listener(chat_id)
         self.console.print(self.help_message)
-
         while self.handle_chat_interaction(chat_id, chat_title):
             self.console.sleep(2)
-
         self.console.print("\nReturning to Main Menu.\n")
         self.console.sleep(2)
-        return self.console.menu.display()
 
     def initiate_message_listener(self, chat_id: str):
-        """
-        Initiates a message listener for the specified chat.
-
-        :param chat_id: ID of the chat.
-        :type chat_id: str
-        :return: None
-        """
         counter = 0
 
-        @self.console.bot._console_on_text_message()
-        def on_message(ctx):
+        @self.console.bot._console_on_text_message()  # type: ignore
+        def _(ctx: "context.Context"):
             nonlocal counter
             if ctx.chatId == chat_id:
                 self.console.print()
                 self.replies[counter] = ctx.message.messageId
-                self.console.print(f"[{counter}] {ctx.author.nickname}: {ctx.message.content}")
+                self.console.print(
+                    f"[{counter}] {ctx.author.nickname}: {ctx.message.content}"
+                )
                 counter += 1
-                sys.stdout.write(" "*self.console.indent_size + ">>> ")
+                sys.stdout.write(" " * self.console.indent_size + ">>> ")
                 sys.stdout.flush()
 
-    def handle_chat_interaction(self, chat_id: str, chat_title: str = None) -> bool:
-        """
-        Handles user input for interacting with the chat.
-
-        :param chat_id: ID of the chat.
-        :type chat_id: str
-        :return: True if the interaction should continue, False otherwise.
-        :rtype: bool
-        """
+    def handle_chat_interaction(
+        self, chat_id: str, chat_title: Optional[str] = None
+    ) -> bool:
+        continue_interactions = True
         try:
             message = self.console.input(">>> ")
             if message in {"exit", "quit", ""}:
                 self.handle_leave(None)
-                return False
+                continue_interactions = False
             elif message == "reply":
-                return self.handle_reply(chat_id)
+                self.handle_reply(chat_id)
             elif message == "sticker":
-                return self.handle_sticker(chat_id)
+                self.handle_sticker(chat_id)
             elif message == "leave":
-                return self.handle_leave(chat_id)
+                self.handle_leave(chat_id)
             elif message == "help":
                 self.console.print(self.help_message)
-                return True
             elif message == "clear":
                 self.console.clear()
                 self.console.print(f"Chat: {chat_title}")
-                return True
             else:
-                self.console.bot.community.send_message(chatId=chat_id, content=message)
+                self.console.bot.community.send_message(
+                    chatId=chat_id, content=message
+                )
                 self.console.print(f"You: {message}")
-                return True
-        except (EOFError):
+        except EOFError:
             self.console.print("\n")
             sys.stdout.write(">>> ")
             sys.stdout.flush()
-            return True
+        return continue_interactions
 
-    def handle_reply(self, chat_id: str) -> bool:
-        """
-        Handles replying to a message in the chat.
-
-        :param chat_id: ID of the chat.
-        :type chat_id: str
-        :return: True if the interaction should continue, False otherwise.
-        :rtype: bool
-        """
+    def handle_reply(self, chat_id: str) -> None:
         self.console.print("Enter the message ID of the message you want to reply to.")
-        message_id = self.console.input(">>> ")
-        if message_id in {"exit", "quit", ""}:
-            return True
+        reply_index_raw = self.console.input(">>> ")
+        if reply_index_raw in {"exit", "quit", ""}:
+            return
         try:
-            message_id = int(message_id)
+            reply_index = int(reply_index_raw)
         except ValueError:
             self.console.print("Invalid message ID. Please try again.")
-            return True
-        if message_id not in self.replies:
-            self.console.print("Invalid message ID. Please try again.")
-            return True
+            return
+        if reply_index not in self.replies:
+            self.console.print("Invalid Reply Index. Please try again.")
+            return
         self.console.print("Enter your reply.")
         reply = self.console.input(">>> ")
         if reply in {"exit", "quit", ""}:
-            return True
-        self.console.bot.community.reply_message(chatId=chat_id, content=reply, messageId=self.replies[message_id])
+            return
+        self.console.bot.community.reply_message(
+            chatId=chat_id, content=reply, messageId=self.replies[reply_index]
+        )
         self.console.print(f"You: {reply}")
-        return True
 
-    def handle_sticker(self, chat_id: str) -> bool:
+    def handle_sticker(self, chat_id: str) -> None:
         """
         Handles sending a sticker in the chat.
 
@@ -265,28 +247,37 @@ Chatroom Help:
         :return: True if the interaction should continue, False otherwise.
         :rtype: bool
         """
-        
+        if not self.stickers:
+            self.console.print(f"Empty pymino sticker")
+            return
+        back_option = len(self.stickers) + 1
         for key, value in self.stickers.items():
-            self.console.print(f"[{key}] {list(value.keys())[0]}")
-
+            self.console.print(f"[{key}] {list(value)[0]}")
+        self.console.print(f"[{back_option}] Cancell sending")
         self.console.print("Enter the key of the sticker you want to send.")
         self.console.print("Example: >>> 1")
-
-
-        sticker_id = self.console.input(">>> ")
-        if sticker_id in {"exit", "quit", ""}:
-            return True
-        
+        while True:
+            raw_choice = self.console.input(">>> ")
+            try:
+                choice = int(raw_choice)
+            except ValueError:
+                if raw_choice in {"exit", "quit", ""}:
+                    return
+                self.console.print("Invalid Option. Please try again.")
+                continue
+            if choice not in range(1, back_option + 1):
+                self.console.print("Invalid Option. Please try again.")
+                continue
+            break
+        _, sticker_id = self.stickers[choice]
         try:
-            self.console.bot.community.send_sticker(chatId=chat_id, stickerId=self.stickers[int(sticker_id)][list(self.stickers[int(sticker_id)].keys())[0]])
-            self.console.print(f"You: {sticker_id}")
-            return True
+            self.console.bot.community.send_sticker(chat_id, stickerId=sticker_id)
         except Exception:
-            self.console.print("Invalid sticker ID. Please try again.")
-            return True
-            
+            pass
+        else:
+            self.console.print(f"You: {sticker_id}")
 
-    def handle_leave(self, chat_id: str) -> bool:
+    def handle_leave(self, chat_id: Optional[str]) -> None:
         """
         Handles leaving the chat.
 
@@ -297,9 +288,7 @@ Chatroom Help:
         """
         if chat_id:
             self.console.bot.community.leave_chat(chat_id)
-            
         self.replies.clear()
-        del self.console.bot._events["_console_text_message"]
+        self.console.bot._events.pop("_console_text_message", None)  # type: ignore
         self.console.print("Left chat successfully.")
         self.console.sleep(2)
-        return False

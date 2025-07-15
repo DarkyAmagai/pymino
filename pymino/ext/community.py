@@ -1,17 +1,14 @@
-from uuid import uuid4
-from io import BytesIO
-from requests import get
-from random import randint
-from diskcache import Cache
-from base64 import b64encode
-from time import time, timezone
-from typing import BinaryIO, Callable, List, Optional, Union, TypeVar, Any
-from .entities import BanTypes
+import base64
+import random
+import time
+import uuid
+from collections.abc import Sequence
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
+from pymino.ext import entities, global_client
 
-from .entities import *
+__all__ = ("Community",)
 
-F = TypeVar("F", bound=Callable[..., Any])
 
 class Community:
     """
@@ -19,10 +16,7 @@ class Community:
 
     **Parameters:**
 
-    - `bot` or `client` (`Bot` or `Client`): The client instance that this object belongs to.
-    - `session` (`requests.Session`): The session object used to make requests.
-    - `community_id` (`int`, optional): The community ID to use for the methods. If not provided, the default community ID
-      set in the `Community` instance will be used.
+    - `bot` (`Bot` or `Client`): The client instance that this object belongs to.
 
     ------------------------
     ## NotLoggedIn Error
@@ -56,7 +50,7 @@ class Community:
     To get the ID of an object (e.g. a chat, blog, or user), use the `fetch_object_id` method.
 
     ```
-    # Get object ID (chat, blog, user) from link 
+    # Get object ID (chat, blog, user) from link
 
     client = Client()
 
@@ -94,67 +88,31 @@ class Community:
         comId=123456789 # We need to pass the community ID because we didn't set it in the `Community` instance.
     )
     ```
-
     """
 
-    def __init__(self, bot, session, community_id: Union[str, int] = None) -> None:
-        self.bot = bot
-        self.session = session
-        self.community_id: Union[str, int] = community_id
-        self.userId: Optional[str] = None
-        if self.userId is None: return
+    __slots__ = ("bot",)
 
+    def __init__(self, bot: global_client.Global) -> None:
+        self.bot = bot
 
     @property
-    def cache(self) -> Cache:
-        """
-        The cache object used by the client.
-        """
-        return self.bot.cache
+    def userId(self) -> str:
+        if not self.bot.userId:
+            raise entities.NotLoggedIn()
+        return self.bot.userId
 
-    def community(func: F) -> F:
-        """
-        A decorator that ensures the user is logged in and a community ID is present before running the decorated function.
+    @property
+    def community_id(self) -> int:
+        if not self.bot.community_id:
+            raise entities.MissingCommunityId()
+        return self.bot.community_id
 
-        :param func: The function to be decorated.
-        :type func: Callable
-        :raises NotLoggedIn: If the user is not logged in.
-        :raises MissingCommunityId: If the community ID is missing.
-        :return: The result of calling the decorated function.
-        :rtype: Any
-
-        Before using this decorator, you must initialize a `Community` instance with either a `community_id` or by setting it 
-        after fetching the community ID with `fetch_community_id` method.
-
-        **Example usage:**
-
-        >>> client = Bot()
-        >>> client.fetch_community_id(community_link="https://aminoapps.com/c/your-community-link")
-        >>> client.community_id = 123456789
-
-        >>> @community
-        >>> def my_function(self, comId: str):
-        >>>     # Function code
-        """
-        def community_func(*args, **kwargs) -> Any:
-            
-            if not args[0].userId:
-                raise NotLoggedIn()
-            if not any([args[0].community_id, kwargs.get("comId")]):
-                raise MissingCommunityId()
-            return func(*args, **kwargs)
-
-        community_func.__annotations__ = func.__annotations__
-        return community_func
-
-
-    @community
-    def invite_code(self, comId: Union[str, int] = None) -> CommunityInvitation:
+    def invite_code(self, comId: Optional[int] = None) -> entities.CommunityInvitation:
         """
         Generates an invite code for the community.
 
         :param comId: The ID of the community, defaults to None.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :raises NotLoggedIn: If the user is not logged in.
         :raises MissingCommunityId: If the community ID is missing.
         :return: A CommunityInvitation object containing the invite code information.
@@ -180,21 +138,25 @@ class Community:
         >>> invite_code = client.community.invite_code(comId=123456)
         >>> print(invite_code.inviteCode)
         """
-        return CommunityInvitation(self.session.handler(
-            method = "POST",
-            url = f"/g/s-x{self.community_id if comId is None else comId}/community/invitation",
-            data = {"duration": 0, "force": True, "timestamp": int(time() * 1000)}
-            ))
+        return entities.CommunityInvitation(
+            self.bot.request.handler(
+                "POST",
+                f"/g/s-x{comId or self.community_id}/community/invitation",
+                data={
+                    "duration": 0,
+                    "force": True,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
     def fetch_object(
         self,
         object_id: str,
-        object_type: ObjectTypes = ObjectTypes.USER,
-        comId: Union[str, int] = None,
-        **kwargs
-        ) -> LinkInfo:
+        object_type: entities.ObjectTypes = entities.ObjectTypes.USER,
+        comId: Optional[int] = None,
+        **kwargs: Any,
+    ) -> "entities.LinkInfo":
         """
         Fetches the link information of an object given its ID.
 
@@ -203,7 +165,7 @@ class Community:
         :param object_type: The type of the object, defaults to ObjectTypes.USER.
         :type object_type: ObjectTypes, optional
         :param comId: The ID of the community, defaults to None.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :raises NotLoggedIn: If the user is not logged in.
         :raises MissingCommunityId: If the community ID is missing.
         :return: A LinkInfo object containing the link information of the object.
@@ -241,24 +203,28 @@ class Community:
         """
         if "objectType" in kwargs:
             object_type = kwargs["objectType"]
-            print("Warning: The 'objectType' parameter is deprecated. Please use 'object_type' instead.")
+            print(
+                "Warning: The 'objectType' parameter is deprecated. Please use 'object_type' instead."
+            )
 
-        KEY = str((object_id, self.community_id if comId is None else comId))
+        key = str((object_id, comId or self.community_id))
 
-        with self.cache as cache:
-            if not cache.get(KEY):
-                cache.set(KEY, self.session.handler(
-                    method = "POST",
-                    url = f"/g/s-x{self.community_id if comId is None else comId}/link-resolution",
-                    data = {
-                        "objectId": object_id,
-                        "targetCode": 1,
-                        "objectType": object_type.value if isinstance(object_type, ObjectTypes) else object_type,
-                        "timestamp": int(time() * 1000)
-                        }
-                    ))
-            return LinkInfo(cache.get(KEY))
-
+        with entities.cache as cache:
+            if not cache.get(key):
+                cache.set(
+                    key,
+                    self.bot.request.handler(
+                        "POST",
+                        f"/g/s-x{comId or self.community_id}/link-resolution",
+                        data={
+                            "objectId": object_id,
+                            "targetCode": 1,
+                            "objectType": object_type,
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    ),
+                )
+            return entities.LinkInfo(cache.get(key))
 
     def fetch_object_id(self, link: str) -> str:
         """
@@ -279,18 +245,20 @@ class Community:
         >>> object_id = client.community.fetch_object_id(link="https://aminoapps.com/p/w2Fs6H")
         >>> print(object_id)
         """
+        key = str((link, "OBJECT_ID"))
+        with entities.cache as cache:
+            if not cache.get(key):
+                cache.set(
+                    key,
+                    self.bot.request.handler(
+                        "GET",
+                        f"/g/s/link-resolution",
+                        params={"q": link},
+                    ),
+                )
+            return entities.LinkInfo(cache.get(key)).objectId
 
-        KEY = str((link, "OBJECT_ID"))
-        with self.cache as cache:
-            if not cache.get(KEY):
-                cache.set(KEY, self.session.handler(
-                    method = "GET",
-                    url = f"/g/s/link-resolution?q={link}"
-                    ))
-            return LinkInfo(cache.get(KEY)).objectId
-
-
-    def fetch_object_info(self, link: str) -> LinkInfo:
+    def fetch_object_info(self, link: str) -> "entities.LinkInfo":
         """
         Fetches information about an object given its link.
 
@@ -324,23 +292,25 @@ class Community:
         >>> object_info = client.community.fetch_object_info(link="https://aminoapps.com/p/w2Fs6H")
         >>> print(object_info.objectId)
         """
+        key = str((link, "OBJECT_INFO"))
+        with entities.cache as cache:
+            if not cache.get(key):
+                cache.set(
+                    key,
+                    self.bot.request.handler(
+                        "GET",
+                        f"/g/s/link-resolution",
+                        params={"q": link},
+                    ),
+                )
+            return entities.LinkInfo(cache.get(key))
 
-        KEY = str((link, "OBJECT_INFO"))
-        with self.cache as cache:
-            if not cache.get(KEY):
-                cache.set(KEY, self.session.handler(
-                    method = "GET",
-                    url = f"/g/s/link-resolution?q={link}"
-                    ))
-            return LinkInfo(cache.get(KEY))
-
-
-    def fetch_community(self, comId: Union[str, int] = None) -> CCommunity:
+    def fetch_community(self, comId: Optional[int] = None) -> entities.CCommunity:
         """
         Fetches information about a community given its ID.
 
         :param comId: The ID of the community to fetch. If None, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :raises InvalidCommunity: If the community does not exist.
         :return: A CCommunity object containing information about the community.
@@ -383,20 +353,26 @@ class Community:
         >>> community_info = client.community.fetch_community(comId="123456")
         >>> print(community_info.name)
         """
+        key = str((comId, "COMMUNITY_INFO"))
+        with entities.cache as cache:
+            if not cache.get(key):
+                cache.set(
+                    key,
+                    self.bot.request.handler(
+                        "GET",
+                        f"/g/s-x{comId or self.community_id}/community/info",
+                    ),
+                )
+            return entities.CCommunity(cache.get(key))
 
-        KEY = str((comId, "COMMUNITY_INFO"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, self.session.handler(
-                method = "GET",
-                url = f"/g/s-x{self.community_id if comId is None else comId}/community/info"
-                ))
-        return CCommunity(self.cache.get(KEY))
-
-
-    def joined_communities(self, start: int = 0, size: str = 50) -> CCommunityList:
+    def joined_communities(
+        self,
+        start: int = 0,
+        size: int = 50,
+    ) -> entities.CCommunityList:
         """
         Fetches a list of communities the user has joined.
-        
+
         :param start: The index to start fetching from. Defaults to 0.
         :type start: int, optional
         :param size: The number of communities to fetch. Defaults to 50.
@@ -404,11 +380,11 @@ class Community:
         :raises NotLoggedIn: If the user is not logged in.
         :return: A CCommunityList object containing the list of communities.
         :rtype: CCommunityList
-        
+
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
-        
+
         `CCommunityList`:
-        
+
         - `data`: The raw response data from the API.
         - `keywords`: The keywords of the community.
         - `activeInfo`: The active info of the community.
@@ -435,25 +411,30 @@ class Community:
         - `ndcId`: The NDC ID of the community.
         - `comId`: The ID of the community.
         - `icon`: The icon of the community.
-        
+
         **Example usage:**
-        
+
         >>> community_list = client.community.joined_communities()
         >>> print(community_list.name)
         """
-        return CCommunityList(self.session.handler(
-            method = "GET",
-            url = f"/g/s/community/joined?v=1&start={start}&size={size}"
-            ))
+        return entities.CCommunityList(
+            self.bot.request.handler(
+                "GET",
+                f"/g/s/community/joined",
+                params={
+                    "v": 1,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def join_community(self, comId: Union[str, int] = None) -> ApiResponse:
+    def join_community(self, comId: Optional[int] = None) -> entities.ApiResponse:
         """
         Joins the current or specified community.
 
         :param comId: The ID of the community to join. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -477,13 +458,15 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Joined community successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/community/join", 
-            data={"timestamp": int(time() * 1000)}
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/community/join",
+                data={"timestamp": int(time.time() * 1000)},
+            )
+        )
 
-
-    def fetch_invitationId(self, invite_code: str, **kwargs) -> str:
+    def fetch_invitationId(self, invite_code: str) -> str:
         """
         Fetches the invitation ID for a given invite code.
 
@@ -503,26 +486,27 @@ class Community:
         >>> invitation_id = client.fetch_invitationId(invite_code="ABCD1234")
         >>> print(invitation_id)
         """
-        if "inviteCode" in kwargs: #TODO: Remove this in the near future.
-            invite_code = kwargs["inviteCode"]
-            print("The 'inviteCode' parameter has been deprecated. Please use 'invite_code' instead.")
+        return entities.InvitationId(
+            self.bot.request.handler(
+                "GET",
+                f"/g/s/community/link-identify",
+                params={"q": invite_code},
+                is_login_required=False,
+            )
+        ).invitationId
 
-        return InvitationId(self.session.handler(
-            method = "GET",
-            url = f"/g/s/community/link-identify?q={invite_code}",
-            is_login_required = False
-            )).invitationId
-
-
-    @community
-    def join_community_by_code(self, invite_code: str, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
+    def join_community_by_code(
+        self,
+        invite_code: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Joins a community using the invite code.
 
         :param invite_code: The invite code of the community.
         :type invite_code: str
         :param comId: The ID of the community to join. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -546,27 +530,23 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Joined community successfully!")
         """
-        if "inviteCode" in kwargs: #TODO: Remove this in the near future.
-            invite_code = kwargs["inviteCode"]
-            print("The 'inviteCode' parameter has been deprecated. Please use 'invite_code' instead.")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/community/join",
+                data={
+                    "invitationId": self.fetch_invitationId(invite_code=invite_code),
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/join",
-            data = {
-                "invitationId": self.fetch_invitationId(invite_code=invite_code),
-                "timestamp": int(time() * 1000)
-                }
-            ))
-
-
-    @community
-    def leave_community(self, comId: Union[str, int] = None) -> ApiResponse:
+    def leave_community(self, comId: Optional[int] = None) -> entities.ApiResponse:
         """
         Leaves the current or specified community.
 
         :param comId: The ID of the community to leave. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -590,22 +570,26 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Left community successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/leave", 
-            data={"timestamp": int(time() * 1000)}
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/community/leave",
+                data={"timestamp": int(time.time() * 1000)},
+            )
+        )
 
-
-    @community
-    def request_join(self, message: str, comId: Union[str, int] = None) -> ApiResponse:
+    def request_join(
+        self,
+        message: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sends a membership request to join the current or specified community.
 
         :param message: The message to include in the membership request.
         :type message: str
         :param comId: The ID of the community to request membership to. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -629,15 +613,23 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Membership request sent successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/membership-request", 
-            data={"message": message, "timestamp": int(time() * 1000)}
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/community/membership-request",
+                data={
+                    "message": message,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def flag_community(self, reason: str, flagType: FlagTypes = FlagTypes.OFFTOPIC, comId: Union[str, int] = None) -> ApiResponse:
+    def flag_community(
+        self,
+        reason: str,
+        flagType: entities.FlagTypes = entities.FlagTypes.OFFTOPIC,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Flags the current or specified community with the given reason and flag type.
 
@@ -646,7 +638,7 @@ class Community:
         :param flagType: The flag type to use. Must be a value from the FlagTypes enum.
         :type flagType: FlagTypes
         :param comId: The ID of the community to flag. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -681,29 +673,34 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Community flagged successfully!")
         """
-        return ApiResponse(
-            self.session.handler(
-            method="POST",
-            url=f"/x{comId or self.community_id}/s/flag", 
-            data={
-            "parentId": "",
-            "parentType": -1,
-            "objectId": f"x{comId or self.community_id}",
-            "objectType": 16,
-            "flagType": flagType.value if isinstance(flagType, FlagTypes) else flagType,
-            "message": reason,
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/flag",
+                data={
+                    "parentId": "",
+                    "parentType": -1,
+                    "objectId": f"x{comId or self.community_id}",
+                    "objectType": 16,
+                    "flagType": flagType,
+                    "message": reason,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    @community
-    def check_in(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> CheckIn:
+    def check_in(
+        self,
+        timezone: Optional[int] = -300,
+        comId: Optional[int] = None,
+    ) -> entities.CheckIn:
         """
         Performs a check-in for the current or specified community.
 
         :param timezone: The timezone offset in minutes. Default is -300 (Eastern Time).
         :type timezone: Optional[int]
         :param comId: The ID of the community to check-in to. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A CheckIn object containing the check-in data.
         :rtype: CheckIn
@@ -728,22 +725,29 @@ class Community:
         >>> if check_in_data.hasCheckInToday:
         ...     print("Check-in successful!")
         """
-        return CheckIn(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/check-in",
-            data={"timezone": timezone, "timestamp": int(time() * 1000)}
-            ))
+        return entities.CheckIn(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/check-in",
+                data={
+                    "timezone": timezone,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def play_lottery(self, timezone: Optional[int] = -300, comId: Union[str, int] = None) -> ApiResponse:
+    def play_lottery(
+        self,
+        timezone: int = -300,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Plays the lottery for the current or specified community.
 
         :param timezone: The timezone offset in minutes. Default is -300 (Eastern Time).
-        :type timezone: Optional[int]
+        :type timezone: int, optional
         :param comId: The ID of the community to play the lottery in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -767,27 +771,29 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Lottery played successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/check-in/lottery",
-            data={"timezone": timezone, "timestamp": int(time() * 1000)}
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/check-in/lottery",
+                data={
+                    "timezone": timezone,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    
-    @community
     def online_status(
         self,
-        onlineStatus: OnlineTypes = OnlineTypes.ONLINE,
-        comId: Union[str, int] = None,
-        **kwargs
-        ) -> ApiResponse:
+        onlineStatus: entities.OnlineTypes = entities.OnlineTypes.ONLINE,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sets the online status of the user in the current or specified community.
 
         :param onlineStatus: The online status to set. Default is OnlineTypes.ONLINE.
         :type onlineStatus: OnlineTypes
         :param comId: The ID of the community to set the online status in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the API response data.
         :rtype: ApiResponse
@@ -811,24 +817,23 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Online status set successfully!")
         """
-        if "status" in kwargs: #TODO: Remove in the near future.
-            onlineStatus = kwargs["status"]
-            print("The 'status' parameter is deprecated. Please use 'onlineStatus' instead.")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{self.userId}/online-status",
+                data={
+                    "status": onlineStatus,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}/online-status",
-            data={"status": onlineStatus.value, "timestamp": int(time() * 1000)}
-            ))
-
-
-    @community
-    def fetch_new_user_coupon(self, comId: Union[str, int] = None) -> Coupon:
+    def fetch_new_user_coupon(self, comId: Optional[int] = None) -> entities.Coupon:
         """
         Fetches the new user coupon for the current or specified community.
 
         :param comId: The ID of the community to fetch the new user coupon from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A Coupon object containing information about the new user coupon.
         :rtype: Coupon
@@ -856,21 +861,25 @@ class Community:
         >>> new_user_coupon = client.community.fetch_new_user_coupon()
         >>> print(new_user_coupon.title)
         """
-        return Coupon(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/coupon/new-user-coupon"
-            ))
+        return entities.Coupon(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/coupon/new-user-coupon",
+            )
+        )
 
-
-    @community
-    def fetch_notifications(self, size: Optional[int] = 25, comId: Union[str, int] = None) -> NotificationList:
+    def fetch_notifications(
+        self,
+        size: Optional[int] = 25,
+        comId: Optional[int] = None,
+    ) -> entities.NotificationList:
         """
         Fetches a list of notifications for the current or specified community.
 
         :param size: The number of notifications to fetch. Defaults to 25.
         :type size: Optional[int]
         :param comId: The ID of the community to fetch the notifications from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A NotificationList object containing the list of notifications.
         :rtype: NotificationList
@@ -902,19 +911,23 @@ class Community:
         >>> notifications = client.community.fetch_notifications(size=10)
         >>> listOfOfObjectIds = notifications.objectId
         """
-        return NotificationList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/notification?pagingType=t&size={size}"
-            ))
-    
-    
-    @community
-    def clear_notifications(self, comId: Union[str, int] = None) -> ApiResponse:
+        return entities.NotificationList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/notification",
+                params={
+                    "pagingType": "t",
+                    "size": size,
+                },
+            )
+        )
+
+    def clear_notifications(self, comId: Optional[int] = None) -> entities.ApiResponse:
         """
         Clears all notifications for the current or specified community.
 
         :param comId: The ID of the community to clear the notifications for. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: An ApiResponse object containing the status of the request.
         :rtype: ApiResponse
@@ -936,21 +949,25 @@ class Community:
         >>> if api_response.statuscode == 0:
         ...     print("Notifications cleared successfully!")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/notification"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/notification",
+            )
+        )
 
-
-    @community
-    def fetch_user(self, userId: str, comId: Union[str, int] = None) -> UserProfile:
+    def fetch_user(
+        self,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Fetches the user profile of the specified user in the current or specified community.
 
         :param userId: The ID of the user to fetch the profile for.
         :type userId: str
         :param comId: The ID of the community to fetch the user profile from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `UserProfile` object containing information about the user's profile.
         :rtype: UserProfile
@@ -1003,24 +1020,23 @@ class Community:
         >>> print(user_profile.nickname)
         'John Doe'
         """
-        return UserProfile(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}"
-            ))
+        return entities.UserProfile(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}",
+            )
+        )
 
-
-    @community
     def fetch_users(
         self,
-        userType: UserTypes = UserTypes.RECENT,
+        userType: entities.UserTypes = entities.UserTypes.RECENT,
         start: Optional[int] = 0,
         size: Optional[int] = 25,
-        comId: Union[str, int] = None,
-        **kwargs
-    ) -> UserProfileList:
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Fetches a list of users in the current or specified community based on the specified user type.
-        
+
         :param userType: The type of users to fetch. Defaults to `UserTypes.RECENT`.
         :type userType: UserTypes
         :param start: The starting point to fetch users from. Defaults to `0`.
@@ -1028,7 +1044,7 @@ class Community:
         :param size: The amount of users to fetch. Defaults to `25`.
         :type size: Optional[int]
         :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `UserProfileList` object containing information about the users.
         :rtype: UserProfileList
@@ -1089,18 +1105,24 @@ class Community:
         >>> print(user_profiles[0].nickname) # Prints the nickname of the first user in the list.
         'John Doe'
         """
-        if "type" in kwargs: #TODO: Get rid of this in the near future.
-            userType = kwargs["type"]
-            print("WARNING: The 'type' parameter is deprecated. Please use 'userType' instead.")
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/user-profile",
+                params={
+                    "type": userType,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile?type={userType.value if isinstance(userType, UserTypes) else userType}&start={start}&size={size}"
-            ))
-
-
-    @community
-    def fetch_online_users(self, start: Optional[int] = 0, size: Optional[int] = 25, comId: Union[str, int] = None) -> UserProfileList:
+    def fetch_online_users(
+        self,
+        start: Optional[int] = 0,
+        size: Optional[int] = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Fetches a list of online users in the current or specified community.
 
@@ -1109,7 +1131,7 @@ class Community:
         :param size: The amount of users to fetch. Defaults to `25`.
         :type size: Optional[int]
         :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `UserProfileList` object containing information about the online users.
         :rtype: UserProfileList
@@ -1162,14 +1184,26 @@ class Community:
         >>> print(online_users[0].nickname) # Prints the nickname of the first user in the list.
         'John Doe'
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/live-layer?topic=ndtopic:x{self.community_id if comId is None else comId}:online-members&start={start}&size={size}"
-            ))
+        comId = comId or self.community_id
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId}/s/live-layer",
+                params={
+                    "topic": f"ndtopic:x{comId}:online-members",
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_followers(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+    def fetch_followers(
+        self,
+        userId: str,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Fetches a list of followers for a specified user in the current or specified community.
 
@@ -1180,7 +1214,7 @@ class Community:
         :param size: The amount of users to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `UserProfileList` object containing information about the followers.
         :rtype: UserProfileList
@@ -1235,14 +1269,24 @@ class Community:
         >>> print(followers.uid) # Prints all the user IDs in the list.
         ['0000-000000-000000-0000', '0000-000000-000000-0001', '0000-000000-000000-0002']
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member?start={start}&size={size}"
-            ))
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/member",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_following(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+    def fetch_following(
+        self,
+        userId: str,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Fetches a list of users that the specified user is following in the current or specified community.
 
@@ -1253,7 +1297,7 @@ class Community:
         :param size: The amount of users to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the users from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: int, optional
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `UserProfileList` object containing information about the following users.
         :rtype: UserProfileList
@@ -1308,21 +1352,29 @@ class Community:
         >>> print(following.uid) # Prints all the user IDs in the list.
         ['0000-000000-000000-0000', '0000-000000-000000-0001', '0000-000000-000000-0002']
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/joined?start={start}&size={size}"
-            ))
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/joined",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_chat(self, chatId: str, comId: Union[str, int] = None) -> ChatThread:
+    def fetch_chat(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ChatThread:
         """
         Fetches the chat thread with the specified ID in the current or specified community.
 
         :param chatId: The ID of the chat thread to fetch.
         :type chatId: str
         :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `ChatThread` object containing information about the chat thread.
         :rtype: ChatThread
@@ -1364,21 +1416,26 @@ class Community:
         >>> print(chat_thread.title) # Prints the title of the chat thread.
         'My Chat Thread'
         """
-        return ChatThread(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
-            ))
+        return entities.ChatThread(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}",
+            )
+        )
 
-    
-    @community
-    def fetch_chat_mods(self, chatId: str, comId: Union[str, int] = None, moderators: Optional[str] = "all") -> List[str]:
+    def fetch_chat_mods(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+        moderators: Literal["all", "co-hosts", "host"] = "all",
+    ) -> List[str]:
         """
         Fetches a list of moderators for a specified chat thread in the current or specified community.
 
         :param chatId: The ID of the chat to fetch the moderators for.
         :type chatId: str
         :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :param moderators: The type of moderators to fetch. Defaults to "all".
             - "all": Returns all moderators of the chat.
             - "co-hosts": Returns only the co-hosts of the chat.
@@ -1388,62 +1445,66 @@ class Community:
         :return: A list of moderator user IDs.
         :rtype: List[str]
         """
-        response: ChatThread = self.fetch_chat(chatId=chatId, comId=comId)
-
+        response = self.fetch_chat(chatId=chatId, comId=comId)
         return {
             "all": list(response.extensions.coHosts) + [response.host_user_id],
             "co-hosts": list(response.extensions.coHosts),
-            "host": [response.host_user_id]
-            }.get(moderators, "all")
+            "host": [response.host_user_id],
+        }[moderators]
 
-
-    @community
-    def fetch_chat_moderators(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
+    def fetch_chat_moderators(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> List[str]:
         """
         Fetches a list of all moderators for a specified chat thread in the current or specified community.
 
         :param chatId: The ID of the chat to fetch the moderators for.
         :type chatId: str
         :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A list of moderator user IDs.
         :rtype: List[str]
         """
         return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="all")
 
-
-    @community
-    def fetch_chat_co_hosts(self, chatId: str, comId: Union[str, int] = None) -> List[str]:
+    def fetch_chat_co_hosts(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> List[str]:
         """
         Fetches a list of co-hosts for a specified chat thread in the current or specified community.
 
         :param chatId: The ID of the chat to fetch the co-hosts for.
         :type chatId: str
         :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A list of co-host user IDs.
         :rtype: List[str]
         """
         return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="co-hosts")
 
-
-    @community
-    def fetch_chat_host(self, chatId: str, comId: Union[str, int] = None) -> str:
+    def fetch_chat_host(self, chatId: str, comId: Optional[int] = None) -> str:
         """
         Fetches the host of a specified chat thread in the current or specified community.
 
         :param chatId: The ID of the chat to fetch the host for.
         :type chatId: str
         :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: The user ID of the chat host.
         :rtype: str
         """
         return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="host")[0]
 
-
-    @community
-    def fetch_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ChatThreadList:
+    def fetch_chats(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.ChatThreadList:
         """
         Fetches a list of chat threads in the current or specified community that the user has joined.
 
@@ -1452,7 +1513,7 @@ class Community:
         :param size: The amount of chat threads to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `ChatThreadList` object containing information about the chat threads.
         :rtype: ChatThreadList
@@ -1501,14 +1562,24 @@ class Community:
         'My Chat Thread'
         'My Other Chat Thread'
         """
-        return ChatThreadList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=joined-me&start={start}&size={size}"
-            ))
+        return entities.ChatThreadList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread",
+                params={
+                    "type": "joined-me",
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_live_chats(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> ChatThreadList:
+    def fetch_live_chats(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.ChatThreadList:
         """
         Fetches a list of live chat threads in the current or specified community that are publicly visible.
 
@@ -1517,7 +1588,7 @@ class Community:
         :param size: The amount of chat threads to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `ChatThreadList` object containing information about the live chat threads.
         :rtype: ChatThreadList
@@ -1566,21 +1637,24 @@ class Community:
         'My Live Chat Thread'
         'My Other Live Chat Thread'
         """
-        return ChatThreadList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/live-layer/public-live-chats?start={start}&size={size}"
-            ))
+        return entities.ChatThreadList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/live-layer/public-live-chats",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
     def fetch_public_chats(
         self,
-        chatType: ChatTypes = ChatTypes.RECOMMENDED,
+        chatType: entities.ChatTypes = entities.ChatTypes.RECOMMENDED,
         start: int = 0,
         size: int = 25,
-        comId: Union[str, int] = None,
-        **kwargs
-        ) -> ChatThreadList:
+        comId: Optional[int] = None,
+    ) -> entities.ChatThreadList:
         """
         Fetches a list of public chat threads in the current or specified community.
 
@@ -1591,7 +1665,7 @@ class Community:
         :param size: The amount of chat threads to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the chat threads from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `ChatThreadList` object containing information about the public chat threads.
         :rtype: ChatThreadList
@@ -1646,18 +1720,26 @@ class Community:
         'My Public Chat Thread'
         'My Other Public Chat Thread'
         """
-        if "type" in kwargs: #TODO Remove this in the near future.
-            chatType = kwargs["type"]
-            print("WARNING: The `type` parameter is deprecated. Please use `chatType` instead.")
+        return entities.ChatThreadList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread",
+                params={
+                    "type": "public-all",
+                    "filterType": chatType,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-        return ChatThreadList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread?type=public-all&filterType={chatType.value if isinstance(chatType, ChatTypes) else chatType}&start={start}&size={size}"
-            ))
-
-
-    @community
-    def fetch_chat_members(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CChatMembers:
+    def fetch_chat_members(
+        self,
+        chatId: str,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.CChatMembers:
         """
         Fetches a list of members in the specified chat thread in the current or specified community.
 
@@ -1668,7 +1750,7 @@ class Community:
         :param size: The amount of members to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `CChatMembers` object containing information about the chat thread members.
         :rtype: CChatMembers
@@ -1734,14 +1816,26 @@ class Community:
         'My Username'
         'My Other Username'
         """
-        return CChatMembers(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2"
-            ))
+        return entities.CChatMembers(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member",
+                params={
+                    "start": start,
+                    "size": size,
+                    "type": "default",
+                    "cv": 1.2,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_messages(self, chatId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CMessages:
+    def fetch_messages(
+        self,
+        chatId: str,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.CMessages":
         """
         Fetches a list of messages in a chat thread with the specified `chatId`.
 
@@ -1752,7 +1846,7 @@ class Community:
         :param size: The amount of messages to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the chat thread from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `CMessages` object containing information about the chat thread's messages.
         :rtype: CMessages
@@ -1793,21 +1887,30 @@ class Community:
         'How are you?'
         'I'm doing well, thanks!'
         """
-        return CMessages(self.session.handler(
-            method="GET",
-            url=f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message?start={start}&size={size}&type=default"
-        ))
+        return entities.CMessages(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                params={
+                    "start": start,
+                    "size": size,
+                    "type": "default",
+                },
+            )
+        )
 
-
-    @community
-    def fetch_blogs(self, size: int = 25, comId: Union[str, int] = None) -> CBlogList:
+    def fetch_blogs(
+        self,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.CBlogList:
         """
         Fetches a list of blogs from the community with the specified `comId`.
 
         :param size: The number of blogs to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the blogs from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `CBlogList` object containing information about the blogs.
         :rtype: CBlogList
@@ -1862,13 +1965,23 @@ class Community:
         'How to learn a new language'
         ...
         """
-        return CBlogList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/feed/blog-all?pagingType=t&size={size}"
-            ))
-    
-    @community
-    def fetch_featured_blogs(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> FeaturedBlogs:
+        return entities.CBlogList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/feed/blog-all",
+                params={
+                    "pagingType": "t",
+                    "size": size,
+                },
+            )
+        )
+
+    def fetch_featured_blogs(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.FeaturedBlogs:
         """
         Fetches a list of featured blog posts.
 
@@ -1877,7 +1990,7 @@ class Community:
         :param size: The number of blog posts to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the featured blog posts from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A `FeaturedBlogs` object containing information about the featured blog posts.
         :rtype: FeaturedBlogs
@@ -1930,19 +2043,24 @@ class Community:
         'How to learn a new language'
         ...
         """
-        return FeaturedBlogs(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/feed/featured?start={start}&size={size}"
-            ))
+        return entities.FeaturedBlogs(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/feed/featured",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-    @community
     def fetch_leaderboard(
         self,
-        leaderboardType: LeaderboardTypes = LeaderboardTypes.HALL_OF_FAME,
+        leaderboardType: entities.LeaderboardTypes = entities.LeaderboardTypes.HALL_OF_FAME,
         start: int = 0,
         size: int = 20,
-        comId: Union[str, int] = None
-        ) -> UserProfileList:
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Fetches the leaderboard for the current community, based on the specified `leaderboardType`.
 
@@ -1953,7 +2071,7 @@ class Community:
         :param size: The number of users to fetch from the leaderboard. Defaults to `20`.
         :type size: int
         :param comId: The ID of the community to fetch the leaderboard from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfileList` object containing information about the users in the leaderboard.
         :rtype: UserProfileList
         :raises NotLoggedIn: If the user is not logged in.
@@ -2016,12 +2134,18 @@ class Community:
         'Jane Doe'
         ...
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/leaderboard?rankingType={leaderboardType.value if isinstance(leaderboardType, LeaderboardTypes) else leaderboardType}&start={start}&size={size}"
-            ))
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/community/leaderboard",
+                params={
+                    "rankingType": leaderboardType,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-    @community
     def fetch_comments(
         self,
         userId: Optional[str] = None,
@@ -2029,7 +2153,8 @@ class Community:
         wikiId: Optional[str] = None,
         start: int = 0,
         size: int = 25,
-        comId: Union[str, int] = None) -> CommentList:
+        comId: Optional[int] = None,
+    ) -> entities.CommentList:
         """
         Fetches the comments for the specified user, blog, or wiki.
 
@@ -2044,7 +2169,7 @@ class Community:
         :param size: The number of comments to fetch. Defaults to `25`.
         :type size: int
         :param comId: The ID of the community to fetch the comments from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `CommentList` object containing the comments for the specified user, blog, or wiki.
         :rtype: CommentList
         :raises NoDataProvided: If none of `userId`, `blogId`, or `wikiId` is provided.
@@ -2084,25 +2209,33 @@ class Community:
         'This is another comment!'
         ...
         """
-        if any([userId, blogId, wikiId]):
-            for key, value in {
-                "userId": "user-profile/{}",
-                "blogId": "blog/{}",
-                "wikiId": "item/{}"
-            }.items():
-                if locals()[key]:
-                    return CommentList(
-                        self.session.handler(
-                            method="GET",
-                            url=f"/x{self.community_id if comId is None else comId}/s/{value.format(locals()[key])}/comment?sort=newest&start={start}&size={size}",
-                        )
-                    )
+        for objectId, endpoint in (
+            (userId, f"user-profile/{userId}"),
+            (blogId, f"blog/{blogId}"),
+            (wikiId, f"item/{wikiId}"),
+        ):
+            if not objectId:
+                continue
+            return entities.CommentList(
+                self.bot.request.handler(
+                    "GET",
+                    f"/x{comId or self.community_id}/s/{endpoint}/comment",
+                    params={
+                        "sort": "newest",
+                        "start": start,
+                        "size": size,
+                    },
+                )
+            )
+        else:
+            raise entities.NoDataProvided
 
-        raise NoDataProvided
-
-
-    @community
-    def set_cohost(self, chatId: str, userIds: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
+    def set_cohost(
+        self,
+        chatId: str,
+        userIds: Union["Sequence[str]", str],
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sets the specified user(s) as co-host(s) for the chat with the given `chatId`.
 
@@ -2111,7 +2244,7 @@ class Community:
         :param userIds: The ID(s) of the user(s) to set as co-host(s). Can be a single user ID or a list of user IDs.
         :type userIds: Union[str, list]
         :param comId: The ID of the community where the chat exists. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the success or failure of the request.
         :rtype: ApiResponse
 
@@ -2140,14 +2273,22 @@ class Community:
         ... else:
         ...    print("Failed to set user as co-host.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/cohost",
-            data={"userIds": userIds if isinstance(userIds, list) else [userIds]}
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/cohost",
+                data={
+                    "userIds": [userIds] if isinstance(userIds, str) else list(userIds)
+                },
+            )
+        )
 
-    @community
-    def remove_cohost(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def remove_cohost(
+        self,
+        chatId: str,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Removes a co-host from the specified chat.
 
@@ -2156,7 +2297,7 @@ class Community:
         :param userId: The ID of the user to remove as a co-host.
         :type userId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object indicating the success or failure of the request.
         :rtype: ApiResponse
 
@@ -2183,21 +2324,25 @@ class Community:
         ... else:
         ...     print("Failed to remove co-host.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/co-host/{userId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/co-host/{userId}",
+            )
+        )
 
-
-    @community
-    def follow(self, userId: Union[str, list], comId: Union[str, int] = None) -> ApiResponse:
+    def follow(
+        self,
+        userId: Union["Sequence[str]", str],
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Follows the specified user or users.
 
         :param userId: The ID or IDs of the user or users to follow. Can be a string or a list of strings.
         :type userId: Union[str, list]
         :param comId: The ID of the community to follow the user or users in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request.
         :rtype: ApiResponse
 
@@ -2223,76 +2368,76 @@ class Community:
         ... else:
         ...     print("Failed to follow user.")
         """
-        if isinstance(userId, list):
-            return ApiResponse(
-                self.session.handler(
-                    method = "POST",
-                    url = f"/x{comId or self.community_id}/s/user-profile/{self.userId}/joined",
-                    data = {
-                        "targetUidList": userId,
-                        "timestamp": int(time() * 1000)
-                    }
+        if isinstance(userId, str):
+            return entities.ApiResponse(
+                self.bot.request.handler(
+                    "POST",
+                    f"/x{comId or self.community_id}/s/user-profile/{userId}/member",
                 )
             )
-        
-        elif isinstance(userId, str):
-            return ApiResponse(
-                self.session.handler(
-                    method = "POST",
-                    url = f"/x{comId or self.community_id}/s/user-profile/{userId}/member"
-                )
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{self.userId}/joined",
+                data={
+                    "targetUidList": list(userId),
+                    "timestamp": int(time.time() * 1000),
+                },
             )
-        
-        else: raise Exception("Invalid type for userId. Must be a string or a list of strings.")
+        )
 
-    @community
-    def unfollow(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unfollow(
+        self,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Unfollows the specified user.
-        
+
         :param userId: The ID of the user to unfollow.
         :type userId: str
         :param comId: The ID of the community to unfollow the user in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request.
         :rtype: ApiResponse
-        
+
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
-        
+
         The function sends a DELETE request to the API to unfollow the specified user.
-        
+
         `ApiResponse`:
-        
+
         - `message`: The message returned by the API.
         - `statuscode`: The status code returned by the API.
         - `duration`: The duration of the API call.
         - `timestamp`: The timestamp of the API call.
         - `mediaValue`: The media value returned by the API.
-        
+
         **Example usage:**
-        
+
         To unfollow a user with ID "0000-0000-0000-0000":
-        
+
         >>> response = client.community.unfollow(userId="0000-0000-0000-0000")
         ... if response.message == "OK":
         ...     print("Successfully unfollowed user.")
         ... else:
         ...     print("Failed to unfollow user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/member/{self.userId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/member/{self.userId}",
+            )
+        )
 
-    @community
-    def block(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def block(self, userId: str, comId: Optional[int] = None) -> entities.ApiResponse:
         """
         Blocks a user from the current community.
 
         :param userId: The ID of the user to block.
         :type userId: str
         :param comId: The ID of the community to block the user from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object representing the response of the API request.
         :rtype: ApiResponse
 
@@ -2310,53 +2455,57 @@ class Community:
         ... else:
         ...     print("Failed to block user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/block/{userId}",
+            )
+        )
 
-
-    @community
-    def unblock(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unblock(self, userId: str, comId: Optional[int] = None) -> entities.ApiResponse:
         """
         Unblocks a user from the current community.
-        
+
         :param userId: The ID of the user to unblock.
         :type userId: str
         :param comId: The ID of the community to unblock the user from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object representing the response of the API request.
         :rtype: ApiResponse
-        
+
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
-        
+
         The function sends a DELETE request to the API to unblock the specified user from the current community.
-        
+
         **Example usage:**
-        
+
         To unblock a user with ID "0000-0000-0000-0000":
-        
+
         >>> response = client.community.unblock(userId="0000-0000-0000-0000")
         ... if response.statuscode == 0:
         ...     print("Successfully unblocked user.")
         ... else:
         ...     print("Failed to unblock user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/block/{userId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/block/{userId}",
+            )
+        )
 
-
-    @community
-    def delete_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_blog(
+        self,
+        blogId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes the specified blog.
 
         :param blogId: The ID of the blog to delete.
         :type blogId: str
         :param comId: The ID of the community to delete the blog from. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the result of the deletion.
         :rtype: ApiResponse
 
@@ -2382,14 +2531,24 @@ class Community:
         ... else:
         ...     print("Blog deletion failed.")
         """
-        return ApiResponse(self.session.handler(
-            method="DELETE",
-            url=f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/blog/{blogId}",
+            )
+        )
 
-
-    @community
-    def post_wiki(self, title: str, content: str, icon: str = None, imageList: list = None, keywords: str = None, backgroundColor: str = None,fansOnly: bool=False, comId: Union[str, int] = None) -> ApiResponse:
+    def post_wiki(
+        self,
+        title: str,
+        content: str,
+        icon: Optional["entities.Media"] = None,
+        imageList: Optional["Sequence[entities.Media]"] = None,
+        keywords: Optional[str] = None,
+        backgroundColor: Optional[str] = None,
+        fansOnly: bool = False,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Posts a new wiki article in the specified community.
 
@@ -2408,7 +2567,7 @@ class Community:
         :param fansOnly: Whether the wiki article should be for fans only. Default is False.
         :type fansOnly: bool, optional
         :param comId: The ID of the community to post the wiki article in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: An `ApiResponse` object representing the response from the server.
         :rtype: ApiResponse
 
@@ -2448,25 +2607,7 @@ class Community:
         ... except:
         ...     print("Wiki article could not be posted.")
         """
-        media = []
-
-        if imageList is not None:
-            media.append([100, self.upload_media(open(image, "rb").read(), "image/jpg"), None] for image in imageList)
-
-
-        data = {
-            "mediaList": media,
-        }
-        if icon: data["icon"] = self.upload_media(open(icon, "rb").read(), "image/jpg")
-        if keywords: data["keywords"] = keywords
-        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-        if backgroundColor: data["extensions"] = {"style":{"backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"}}
-
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/item",
-            data = {
-            "extensions": {"fansOnly": fansOnly},
+        data: Dict[str, Any] = {
             "content": content,
             "latitude": 0,
             "longitude": 0,
@@ -2474,19 +2615,46 @@ class Community:
             "type": 0,
             "contentLanguage": "en",
             "eventSource": "GlobalComposeMenu",
-            "timestamp": int(time() * 1000),
-            }.update(data)))
+            "timestamp": int(time.time() * 1000),
+        }
+        extensions: Dict[str, Any] = {}
+        if imageList:
+            data["mediaList"] = [
+                [100, self.__handle_media__(image, "image/jpg"), None]
+                for image in imageList
+            ]
+        if icon:
+            data["icon"] = self.__handle_media__(icon, "image/jpg")
+        if keywords:
+            data["keywords"] = keywords
+        if fansOnly:
+            extensions["fansOnly"] = fansOnly
+        if backgroundColor:
+            if not backgroundColor.startswith("#"):
+                backgroundColor = f"#{backgroundColor}"
+            extensions["style"] = {"backgroundColor": backgroundColor}
+        if extensions:
+            data["extensions"] = extensions
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/item",
+                data=data,
+            )
+        )
 
-
-    @community
-    def delete_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_wiki(
+        self,
+        wikiId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a wiki item with the given ID.
 
         :param wikiId: The ID of the wiki item to delete.
         :type wikiId: str
         :param comId: The ID of the community where the wiki item is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -2512,20 +2680,21 @@ class Community:
         ... else:
         ...     print("Failed to delete wiki item.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/item/{wikiId}",
+            )
+        )
 
-    @community
     def delete_comment(
         self,
         commentId: str,
         userId: Optional[str] = None,
         blogId: Optional[str] = None,
         wikiId: Optional[str] = None,
-        comId: Union[str, int] = None
-        ) -> ApiResponse:
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes the comment with the given ID.
 
@@ -2538,7 +2707,7 @@ class Community:
         :param wikiId: The ID of the wiki where the comment is located (if applicable). Defaults to `None`.
         :type wikiId: Optional[str]
         :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -2564,25 +2733,26 @@ class Community:
         ... else:
         ...     print("Failed to delete comment.")
         """
-        if any([userId, blogId, wikiId]):
-            endpoint={
-                "userId": f"/x3/s/user-profile/{userId}/comment/{commentId}" if userId is not None else None,
-                "blogId": f"/x3/s/blog/{blogId}/comment/{commentId}" if blogId is not None else None,
-                "wikiId": f"/x3/s/item/{wikiId}/comment/{commentId}" if wikiId is not None else None,
-                }
-            endpoint = endpoint[next(key for key, value in endpoint.items() if value is not None)]
+        path = f"/x{comId or self.community_id}/s"
+        if userId:
+            path += f"/user-profile/{userId}"
+        elif blogId:
+            path += f"/blog/{blogId}"
+        elif wikiId:
+            path += f"/item/{wikiId}"
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"{path}/comment/{commentId}",
+            ),
+        )
 
-        else:
-            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}"
-
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = endpoint
-            ))
-    
-
-    @community
-    def delete_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_wiki_comment(
+        self,
+        commentId: str,
+        wikiId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a comment on a wiki item with the given comment ID and wiki ID.
 
@@ -2591,7 +2761,7 @@ class Community:
         :param wikiId: The ID of the wiki item where the comment is located.
         :type wikiId: str
         :param comId: The ID of the community where the wiki item is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -2607,10 +2777,14 @@ class Community:
         ... else:
         ...     print("Failed to delete comment.")
         """
-        return self.delete_comment(commentId = commentId, wikiId = wikiId, comId = comId)
+        return self.delete_comment(commentId=commentId, wikiId=wikiId, comId=comId)
 
-
-    def delete_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_profile_comment(
+        self,
+        commentId: str,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a comment on a user's profile with the given comment ID and user ID.
 
@@ -2619,7 +2793,7 @@ class Community:
         :param userId: The ID of the user whose profile the comment is on.
         :type userId: str
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -2637,9 +2811,12 @@ class Community:
         """
         return self.delete_comment(commentId, userId=userId, comId=comId)
 
-
-    @community
-    def delete_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_blog_comment(
+        self,
+        commentId: str,
+        blogId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a comment from a blog post in the current or specified community.
 
@@ -2648,7 +2825,7 @@ class Community:
         :param blogId: The ID of the blog post where the comment is located.
         :type blogId: str
         :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -2674,17 +2851,15 @@ class Community:
         """
         return self.delete_comment(commentId, blogId=blogId, comId=comId)
 
-
-    @community
     def comment(
         self,
         content: str,
         userId: Optional[str] = None,
         blogId: Optional[str] = None,
         wikiId: Optional[str] = None,
-        image: Optional[str] = None,
-        comId: Union[str, int] = None
-        ) -> Comment:
+        image: Optional["entities.Media"] = None,
+        comId: Optional[int] = None,
+    ) -> entities.Comment:
         """
         Creates a comment in the current or specified community, at a given location if provided.
 
@@ -2699,7 +2874,7 @@ class Community:
         :param image: The image to be attached to the comment, if any. Defaults to `None`.
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `Comment` object containing information about the newly created comment.
         :rtype: Comment
 
@@ -2733,34 +2908,32 @@ class Community:
         ... print(comment.content)
         Hello world
         """
-        data = {"timestamp": int(time() * 1000), "content": content}
-
-        if any([userId, blogId, wikiId]):
-            endpoint_mapping = {
-                "userId": "/user-profile/{}",
-                "blogId": "/blog/{}",
-                "wikiId": "/item/{}"
-            }
-            base_endpoint = "/x{}/s/{}/comment"
-            for key, value in endpoint_mapping.items():
-                if locals()[key]:
-                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]))
-                    break
-        else:
-            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment"
-
+        data: Dict[str, Any] = {
+            "timestamp": int(time.time() * 1000),
+            "content": content,
+        }
         if image:
-            data["mediaList"] = [[100,self.__handle_media__(media=image, media_value=True), None, None, None, None]]
+            data["mediaList"] = [
+                [100, self.__handle_media__(image, "image/jpg"), None, None, None, None]
+            ]
+        path = f"/x{comId or self.community_id}/s"
+        if userId:
+            path += f"/user-profile/{userId}"
+        elif blogId:
+            path += f"/blog/{blogId}"
+        elif wikiId:
+            path += f"/item/{wikiId}"
+        return entities.Comment(
+            self.bot.request.handler("POST", f"{path}/comment", data=data)
+        )
 
-        return Comment(self.session.handler(
-            method = "POST",
-            url = endpoint,
-            data = data
-            ))
-
-
-    @community
-    def comment_on_blog(self, content: str, blogId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> Comment:
+    def comment_on_blog(
+        self,
+        content: str,
+        blogId: str,
+        image: Optional["entities.Media"] = None,
+        comId: Optional[int] = None,
+    ) -> entities.Comment:
         """
         Creates a comment in the current or specified community, on a blog post with the given ID.
 
@@ -2771,7 +2944,7 @@ class Community:
         :param image: The image to be attached to the comment, if any. Defaults to `None`.
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `Comment` object containing information about the newly created comment.
         :rtype: Comment
 
@@ -2785,14 +2958,18 @@ class Community:
         ... print(comment.content)
         Hello world
         """
-        return self.comment(content = content, blogId = blogId, image = image, comId = comId)
+        return self.comment(content=content, blogId=blogId, image=image, comId=comId)
 
-
-    @community
-    def comment_on_wiki(self, content: str, wikiId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> Comment:
+    def comment_on_wiki(
+        self,
+        content: str,
+        wikiId: str,
+        image: Optional["entities.Media"] = None,
+        comId: Optional[int] = None,
+    ) -> entities.Comment:
         """
         Creates a comment in the current or specified community, on a wiki page with the given ID.
-        
+
         :param content: The text content of the comment.
         :type content: str
         :param wikiId: The ID of the wiki page where the comment should be posted.
@@ -2800,14 +2977,14 @@ class Community:
         :param image: The image to be attached to the comment, if any. Defaults to `None`.
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `Comment` object containing information about the newly created comment.
         :rtype: Comment
-        
+
         This function sends a POST request to the API to create a comment in the specified location or in the current community.
-        
+
         **Example usage:**
-        
+
         To post a comment with text "Hello world" on a wiki page with ID "0000-0000-0000-0000":
 
         >>> comment = client.community.comment_on_wiki(content="Hello world", wikiId="0000-0000-0000-0000")
@@ -2816,12 +2993,16 @@ class Community:
         """
         return self.comment(content=content, wikiId=wikiId, image=image, comId=comId)
 
-
-    @community
-    def comment_on_profile(self, content: str, userId: str, image: Optional[str] = None, comId: Union[str, int] = None) -> Comment:
+    def comment_on_profile(
+        self,
+        content: str,
+        userId: str,
+        image: Optional["entities.Media"] = None,
+        comId: Optional[int] = None,
+    ) -> entities.Comment:
         """
         Creates a comment in the current or specified community, on a user profile with the given ID.
-        
+
         :param content: The text content of the comment.
         :type content: str
         :param userId: The ID of the user profile where the comment should be posted.
@@ -2829,32 +3010,30 @@ class Community:
         :param image: The image to be attached to the comment, if any. Defaults to `None`.
         :type image: Optional[str]
         :param comId: The ID of the community where the comment should be posted. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `Comment` object containing information about the newly created comment.
         :rtype: Comment
-        
+
         This function sends a POST request to the API to create a comment in the specified location or in the current community.
-        
+
         **Example usage:**
-        
+
         To post a comment with text "Hello world" on a user profile with ID "0000-0000-0000-0000":
 
         >>> comment = client.community.comment_on_profile(content="Hello world", userId="0000-0000-0000-0000")
         ... print(comment.content)
         Hello world
         """
-        return self.comment(content = content, userId = userId, image = image, comId = comId)
+        return self.comment(content=content, userId=userId, image=image, comId=comId)
 
-   
-    @community
     def like_comment(
         self,
         commentId: str,
         userId: Optional[str] = None,
         blogId: Optional[str] = None,
         wikiId: Optional[str] = None,
-        comId: Union[str, int] = None
-    ) -> ApiResponse:
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Likes the comment with the given ID.
 
@@ -2867,7 +3046,7 @@ class Community:
         :param wikiId: The ID of the wiki where the comment is located (if applicable). Defaults to `None`.
         :type wikiId: Optional[str]
         :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -2892,57 +3071,56 @@ class Community:
         ... else:
         ...     print("Failed to like comment.")
         """
-        if any([userId, blogId, wikiId]):
-            base_endpoint = "/x{}/s/{}/comment/{}/vote"
-            endpoint_mapping = {
-                "userId": "/user-profile/{}",
-                "blogId": "/blog/{}",
-                "wikiId": "/item/{}"
-            }
+        path = f"/x{comId or self.community_id}/s"
+        if userId:
+            path += f"/user-profile/{userId}"
+        elif blogId:
+            path += f"/blog/{blogId}"
+        elif wikiId:
+            path += f"/item/{wikiId}"
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"{path}/comment/{commentId}/vote",
+                data={
+                    "value": 1,
+                    "timestamp": int(time.time() * 1000),
+                    "eventSource": (
+                        "CommentDetailView" if userId is None else "UserProfileView"
+                    ),
+                },
+            )
+        )
 
-            for key, value in endpoint_mapping.items():
-                if locals()[key]:
-                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), commentId)
-                    break
-        else:
-            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}/vote"
-
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = endpoint,
-            data = {
-            "value": 1,
-            "timestamp": int(time() * 1000),
-            "eventSource": "CommentDetailView" if userId is None else "UserProfileView"
-            }
-            ))
-
-
-    @community
-    def like_wiki_comment(self, commentId: str, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def like_wiki_comment(
+        self,
+        commentId: str,
+        wikiId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Likes the comment with the given ID on a wiki page with the given ID.
-        
+
         :param commentId: The ID of the comment to like.
         :type commentId: str
         :param wikiId: The ID of the wiki page where the comment is located.
         :type wikiId: str
         :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to like the comment at the specified location.
-        
+
         `ApiResponse`:
-        
+
         - `message`: A message indicating whether the comment was successfully liked.
         - `statuscode`: The status code of the API response.
         - `duration`: The duration of the API request.
         - `timestamp`: The timestamp of the API request.
-        
+
         **Example usage:**
-        
+
         To like a comment with ID "0000-0000-0000-0000" on a wiki page with ID "0000-0000-0000-0000":
 
         >>> response = client.community.like_wiki_comment(commentId="0000-0000-0000-0000", wikiId="0000-0000-0000-0000")
@@ -2951,34 +3129,37 @@ class Community:
         ... else:
         ...     print("Failed to like comment.")
         """
-        return self.like_comment(commentId = commentId, wikiId = wikiId, comId = comId)
+        return self.like_comment(commentId=commentId, wikiId=wikiId, comId=comId)
 
-
-    @community
-    def like_blog_comment(self, commentId: str, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def like_blog_comment(
+        self,
+        commentId: str,
+        blogId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Likes the comment with the given ID on a blog page with the given ID.
-        
+
         :param commentId: The ID of the comment to like.
         :type commentId: str
         :param blogId: The ID of the blog page where the comment is located.
         :type blogId: str
         :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to like the comment at the specified location.
-        
+
         `ApiResponse`:
-        
+
         - `message`: A message indicating whether the comment was successfully liked.
         - `statuscode`: The status code of the API response.
         - `duration`: The duration of the API request.
         - `timestamp`: The timestamp of the API request.
-        
+
         **Example usage:**
-        
+
         To like a comment with ID "0000-0000-0000-0000" on a blog page with ID "0000-0000-0000-0000":
 
         >>> response = client.community.like_blog_comment(commentId="0000-0000-0000-0000", blogId="0000-0000-0000-0000")
@@ -2987,34 +3168,37 @@ class Community:
         ... else:
         ...     print("Failed to like comment.")
         """
-        return self.like_comment(commentId = commentId, blogId = blogId, comId = comId)
+        return self.like_comment(commentId=commentId, blogId=blogId, comId=comId)
 
-
-    @community
-    def like_profile_comment(self, commentId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def like_profile_comment(
+        self,
+        commentId: str,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Likes the comment with the given ID on a user profile page with the given ID.
-        
+
         :param commentId: The ID of the comment to like.
         :type commentId: str
         :param userId: The ID of the user profile page where the comment is located.
         :type userId: str
         :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
-        
+
         This function sends a POST request to the API to like the comment at the specified location.
-        
+
         `ApiResponse`:
-        
+
         - `message`: A message indicating whether the comment was successfully liked.
         - `statuscode`: The status code of the API response.
         - `duration`: The duration of the API request.
         - `timestamp`: The timestamp of the API request.
-        
+
         **Example usage:**
-        
+
         To like a comment with ID "0000-0000-0000-0000" on a user profile page with ID "0000-0000-0000-0000":
 
         >>> response = client.community.like_profile_comment(commentId="0000-0000-0000-0000", userId="0000-0000-0000-0000")
@@ -3023,18 +3207,16 @@ class Community:
         ... else:
         ...     print("Failed to like comment.")
         """
-        return self.like_comment(commentId = commentId, userId = userId, comId = comId)
+        return self.like_comment(commentId=commentId, userId=userId, comId=comId)
 
-
-    @community
     def unlike_comment(
         self,
         commentId: str,
         userId: Optional[str] = None,
         blogId: Optional[str] = None,
         wikiId: Optional[str] = None,
-        comId: Union[str, int] = None
-        ) -> ApiResponse:
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Removes a like from a comment.
 
@@ -3047,7 +3229,7 @@ class Community:
         :param wikiId: The ID of the wiki where the comment was made. If provided, the vote will be removed from the wiki page. Defaults to `None`.
         :type wikiId: Optional[str]
         :param comId: The ID of the community where the comment is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -3070,29 +3252,26 @@ class Community:
         ... else:
         ...     print("Failed to remove like from comment.")
         """
-        if any([userId, blogId, wikiId]):
-            base_endpoint = "/x{}/s/{}/comment/{}/vote"
-            endpoint_mapping = {
-                "userId": "/user-profile/{}",
-                "blogId": "/blog/{}",
-                "wikiId": "/item/{}"
-            }
+        path = f"/x{comId or self.community_id}/s"
+        if userId:
+            path += f"/user-profile/{userId}"
+        elif blogId:
+            path += f"/blog/{blogId}"
+        elif wikiId:
+            path += f"/item/{wikiId}"
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"{path}/comment/{commentId}/vote",
+            ),
+        )
 
-            for key, value in endpoint_mapping.items():
-                if locals()[key]:
-                    endpoint = base_endpoint.format(self.community_id if comId is None else comId, value.format(locals()[key]), commentId)
-                    break
-        else:
-            endpoint = f"/x{self.community_id if comId is None else comId}/s/comment/{commentId}/vote"
-
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = endpoint
-            ))
-
-
-    @community
-    def like_blog(self, blogId: str, userId: Optional[str] = None, comId: Union[str, int] = None) -> ApiResponse:
+    def like_blog(
+        self,
+        blogId: str,
+        userId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Likes a blog post.
 
@@ -3101,7 +3280,7 @@ class Community:
         :param userId: The ID of the user who liked the post. If provided, the like will be added to the user profile page. Defaults to `None`.
         :type userId: Optional[str]
         :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -3124,25 +3303,30 @@ class Community:
         ... else:
         ...     print("Failed to like blog post.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote",
-            data = {
-                "value": 4,
-                "timestamp": int(time() * 1000),
-                "eventSource": "UserProfileView" if userId is None else "PostDetailView"
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/vote",
+                data={
+                    "value": 4,
+                    "timestamp": int(time.time() * 1000),
+                    "eventSource": ("PostDetailView" if userId else "UserProfileView"),
+                },
+            )
+        )
 
-
-    @community
-    def unlike_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unlike_blog(
+        self,
+        blogId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Removes a like from a blog post.
 
         :param blogId: The ID of the blog post to remove the like from.
         :type blogId: str
         :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -3165,14 +3349,19 @@ class Community:
         ... else:
         ...     print("Failed to remove like from blog post.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/vote"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/vote",
+            )
+        )
 
-
-    @community
-    def upvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def upvote_comment(
+        self,
+        blogId: str,
+        commentId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Upvotes a comment on a blog post.
 
@@ -3181,7 +3370,7 @@ class Community:
         :param commentId: The ID of the comment to upvote.
         :type commentId: str
         :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -3204,18 +3393,24 @@ class Community:
         ... else:
         ...     print("Failed to upvote comment.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
-            data = {
-                "value": 1,
-                "eventSource": "PostDetailView",
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/comment/{commentId}/vote",
+                data={
+                    "value": 1,
+                    "eventSource": "PostDetailView",
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def downvote_comment(self, blogId: str, commentId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def downvote_comment(
+        self,
+        blogId: str,
+        commentId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Downvotes a comment on a blog post.
 
@@ -3224,7 +3419,7 @@ class Community:
         :param commentId: The ID of the comment to downvote.
         :type commentId: str
         :param comId: The ID of the community where the blog post is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -3247,24 +3442,26 @@ class Community:
         ... else:
         ...     print("Failed to downvote comment.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/comment/{commentId}/vote",
-            data = {
-                "value": -1,
-                "eventSource": "PostDetailView",
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/comment/{commentId}/vote",
+                data={
+                    "value": -1,
+                    "eventSource": "PostDetailView",
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def fetch_blog(self, blogId: str, comId: Union[str, int] = None) -> CBlog:
+    def fetch_blog(self, blogId: str, comId: Optional[int] = None) -> entities.CBlog:
         """
         Fetches information about a blog.
 
         :param blogId: The ID of the blog to fetch.
         :type blogId: str
         :param comId: The ID of the community where the blog is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `CBlog` object containing information about the fetched blog.
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
@@ -3311,21 +3508,21 @@ class Community:
         ... print(f"Blog title: {blog.title}")
         ... print(f"Blog author: {blog.author.nickname}")
         """
-        return CBlog(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}"
-            ))
+        return entities.CBlog(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/blog/{blogId}",
+            )
+        )
 
-
-    @community
-    def fetch_wiki(self, wikiId: str, comId: Union[str, int] = None) -> CWiki:
+    def fetch_wiki(self, wikiId: str, comId: Optional[int] = None) -> entities.CWiki:
         """
         Fetches information about a wiki.
 
         :param wikiId: The ID of the wiki to fetch.
         :type wikiId: str
         :param comId: The ID of the community where the wiki is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status and the fetched wiki.
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
@@ -3347,12 +3544,20 @@ class Community:
         ... else:
         ...     print("Failed to fetch wiki.")
         """
-        return CWiki(self.session.handler(
-            method = "GET", url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}"))
+        return entities.CWiki(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/item/{wikiId}",
+            )
+        )
 
-
-    @community
-    def fetch_quiz(self, quizId: str, start: int = 0, size: int = 10, comId: Union[str, int] = None) -> QuizRankingList:
+    def fetch_quiz(
+        self,
+        quizId: str,
+        start: int = 0,
+        size: int = 10,
+        comId: Optional[int] = None,
+    ) -> entities.QuizRankingList:
         """
         Fetches the ranking list for a quiz.
 
@@ -3363,7 +3568,7 @@ class Community:
         :param size: The size of the ranking list to fetch (default 10).
         :type size: int
         :param comId: The ID of the community where the quiz is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `QuizRankingList` object containing information about the ranking list.
         :rtype: QuizRankingList
 
@@ -3394,14 +3599,24 @@ class Community:
         ... print(highest_scores)
         ... print(beat_rates)
         """
-        return QuizRankingList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}"
-            ))
-    
+        return entities.QuizRankingList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/blog/{quizId}/quiz/result",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-    @community
-    def reply_wall(self, userId: str, commentId: str, message: str, comId: Union[str, int] = None) -> ApiResponse:
+    def reply_wall(
+        self,
+        userId: str,
+        commentId: str,
+        message: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Replies to a comment on a user's wall.
 
@@ -3412,7 +3627,7 @@ class Community:
         :param message: The message to post as a reply.
         :type message: str
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -3435,20 +3650,27 @@ class Community:
         ... else:
         ...     print("Failed to post reply.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/comment",
-            data = {
-                "content": message,
-                "stackedId": None,
-                "respondTo": commentId,
-                "type": 0,
-                "eventSource": "UserProfileView",
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/comment",
+                data={
+                    "content": message,
+                    "stackedId": None,
+                    "respondTo": commentId,
+                    "type": 0,
+                    "eventSource": "UserProfileView",
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def vote_poll(self, blogId: str, optionId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def vote_poll(
+        self,
+        blogId: str,
+        optionId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Votes for a poll option in the current or specified community.
 
@@ -3457,11 +3679,11 @@ class Community:
         :param optionId: The ID of the poll option to vote for.
         :type optionId: str
         :param comId: The ID of the community where the blog is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
-        This function sends a POST request to the API to vote for a poll option in the specified blog. 
+        This function sends a POST request to the API to vote for a poll option in the specified blog.
 
         `ApiResponse`:
 
@@ -3488,31 +3710,46 @@ class Community:
         ... else:
         ...     print("Failed to vote.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/poll/option/{optionId}/vote",
-            data = {
-                "value": 1,
-                "eventSource": "PostDetailView",
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/poll/option/{optionId}/vote",
+                data={
+                    "value": 1,
+                    "eventSource": "PostDetailView",
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
+    def repost_blog(
+        self,
+        content: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.CBlog:
+        return entities.CBlog(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog",
+                data={
+                    "content": content,
+                    "refObjectId": blogId if blogId is not None else wikiId,
+                    "refObjectType": 1 if blogId is not None else 2,
+                    "type": 2,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    @community
-    def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None, comId: Union[str, int] = None) -> CBlog:
-        return CBlog(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog",
-            data = {
-                "content": content,
-                "refObjectId": blogId if blogId is not None else wikiId,
-                "refObjectType": 1 if blogId is not None else 2,
-                "type": 2,
-                "timestamp": int(time() * 1000)
-                }))
-
-
-    @community
-    def ban(self, userId: str, reason: str, banType: int = BanTypes.OTHER, comId: Union[str, int] = None) -> ApiResponse:
+    def ban(
+        self,
+        userId: str,
+        reason: str,
+        banType: int = entities.BanTypes.OTHER,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Bans a user in the current or specified community.
 
@@ -3523,11 +3760,11 @@ class Community:
         :param banType: The type of ban to apply. Optional.
         :type banType: int
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
-        This function sends a POST request to the API to ban a user in the specified community. 
+        This function sends a POST request to the API to ban a user in the specified community.
 
         `ApiResponse`:
 
@@ -3554,15 +3791,24 @@ class Community:
         ... else:
         ...     print("Failed to ban user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/ban",
-            data = {"reasonType": banType, "note": {"content": reason}, "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/ban",
+                data={
+                    "reasonType": banType,
+                    "note": {"content": reason},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def unban(self, userId: str, reason: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unban(
+        self,
+        userId: str,
+        reason: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Unbans a user in the current or specified community.
 
@@ -3571,11 +3817,11 @@ class Community:
         :param reason: The reason for unbanning the user.
         :type reason: str
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
-        This function sends a POST request to the API to unban a user in the specified community. 
+        This function sends a POST request to the API to unban a user in the specified community.
 
         `ApiResponse`:
 
@@ -3602,23 +3848,25 @@ class Community:
         ... else:
         ...     print("Failed to unban user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/unban",
-            data = {"note": {"content": reason}, "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/unban",
+                data={
+                    "note": {"content": reason},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
     def strike(
         self,
         userId: str,
         amountOfTime: int = 5,
-        title: str = None,
-        reason: str = None,
-        comId: Union[str, int] = None,
-        **kwargs
-        ) -> ApiResponse:
+        title: Optional[str] = None,
+        reason: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Issues a strike against a user in the current or specified community.
 
@@ -3631,11 +3879,11 @@ class Community:
         :param reason: An optional reason for issuing the strike.
         :type reason: str
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
-        This function sends a POST request to the API to issue a strike against a user in the specified community. 
+        This function sends a POST request to the API to issue a strike against a user in the specified community.
 
         `ApiResponse`:
 
@@ -3662,27 +3910,32 @@ class Community:
         ... else:
         ...     print("Failed to issue strike.")
         """
-        if "amount" in kwargs: #TODO: Remove this in the near future.
-            amountOfTime = kwargs["amount"]
-            print("Warning: The 'amount' parameter is deprecated. Please use 'amountOfTime' instead.")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/notice",
+                data={
+                    "uid": userId,
+                    "title": title,
+                    "content": reason,
+                    "attachedObject": {"objectId": userId, "objectType": 0},
+                    "penaltyType": 1,
+                    "penaltyValue": [3600, 10800, 21600, 43200, 86400][
+                        amountOfTime - 1 if amountOfTime in range(1, 6) else 86400
+                    ],
+                    "adminOpNote": {},
+                    "noticeType": 4,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/notice",
-            data = {
-                "uid": userId,
-                "title": title,
-                "content": reason,
-                "attachedObject": {"objectId": userId,"objectType": 0},
-                "penaltyType": 1,
-                "penaltyValue": [3600, 10800, 21600, 43200, 86400][amountOfTime - 1 if amountOfTime in range(1, 6) else 86400],
-                "adminOpNote": {},
-                "noticeType": 4,
-                "timestamp": int(time() * 1000)
-                }))
-
-
-    @community
-    def warn(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def warn(
+        self,
+        userId: str,
+        reason: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Issues a warning to a user in the current or specified community.
 
@@ -3691,11 +3944,11 @@ class Community:
         :param reason: An optional reason for issuing the warning.
         :type reason: str
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
-        This function sends a POST request to the API to issue a warning to a user in the specified community. 
+        This function sends a POST request to the API to issue a warning to a user in the specified community.
 
         `ApiResponse`:
 
@@ -3722,22 +3975,30 @@ class Community:
         ... else:
         ...     print("Failed to issue warning.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/notice",
-            data = {
-                "uid": userId,
-                "title": "Custom",
-                "content": reason,
-                "attachedObject": {"objectId": userId,"objectType": 0},
-                "penaltyType": 0,
-                "adminOpNote": {},
-                "noticeType": 7,
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/notice",
+                data={
+                    "uid": userId,
+                    "title": "Custom",
+                    "content": reason,
+                    "attachedObject": {"objectId": userId, "objectType": 0},
+                    "penaltyType": 0,
+                    "adminOpNote": {},
+                    "noticeType": 7,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def edit_titles(self, userId: str, titles: list, colors: list, comId: Union[str, int] = None) -> ApiResponse:
+    def edit_titles(
+        self,
+        userId: str,
+        titles: "Sequence[str]",
+        colors: "Sequence[str]",
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Edits the titles of a user in the current or specified community.
 
@@ -3748,11 +4009,11 @@ class Community:
         :param colors: A list of colors to set for the titles. The length of this list must match the length of the `titles` list.
         :type colors: list
         :param comId: The ID of the community where the user is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
-        This function sends a POST request to the API to edit the titles of a user in the specified community. 
+        This function sends a POST request to the API to edit the titles of a user in the specified community.
 
         `ApiResponse`:
 
@@ -3779,26 +4040,33 @@ class Community:
         ... else:
         ...     print("Failed to edit titles.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
-                "adminOpName": 207,
-                "adminOpValue": {"titles": [{"title": title, "color": color} for title, color in zip(titles, colors)]},
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/admin",
+                data={
+                    "adminOpName": 207,
+                    "adminOpValue": {
+                        "titles": [
+                            {"title": title, "color": color}
+                            for title, color in zip(titles, colors)
+                        ]
+                    },
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
     def fetch_mod_history(
         self,
-        userId: str = None,
-        blogId: str = None,
-        wikiId: str = None,
-        quizId: str = None,
-        fileId: str = None,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        quizId: Optional[str] = None,
+        fileId: Optional[str] = None,
         size: int = 25,
-        comId: Union[str, int] = None
-        ) -> ApiResponse:
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Fetches moderation history for a user, blog, wiki, quiz, or file in the current or specified community.
 
@@ -3815,7 +4083,7 @@ class Community:
         :param size: The number of moderation events to return. Default is 25.
         :type size: int
         :param comId: The ID of the community where the object is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing moderation history for the specified object.
         :rtype: ApiResponse
 
@@ -3846,59 +4114,37 @@ class Community:
         ... else:
         ...     print("Failed to fetch moderation history.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/admin/operation",
-            params = {
-                "objectId": blogId if blogId is not None else wikiId if wikiId is not None else quizId if quizId is not None else fileId if fileId is not None else userId,
-                "objectType": 1 if blogId is not None else 2 if wikiId is not None else 3 if quizId is not None else 109 if fileId is not None else 0,
-                "pagingType": "t",
-                "size": size
-                }))
+        for objectId, objectType in (
+            (userId, 0),
+            (blogId, 1),
+            (wikiId, 2),
+            (quizId, 3),
+            (fileId, 109),
+        ):
+            if objectId:
+                break
+        else:
+            raise ValueError("Object ID not provided.")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/admin/operation",
+                params={
+                    "objectId": objectId,
+                    "objectType": objectType,
+                    "pagingType": "t",
+                    "size": size,
+                },
+            )
+        )
 
-    @community
-    def edit_profile(
+    def fetch_user_blogs(
         self,
-        nickname: str = None,
-        content: str = None,
-        icon: Union[str, BytesIO] = None,
-        backgroundColor: str = None,
-        backgroundImage: Union[str, BytesIO] = None,
-        cover_image: Union[str, BytesIO] = None,
-        comId: Union[str, int] = None,
-        **kwargs
-        ) -> UserProfile:
-        if "background_color" in kwargs: #TODO: Remove in the near future.
-            backgroundColor = kwargs["background_color"]
-            print("background_color is deprecated, please use backgroundColor instead.")
-        if "background_image" in kwargs: #TODO: Remove in the near future.
-            backgroundImage = kwargs["background_image"]
-            print("background_image is deprecated, please use backgroundImage instead.")
-
-        data: dict = {"timestamp": int(time() * 1000), "extensions": {}}
-
-        [data.update({key: value}) for key, value in {
-            "nickname": nickname,
-            "content": content,
-            "icon": self.__handle_media__(media=icon, media_value=True) if icon is not None else None,
-            "mediaList": [[100, self.__handle_media__(media=cover_image, media_value=True), None, None, None, None]] if cover_image is not None else None
-            }.items() if value is not None]
-
-        if backgroundColor:
-            data["extensions"]["style"] = {"backgroundColor": backgroundColor}
-
-        if backgroundImage:
-            data["extensions"]["style"] = {"backgroundMediaList": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None, None, None, None]]}
-
-        return UserProfile(
-            self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{self.userId}",
-                data=data
-                ))
-
-    @community
-    def fetch_user_blogs(self, userId: str, start: int = 0, size: int = 5, comId: Union[str, int] = None) -> CBlogList:
+        userId: str,
+        start: int = 0,
+        size: int = 5,
+        comId: Optional[int] = None,
+    ) -> entities.CBlogList:
         """
         Fetches a list of blogs created by a user in the current or specified community.
 
@@ -3909,7 +4155,7 @@ class Community:
         :param size: The number of blogs to fetch (default is 5).
         :type size: int
         :param comId: The ID of the community where the blogs were created. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `CBlogList` object containing information about the fetched blogs.
         :rtype: CBlogList
 
@@ -3959,13 +4205,26 @@ class Community:
         "This is a third blog!"
         ...
         """
-        return CBlogList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog?type=user&q={userId}&start={start}&size={size}"
-            ))
+        return entities.CBlogList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/blog",
+                params={
+                    "type": "user",
+                    "q": userId,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-    @community
-    def fetch_user_wikis(self, userId: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CWikiList:
+    def fetch_user_wikis(
+        self,
+        userId: str,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.CWikiList:
         """
         Fetches wikis created by a user based on the specified parameters.
 
@@ -3976,7 +4235,7 @@ class Community:
         :param size: The number of items to fetch. Default is 25.
         :type size: int
         :param comId: The ID of the community where the wikis were created. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing a list of wikis created by the specified user.
         :rtype: ApiResponse
 
@@ -4007,20 +4266,32 @@ class Community:
         ... else:
         ...     print("Failed to fetch user wikis.")
         """
-        return CWikiList(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}"
-            ))
+        return entities.CWikiList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/item",
+                params={
+                    "type": "user-all",
+                    "start": start,
+                    "size": size,
+                    "cv": 1.2,
+                    "uid": userId,
+                },
+            )
+        )
 
-    @community
-    def fetch_user_check_ins(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def fetch_user_check_ins(
+        self,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Fetches a list of check-ins made by a user in the current or specified community.
 
         :param userId: The ID of the user to fetch check-ins for.
         :type userId: str
         :param comId: The ID of the community where the check-ins were made. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing a list of check-ins made by the specified user.
         :rtype: ApiResponse
 
@@ -4051,91 +4322,147 @@ class Community:
         ... else:
         ...     print("Failed to fetch user check-ins.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/check-in/stats/{userId}?timezone=-300"
-            ))
-            
-    @community
-    def send_embed(self, chatId: str, title: str, content: str, image: BinaryIO = None, link: Optional[str] = None, comId: Union[str, int] = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content = "[c]",
-            attachedObject={
-                "title": title,
-                "content": content,
-                "mediaList": [[100, self.__handle_media__(media=image, media_value=True), None]],
-                "link": link
-                }).json()))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/check-in/stats/{userId}",
+                params={"timezone": -300},
+            )
+        )
 
-    @community
-    def send_link_snippet(self, chatId: str, image: str, message: str = "[c]", link: str = "ndc://user-me", mentioned: list = None, comId: Union[str, int] = None) -> CMessage:
-        if mentioned is None:
-            mentioned = []
+    def send_embed(
+        self,
+        chatId: str,
+        title: str,
+        content: str,
+        image: "entities.Media",
+        link: Optional[str] = None,
+        message: str = "[c]",
+        comId: Optional[int] = None,
+    ) -> "entities.CMessage":
+        return entities.CMessage(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    content=message,
+                    attachedObject={
+                        "title": title,
+                        "content": content,
+                        "mediaList": [
+                            [100, self.__handle_media__(image, "image/jpg"), None]
+                        ],
+                        "link": link,
+                    },
+                ).json(),
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content=message,
-            extensions = {
-            "linkSnippetList": [{
-                "link": link,
-                "mediaType": 100,
-                "mediaUploadValue": self.encode_media(
-                    self.__handle_media__(
-                        media=image,
-                        content_type="image/jpg",
-                        media_value=False
-                    )
-                ),
-                "mediaUploadValueContentType": "image/png",
-                "mentionedArray": [
-                {"uid": self.userId}
-                ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-                ] if isinstance(mentioned, list) else None
-            }]
-            }).json()))
+    def send_link_snippet(
+        self,
+        chatId: str,
+        image: "entities.Media",
+        message: str = "[c]",
+        link: str = "ndc://user-me",
+        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        comId: Optional[int] = None,
+    ) -> "entities.CMessage":
+        if isinstance(mentioned, str):
+            mentioned = [mentioned]
+        return entities.CMessage(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    content=message,
+                    extensions={
+                        "linkSnippetList": [
+                            {
+                                "link": link,
+                                "mediaType": 100,
+                                "mediaUploadValue": self.__handle_media__(image),
+                                "mediaUploadValueContentType": "image/png",
+                                "mentionedArray": (
+                                    [{"uid": userId} for userId in mentioned]
+                                    if mentioned
+                                    else None
+                                ),
+                            }
+                        ]
+                    },
+                ).json(),
+            )
+        )
 
-    @community
-    def send_message(self, chatId: str, content: str, comId: Union[str, int] = None, mentioned: list = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(
-                content=content,
-                extensions = {
-                    "mentionedArray": [
-                    {"uid": self.userId}
-                    ] if isinstance(mentioned, str) else [{"uid": i} for i in mentioned
-                    ] if isinstance(mentioned, list) else None
-                }).json()
-            ))
-    
+    def send_message(
+        self,
+        chatId: str,
+        content: str,
+        comId: Optional[int] = None,
+        mentioned: Optional[Union["Sequence[str]", str]] = None,
+    ) -> "entities.CMessage":
+        if isinstance(mentioned, str):
+            mentioned = [mentioned]
+        return entities.CMessage(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    content=content,
+                    extensions={
+                        "mentionedArray": (
+                            [{"uid": userId} for userId in mentioned]
+                            if mentioned
+                            else None
+                        )
+                    },
+                ).json(),
+            )
+        )
 
-    @community
-    def reply_message(self, chatId: str, messageId: str, content: str, comId: Union[str, int] = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(content=content, replyMessageId=messageId
-            ).json()))
+    def reply_message(
+        self,
+        chatId: str,
+        messageId: str,
+        content: str,
+        comId: Optional[int] = None,
+    ) -> "entities.CMessage":
+        return entities.CMessage(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    content=content,
+                    replyMessageId=messageId,
+                ).json(),
+            )
+        )
 
+    def send_image(
+        self,
+        chatId: str,
+        image: "entities.Media",
+        comId: Optional[int] = None,
+    ) -> "entities.CMessage":
+        return entities.CMessage(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    mediaType=100,
+                    mediaUploadValue=self.__handle_media__(image),
+                    mediaUploadValueContentType="image/jpg",
+                    mediaUhqEnabled=True,
+                ).json(),
+            ),
+        )
 
-    @community
-    def send_image(self, chatId: str, image: BinaryIO = None, comId: Union[str, int] = None) -> CMessage:
-        return CMessage(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(
-                mediaType = 100,
-                mediaUploadValue=self.encode_media(
-                    self.__handle_media__(
-                    media=image,
-                    content_type="image/jpg",
-                    media_value=False
-                )),
-                mediaUploadValueContentType = "image/jpg",
-                mediaUhqEnabled = True).json()
-                ))
-
-    @community
-    def send_audio(self, chatId: str, audio: Union[str, BinaryIO] = None, comId: Union[str, int] = None) -> CMessage:
+    def send_audio(
+        self,
+        chatId: str,
+        audio: "entities.Media",
+        comId: Optional[int] = None,
+    ) -> "entities.CMessage":
         """
         Sends an audio file to a chat.
 
@@ -4144,7 +4471,7 @@ class Community:
         :param audio: The path to the audio file or a file-like object containing the audio data.
         :type audio: Union[str, BinaryIO]
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `CMessage` object representing the newly sent message.
 
         The `community` decorator is used to ensure that the user is logged in and the community ID is present.
@@ -4158,23 +4485,26 @@ class Community:
         ...
         EXAMPLE 2:
         >>> response = client.send_audio(chatId="1111-2222-3333-4444", audio="https://example.com/audio.aac")
-        ... 
+        ...
         """
-        return CMessage(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(
-                type=2,
-                mediaType=110,
-                mediaUploadValue=self.encode_media(
-                    self.__handle_media__(
-                        media=audio,
-                        content_type="audio/aac",
-                        media_value=False
-            ))).json()))
+        return entities.CMessage(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    type=2,
+                    mediaType=110,
+                    mediaUploadValue=self.__handle_media__(audio),
+                ).json(),
+            ),
+        )
 
-    @community
-    def send_sticker(self, chatId: str, stickerId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def send_sticker(
+        self,
+        chatId: str,
+        stickerId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sends a sticker to a chat.
 
@@ -4183,7 +4513,7 @@ class Community:
         :param stickerId: The ID of the sticker to send.
         :type stickerId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4207,61 +4537,51 @@ class Community:
         ... else:
         ...     print("Failed to send sticker.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message",
-            data = PrepareMessage(
-                type=3,
-                mediaType=113,
-                mediaValue=f"ndcsticker://{stickerId}",
-                stickerId=stickerId).json()
-                ))
-    
-    def __handle_media__(self, media: str, content_type: str = "image/jpg", media_value: bool = False) -> str:
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message",
+                data=entities.PrepareMessage(
+                    type=3,
+                    mediaType=113,
+                    mediaValue=f"ndcsticker://{stickerId}",
+                    stickerId=stickerId,
+                ).json(),
+            )
+        )
+
+    def __handle_media__(
+        self,
+        media: "entities.Media",
+        content_type: Optional[str] = None,
+    ) -> str:
         """Handles media files."""
-        response = None
-        
-        try:
-            if media.startswith("http"):
-                response = get(media)
-                response.raise_for_status()
-                media = response.content
-            else:
-                media = open(media, "rb").read()
-        except Exception as e:
-            raise InvalidImage from e
+        media = entities.read_media(media)
+        if content_type:
+            return self.upload_media(media, content_type)
 
-        if media_value:
-            return self.upload_media(media=media, content_type=content_type)
+        return base64.b64encode(media).decode()
 
-        if response and not response.headers.get("content-type").startswith("image"):
-            raise InvalidImage
-
-        return media
-
-    def encode_media(self, file: bytes) -> str:
-        """Encodes a media file to base64."""
-        return b64encode(file).decode()
-
-    def upload_media(self, media: Union[str, BinaryIO], content_type: str = "image/jpg") -> str:
+    def upload_media(
+        self,
+        media: "entities.Media",
+        content_type: str = "image/jpg",
+    ) -> str:
         """Uploads a media file to the server."""
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = "/g/s/media/upload",
-            data = media,
-            content_type = content_type
-            )).mediaValue
+        return self.bot.upload_media(media, content_type)
 
-
-    @community
-    def join_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def join_chat(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Joins a chat.
 
         :param chatId: The ID of the chat to join.
         :type chatId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4284,21 +4604,25 @@ class Community:
         ... else:
         ...     print("Failed to join chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member/{self.userId}",
+            )
+        )
 
-
-    @community
-    def leave_chat(self, chatId: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
+    def leave_chat(
+        self,
+        chatId: Union["Sequence[str]", str],
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Leaves a chat or multiple chats.
 
         :param chatId: A list of chat thread IDs to leave or a single chat thread ID to leave.
         :type chatId: Union[str, List[str]]
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4321,15 +4645,23 @@ class Community:
         ... else:
         ...     print("Failed to leave chat.")
         """
+        if isinstance(chatId, str):
+            chatId = [chatId]
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/chat/thread/leave",
+                params={"threadIds": ",".join(chatId)},
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/leave?threadIds={','.join(chatId) if isinstance(chatId, list) else chatId}"
-            ))
-
-
-    @community
-    def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: Union[str, int] = None) -> ApiResponse:
+    def kick(
+        self,
+        userId: str,
+        chatId: str,
+        allowRejoin: bool = True,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Kicks a user from a chat.
 
@@ -4340,7 +4672,7 @@ class Community:
         :param allowRejoin: A boolean indicating whether the user should be allowed to rejoin the chat. Defaults to `True`.
         :type allowRejoin: bool
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4363,21 +4695,26 @@ class Community:
         ... else:
         ...     print("Failed to kick user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member/{userId}",
+                params={"allowRejoin": int(allowRejoin)},
+            )
+        )
 
-
-    @community
-    def delete_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_chat(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a chat.
 
         :param chatId: The ID of the chat to delete.
         :type chatId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4400,14 +4737,21 @@ class Community:
         ... else:
         ...     print("Failed to delete chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}",
+            )
+        )
 
-
-    @community
-    def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def delete_message(
+        self,
+        chatId: str,
+        messageId: str,
+        asStaff: bool = False,
+        reason: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a message in a chat.
 
@@ -4420,7 +4764,7 @@ class Community:
         :param reason: The reason for deleting the message, if being deleted as a staff member. Defaults to `None`.
         :type reason: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4443,27 +4787,29 @@ class Community:
         ... else:
         ...     print("Failed to delete message.")
         """
+        method = "DELETE"
+        data: Optional[Dict[str, Any]] = None
+        endpoint = (
+            f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
+        )
         if asStaff:
-            request_method = "POST"
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}/admin"
-            data = {
+            endpoint += "/admin"
+            method, data = "POST", {
                 "adminOpName": 102,
-                "adminOpNote": {"content": reason},
-                "timestamp": int(time() * 1000)
-            } if reason is not None else {
-                "adminOpName": 102,
-                "timestamp": int(time() * 1000)
+                "timestamp": int(time.time() * 1000),
             }
-        else:
-            request_method = "DELETE"
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/message/{messageId}"
-            data = None
+            if reason:
+                data["adminOpNote"] = {"content": reason}
+        return entities.ApiResponse(
+            self.bot.request.handler(method, endpoint, data=data)
+        )
 
-        return ApiResponse(self.session.handler(method=request_method, url=url, data=data))
-
-
-    @community
-    def transfer_host(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def transfer_host(
+        self,
+        chatId: str,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Requests to transfer chat organizer privileges to another user.
 
@@ -4472,7 +4818,7 @@ class Community:
         :param userId: The ID of the user to transfer organizer privileges to.
         :type userId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4495,16 +4841,23 @@ class Community:
         ... else:
         ...     print("Failed to make transfer request.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer",
-            data = {
-                "uidList": [userId],
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/transfer-organizer",
+                data={
+                    "uidList": [userId],
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def accept_host(self, chatId: str, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def accept_host(
+        self,
+        chatId: str,
+        requestId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Accepts a request to transfer chat organizer privileges to the current user.
 
@@ -4513,7 +4866,7 @@ class Community:
         :param requestId: The ID of the transfer request to accept.
         :type requestId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4536,14 +4889,20 @@ class Community:
         ... else:
         ...     print("Failed to accept transfer request.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept",
+            )
+        )
 
-
-    @community
-    def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def subscribe(
+        self,
+        userId: str,
+        autoRenew: bool = False,
+        transactionId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Subscribes to an influencer's content.
 
@@ -4554,7 +4913,7 @@ class Community:
         :param transactionId: A unique ID for the transaction. If not provided, a random UUID is used. Defaults to `None`.
         :type transactionId: str
         :param comId: The ID of the community where the subscription will be made. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4577,20 +4936,28 @@ class Community:
         ... else:
         ...     print("Failed to create subscription.")
         """
-        if not transactionId: transactionId = str(uuid4())
-        return ApiResponse(self.session.handler(
-            method = "POST", url = f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
-            data = {
-                "paymentContext": {
-                    "transactionId": transactionId,
-                    "isAutoRenew": autoRenew
+        if not transactionId:
+            transactionId = str(uuid.uuid4())
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/influencer/{userId}/subscribe",
+                data={
+                    "paymentContext": {
+                        "transactionId": transactionId,
+                        "isAutoRenew": autoRenew,
+                    },
+                    "timestamp": int(time.time() * 1000),
                 },
-                "timestamp": int(time() * 1000)
-                }))
+            )
+        )
 
-
-    @community
-    def thank_props(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def thank_props(
+        self,
+        chatId: str,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sends a thank-you message to a user who has been tipped in a chat.
 
@@ -4599,7 +4966,7 @@ class Community:
         :param userId: The ID of the user to send the thank-you message to.
         :type userId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4622,21 +4989,21 @@ class Community:
         ... else:
         ...     print("Failed to send thank-you message.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank"
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank",
+            )
+        )
 
-
-    @community
     def send_active(
         self,
-        tz: int = -timezone // 1000,
-        start: int = None,
-        end: int = None,
-        timers: list = None,
-        comId: Union[str, int] = None
-        ) -> ApiResponse:
+        tz: int = -time.timezone // 1000,
+        start: Optional[float] = None,
+        end: Optional[float] = None,
+        timers: Optional["Sequence[Dict[str, int]]"] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sends data about user activity to the server.
 
@@ -4649,7 +5016,7 @@ class Community:
         :param timers: A list of user activity sessions, each represented as a dictionary with `start` and `end` keys. Required if `start` and `end` are not provided. Defaults to `None`.
         :type timers: list
         :param comId: The ID of the community where the user activity data will be sent. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :raises MissingTimers: If `start` and `end` are not provided and `timers` is not provided or empty.
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
@@ -4667,43 +5034,43 @@ class Community:
 
         To send 5 minutes of user activity data:
 
-        >>> start_time = int(time())
-        >>> end_time = int(time()) + 300
+        >>> start_time = int(time.time())
+        >>> end_time = int(time.time()) + 300
         >>> response = client.community.send_active(start=start_time, end=end_time)
         ... if response.statuscode == 0:
         ...     print("User activity data sent successfully!")
         ... else:
         ...     print("Failed to send user activity data.")
         """
-        if not any([start and end, timers]): raise MissingTimers
-        
-        data={
+        data: Dict[str, Any] = {
             "optInAdsFlags": 2147483647,
             "timezone": tz,
-            "timestamp": int(time() * 1000)
+            "timestamp": int(time.time() * 1000),
         }
-        if timers is not None:
-            data["userActiveTimeChunkList"] = timers
+        if timers:
+            data["userActiveTimeChunkList"] = list(timers)
+        elif start and end:
+            data["userActiveTimeChunkList"] = [{"start": int(start), "end": int(end)}]
         else:
-            data["userActiveTimeChunkList"] = [{"start": start, "end": end}]
+            raise entities.MissingTimers
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/community/stats/user-active-time",
-            data=data
-            ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/community/stats/user-active-time",
+                data=data,
+            )
+        )
 
-
-    @community
     def send_coins(
         self,
         coins: int,
-        blogId: str = None,
-        chatId: str = None,
-        wikiId: str = None,
-        transactionId: str = None,
-        comId: Union[str, int] = None
-        ) -> ApiResponse:
+        blogId: Optional[str] = None,
+        chatId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        transactionId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sends coins to a blog, chat, or wiki item.
 
@@ -4718,7 +5085,7 @@ class Community:
         :param transactionId: A unique ID for the transaction. If not provided, a random UUID is used. Defaults to `None`.
         :type transactionId: str
         :param comId: The ID of the community where the coins will be sent. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4741,34 +5108,66 @@ class Community:
         ... else:
         ...     print("Failed to send coins.")
         """
-        return ApiResponse(self.session.handler(
-            method="POST",
-            url=f'/x{self.community_id if comId is None else comId}/s/{"blog" if blogId else "chat/thread" if chatId else "item"}/{blogId or chatId or wikiId}/tipping',
-            data={"coins": coins, "tippingContext": {"transactionId": transactionId or (str(uuid4()))}, "timestamp": int(time() * 1000)}
-            ))
+        if not transactionId:
+            transactionId = str(uuid.uuid4())
+        if blogId:
+            path = f"blog/{blogId}"
+        elif chatId:
+            path = f"chat/thread/{chatId}"
+        elif wikiId:
+            path = f"item/{wikiId}"
+        else:
+            raise ValueError("Missing Object ID")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/{path}/tipping",
+                data={
+                    "coins": coins,
+                    "tippingContext": {"transactionId": transactionId},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def send_chat_props(self, coins: int, chatId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def send_chat_props(
+        self,
+        coins: int,
+        chatId: str,
+        transactionId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """Refer to `send_coins` for documentation."""
-        return self.send_coins(coins=coins, chatId=chatId, transactionId=transactionId, comId=comId)
+        return self.send_coins(
+            coins=coins,
+            chatId=chatId,
+            transactionId=transactionId,
+            comId=comId,
+        )
 
-
-    @community
-    def send_blog_props(self, coins: int, blogId: str, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def send_blog_props(
+        self,
+        coins: int,
+        blogId: str,
+        transactionId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """Refer to `send_coins` for documentation."""
-        return self.send_coins(coins=coins, blogId=blogId, transactionId=transactionId, comId=comId)
+        return self.send_coins(
+            coins=coins,
+            blogId=blogId,
+            transactionId=transactionId,
+            comId=comId,
+        )
 
-
-    @community
     def start_chat(
         self,
-        userIds: Union[str, List[str]],
+        userIds: Union["Sequence[str]", str],
         title: Optional[str] = None,
         message: Optional[str] = None,
         content: Optional[str] = None,
-        comId: Optional[Union[str, int]] = None
-    ) -> ChatThread:
+        comId: Optional[Union[str, int]] = None,
+    ) -> entities.ChatThread:
         """
         Creates a new chat with the given users.
 
@@ -4802,22 +5201,30 @@ class Community:
         ... else:
         ...     print("Failed to create chat.")
         """
-        return ChatThread(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread",
-            data = {
-            "title": title,
-            "inviteeUids": userIds if isinstance(userIds, list) else [userIds],
-            "initialMessageContent": message,
-            "content": content,
-            "type": 0,
-            "publishToGlobal": 0,
-            "timestamp": int(time() * 1000)
-            }))
+        if isinstance(userIds, str):
+            userIds = [userIds]
+        return entities.ChatThread(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread",
+                data={
+                    "title": title,
+                    "inviteeUids": list(userIds),
+                    "initialMessageContent": message,
+                    "content": content,
+                    "type": 0,
+                    "publishToGlobal": 0,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def invite_chat(self, chatId: str, userIds: Union[str, List[str]], comId: Union[str, int] = None) -> ApiResponse:
+    def invite_chat(
+        self,
+        chatId: str,
+        userIds: Union["Sequence[str]", str],
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Invites one or more users to join a chat.
 
@@ -4826,7 +5233,7 @@ class Community:
         :param userIds: The ID(s) of the user(s) to invite to the chat. Can be a string or a list of strings.
         :type userIds: Union[str, List[str]]
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4851,17 +5258,25 @@ class Community:
         ... else:
         ...     print("Failed to send invitation.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/invite",
-            data = {
-            "uids": userIds if isinstance(userIds, list) else [userIds],
-            "timestamp": int(time() * 1000)
-            }))
+        if isinstance(userIds, str):
+            userIds = [userIds]
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member/invite",
+                data={
+                    "uids": list(userIds),
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def set_view_only(self, chatId: str, viewOnly: bool = True, comId: Union[str, int] = None) -> ApiResponse:
+    def set_view_only(
+        self,
+        chatId: str,
+        viewOnly: bool = True,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Set the view-only mode for a chat thread.
 
@@ -4870,7 +5285,7 @@ class Community:
         :param viewOnly: Whether to enable or disable view-only mode. Defaults to `True`.
         :type viewOnly: bool
         :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4895,14 +5310,20 @@ class Community:
         ... else:
         ...     print("Failed to enable view-only mode.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/enable" if viewOnly else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/disable"
-            ))
+        action = "enable" if viewOnly else "disable"
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/view-only/{action}",
+            )
+        )
 
-
-    @community
-    def set_members_can_invite(self, chatId: str, canInvite: bool = True, comId: Union[str, int] = None, **kwargs) -> ApiResponse:
+    def set_members_can_invite(
+        self,
+        chatId: str,
+        canInvite: bool = True,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Sets whether members of a chat thread in the current or specified community can invite other members.
 
@@ -4911,7 +5332,7 @@ class Community:
         :param canInvite: Whether members of the chat thread can invite other members. Defaults to True.
         :type canInvite: bool
         :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4942,18 +5363,20 @@ class Community:
         ... else:
         ...     print("Failed to disable members can invite status.")
         """
-        if "can_invite" in kwargs: #TODO: Remove in the near future.
-            canInvite = kwargs["can_invite"]
-            print("The 'can_invite' parameter is deprecated. Please use 'canInvite' instead.")
+        action = "enable" if canInvite else "disable"
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/members-can-invite/{action}",
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/enable" if canInvite else f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/disable"
-            ))
-
-
-    @community
-    def change_chat_background(self, chatId: str, backgroundImage: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def change_chat_background(
+        self,
+        chatId: str,
+        backgroundImage: "entities.Media",
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Changes the background image of a chat thread in the current or specified community.
 
@@ -4962,7 +5385,7 @@ class Community:
         :param backgroundImage: The URL or file path of the image to set as the background image of the chat thread. If None, the background image will be cleared.
         :type backgroundImage: str
         :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -4993,17 +5416,26 @@ class Community:
         ... else:
         ...     print("Failed to clear chat background.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
-            data = {
-            "media": [[100, self.__handle_media__(media=backgroundImage, media_value=True), None]],
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member/{self.userId}/background",
+                data={
+                    "media": [
+                        [100, self.__handle_media__(backgroundImage, "image/jpg"), None]
+                    ],
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def solve_quiz(self, quizId: str, quizAnswers: Union[dict, list], hellMode: bool = False, comId: Union[str, int] = None) -> ApiResponse:
+    def solve_quiz(
+        self,
+        quizId: str,
+        quizAnswers: "Sequence[Tuple[str, str]]",
+        hellMode: bool = False,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Submits answers to a quiz in the current or specified community.
 
@@ -5014,7 +5446,7 @@ class Community:
         :param hellMode: Whether to solve the quiz in hell mode. Defaults to False.
         :type hellMode: bool
         :param comId: The ID of the community where the quiz is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5043,66 +5475,76 @@ class Community:
 
         To solve a quiz with ID "2222-2222-2222-2222" in a community with ID "1234" in hell mode:
 
-        >>> answers = {"questionId": "q1", "answer": "a1"}
+        >>> answers = [(questionId, answerId)]
         >>> response = client.community.solve_quiz(quizId="2222-2222-2222-2222", quizAnswers=answers, hellMode=True, comId=1234)
         ... if response.statuscode == 0:
         ...     print("Quiz solved successfully!")
         ... else:
         ...     print("Failed to solve quiz.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{quizId}/quiz/result",
-            data = {
-            "quizAnswerList": quizAnswers if isinstance(quizAnswers, list) else [quizAnswers],
-            "mode": 1 if hellMode else 0,
-            "timestamp": int(time() * 1000)
-            }))
-
-
-    @community
-    def set_channel(self, chatId: str, comId: Union[str, int] = None) -> None:
-        for i in range(2):
-            self.bot.send_websocket_message({
-                "o": {
-                    "ndcId": self.community_id if comId is None else comId,
-                    "threadId": chatId,
-                    "joinRole": 1 if i == 0 else None,
-                    "id": randint(0, 100)
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{quizId}/quiz/result",
+                data={
+                    "quizAnswerList": [
+                        {"questionId": questionId, "answer": answerId}
+                        for questionId, answerId in quizAnswers
+                    ],
+                    "mode": 1 if hellMode else 0,
+                    "timestamp": int(time.time() * 1000),
                 },
-                "t": 112 if i == 0 else 200
-                })
+            )
+        )
 
-    @community
-    def start_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
+    def set_channel(self, chatId: str, comId: Optional[int] = None) -> None:
         for i in range(2):
-            self.bot.send_websocket_message({
+            self.bot.send_websocket_message(
+                {
+                    "o": {
+                        "ndcId": comId or self.community_id,
+                        "threadId": chatId,
+                        "joinRole": 1 if i == 0 else None,
+                        "id": int(time.monotonic()) + random.randint(0, 100),
+                    },
+                    "t": 112 if i == 0 else 200,
+                }
+            )
+
+    def start_vc(self, chatId: str, comId: Optional[int] = None) -> None:
+        for i in range(2):
+            self.bot.send_websocket_message(
+                {
+                    "o": {
+                        "ndcId": comId or self.community_id,
+                        "threadId": chatId,
+                        "joinRole": 1 if i == 0 else None,
+                        "channelType": 1 if i == 1 else None,
+                        "id": int(time.monotonic()) + random.randint(0, 100),
+                    },
+                    "t": 112 if i == 0 else 108,
+                }
+            )
+
+    def stop_vc(self, chatId: str, comId: Optional[int] = None) -> None:
+        self.bot.send_websocket_message(
+            {
                 "o": {
-                    "ndcId": self.community_id if comId is None else comId,
+                    "ndcId": comId or self.community_id,
                     "threadId": chatId,
-                    "joinRole": 1 if i == 0 else None,
-                    "channelType": 1 if i == 1 else None,
-                    "id": randint(0, 100)
+                    "joinRole": 2,
+                    "id": int(time.monotonic()) + random.randint(0, 100),
                 },
-                "t": 112 if i == 0 else 108
-            })
+                "t": 112,
+            }
+        )
 
-
-    @community
-    def stop_vc(self, chatId: str, comId: Union[str, int] = None) -> None:
-        self.bot.send_websocket_message({
-            "o": {
-                "ndcId": self.community_id if comId is None else comId,
-                "threadId": chatId,
-                "joinRole": 2,
-                "id": randint(0, 100)
-            },
-            "t": 112
-        })
-
-
-    @community
-    def disable_chat(self, chatId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def disable_chat(
+        self,
+        chatId: str,
+        reason: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Disables a chat thread in the current or specified community.
 
@@ -5111,7 +5553,7 @@ class Community:
         :param reason: An optional reason for disabling the chat thread.
         :type reason: str
         :param comId: The ID of the community where the chat thread is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5142,23 +5584,27 @@ class Community:
         ... else:
         ...     print("Failed to disable chat thread.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
-            data = {
+        data: Dict[str, Any] = {
             "adminOpName": 110,
             "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            } if reason is None else {
-            "adminOpNote": {"content": reason},
-            "adminOpName": 110,
-            "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            }))
+            "timestamp": int(time.time() * 1000),
+        }
+        if reason:
+            data["adminOpNote"] = {"content": reason}
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/admin",
+                data=data,
+            )
+        )
 
-
-    @community
-    def disable_blog(self, blogId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def disable_blog(
+        self,
+        blogId: str,
+        reason: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Disables a blog in the current or specified community.
 
@@ -5167,7 +5613,7 @@ class Community:
         :param reason: An optional reason for disabling the blog.
         :type reason: str
         :param comId: The ID of the community where the blog is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5198,23 +5644,27 @@ class Community:
         ... else:
         ...     print("Failed to disable blog.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
-            data = {
+        data: Dict[str, Any] = {
             "adminOpName": 110,
             "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            } if reason is None else {
-            "adminOpNote": {"content": reason},
-            "adminOpName": 110,
-            "adminOpValue": 9,
-            "timestamp": int(time() * 1000)
-            }))
+            "timestamp": int(time.time() * 1000),
+        }
+        if reason:
+            data["adminOpNote"] = {"content": reason}
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/admin",
+                data=data,
+            )
+        )
 
-
-    @community
-    def hide_user(self, userId: str, reason: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def hide_user(
+        self,
+        userId: str,
+        reason: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Hides a user profile in the current or specified community.
 
@@ -5223,7 +5673,7 @@ class Community:
         :param reason: An optional reason for hiding the user.
         :type reason: str
         :param comId: The ID of the community where the user profile is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5254,20 +5704,26 @@ class Community:
         ... else:
         ...     print("Failed to hide user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
+        data: Dict[str, Any] = {
             "adminOpName": 18,
-            "timestamp": int(time() * 1000)
-            } if reason is None else {
-            "adminOpNote": {"content": reason},
-            "adminOpName": 18,
-            "timestamp": int(time() * 1000)
-            }))
-    
-    @community
-    def invite_to_vc(self, chatId: str, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+            "timestamp": int(time.time() * 1000),
+        }
+        if reason:
+            data["adminOpNote"] = {"content": reason}
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/admin",
+                data=data,
+            )
+        )
+
+    def invite_to_vc(
+        self,
+        chatId: str,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Invites a user to a voice chat in the current or specified community.
 
@@ -5276,7 +5732,7 @@ class Community:
         :param userId: The ID of the user to invite.
         :type userId: str
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5307,13 +5763,20 @@ class Community:
         ... else:
         ...     print("Failed to invite user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/",
-            data = {"uid": userId}))
-    
-    @community
-    def feature_user(self, feature_time: int, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/vvchat-presenter/invite/",
+                data={"uid": userId},
+            )
+        )
+
+    def feature_user(
+        self,
+        feature_time: Literal[1, 2, 3],
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Features a user in the current or specified community.
 
@@ -5322,7 +5785,7 @@ class Community:
         :param userId: The ID of the user to feature.
         :type userId: str
         :param comId: The ID of the community to feature the user in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5353,17 +5816,29 @@ class Community:
         ... else:
         ...     print("Failed to feature user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 4, "featuredDuration": 86400 if feature_time == 1 else 172800 if feature_time == 2 else 259200 if feature_time == 3 else None},
-            "timestamp": int(time() * 1000)
-            }))
-    
-    @community
-    def feature_chat(self, feature_time: int, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+        if feature_time not in (1, 2, 3):
+            raise ValueError("Invalid feature time.")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {
+                        "featuredType": 4,
+                        "featuredDuration": feature_time * 86400,
+                    },
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
+
+    def feature_chat(
+        self,
+        feature_time: Literal[1, 2, 3],
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Features a chat in the current or specified community.
 
@@ -5372,7 +5847,7 @@ class Community:
         :param chatId: The ID of the chat to feature.
         :type chatId: str
         :param comId: The ID of the community to feature the chat in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5403,17 +5878,29 @@ class Community:
         ... else:
         ...     print("Failed to feature chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 5, "featuredDuration": 3600 if feature_time == 1 else 7200 if feature_time == 2 else 10800 if feature_time == 3 else None},
-            "timestamp": int(time() * 1000)
-            }))
-    
-    @community
-    def feature_blog(self, feature_time: int, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+        if feature_time not in (1, 2, 3):
+            raise ValueError("Invalid feature time.")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {
+                        "featuredType": 5,
+                        "featuredDuration": feature_time * 3600,
+                    },
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
+
+    def feature_blog(
+        self,
+        feature_time: Literal[1, 2, 3],
+        blogId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Features a blog in the current or specified community.
 
@@ -5422,7 +5909,7 @@ class Community:
         :param blogId: The ID of the blog to feature.
         :type blogId: str
         :param comId: The ID of the community to feature the blog in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5453,17 +5940,29 @@ class Community:
         ... else:
         ...     print("Failed to feature blog.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 1, "featuredDuration": 86400 if feature_time == 1 else 172800 if feature_time == 2 else 259200 if feature_time == 3 else None},
-            "timestamp": int(time() * 1000)
-            }))
-    
-    @community
-    def feature_wiki(self, feature_time: int, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+        if feature_time not in (1, 2, 3):
+            raise ValueError("Invalid feature time")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {
+                        "featuredType": 1,
+                        "featuredDuration": feature_time * 86400,
+                    },
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
+
+    def feature_wiki(
+        self,
+        feature_time: Literal[1, 2, 3],
+        wikiId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Features a wiki in the current or specified community.
 
@@ -5472,7 +5971,7 @@ class Community:
         :param wikiId: The ID of the wiki to feature.
         :type wikiId: str
         :param comId: The ID of the community to feature the wiki in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5503,24 +6002,35 @@ class Community:
         ... else:
         ...     print("Failed to feature wiki.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 2, "featuredDuration": 86400 if feature_time == 1 else 172800 if feature_time == 2 else 259200 if feature_time == 3 else None},
-            "timestamp": int(time() * 1000)
-            }))
+        if feature_time not in (1, 2, 3):
+            raise ValueError("Invalid feature time")
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/item/{wikiId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {
+                        "featuredType": 2,
+                        "featuredDuration": feature_time * 86400,
+                    },
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    @community
-    def unfeature_chat(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unfeature_chat(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Unfeatures a chat in the current or specified community.
 
         :param chatId: The ID of the chat to unfeature.
         :type chatId: str
         :param comId: The ID of the community to unfeature the chat in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5551,24 +6061,30 @@ class Community:
         ... else:
         ...     print("Failed to unfeature chat.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 0},
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {"featuredType": 0},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    @community
-    def unfeature_wiki(self, wikiId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unfeature_wiki(
+        self,
+        wikiId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Unfeatures a wiki in the current or specified community.
 
         :param wikiId: The ID of the wiki to unfeature.
         :type wikiId: str
         :param comId: The ID of the community to unfeature the wiki in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5599,24 +6115,30 @@ class Community:
         ... else:
         ...     print("Failed to unfeature wiki.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/item/{wikiId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 0},
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/item/{wikiId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {"featuredType": 0},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    @community
-    def unfeature_blog(self, blogId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def unfeature_blog(
+        self,
+        blogId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Unfeatures a blog in the current or specified community.
 
         :param blogId: The ID of the blog to unfeature.
         :type blogId: str
         :param comId: The ID of the community to unfeature the blog in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5647,24 +6169,30 @@ class Community:
         ... else:
         ...     print("Failed to unfeature blog.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/blog/{blogId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 0},
-            "timestamp": int(time() * 1000)
-            }))
-    
-    @community
-    def unfeature_user(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {"featuredType": 0},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
+
+    def unfeature_user(
+        self,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Unfeatures a user in the current or specified community.
 
         :param userId: The ID of the user to unfeature.
         :type userId: str
         :param comId: The ID of the community to unfeature the user in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5695,25 +6223,30 @@ class Community:
         ... else:
         ...     print("Failed to unfeature user.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/user-profile/{userId}/admin",
-            data = {
-            "adminOpName": 114,
-            "adminOpValue": {"featuredType": 0},
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/{userId}/admin",
+                data={
+                    "adminOpName": 114,
+                    "adminOpValue": {"featuredType": 0},
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def claim_vc_reputation(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def claim_vc_reputation(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Claims VC reputation for the current or specified community.
 
         :param chatId: The ID of the chat to claim VC reputation for.
         :type chatId: str
         :param comId: The ID of the community to claim VC reputation for. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5744,23 +6277,26 @@ class Community:
         ... else:
         ...     print("Failed to claim VC reputation.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
-            data = {
-            "timestamp": int(time() * 1000)
-            }))
-    
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/avchat-reputation",
+                data={"timestamp": int(time.time() * 1000)},
+            )
+        )
 
-    @community
-    def fetch_vc_reputation_info(self, chatId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def fetch_vc_reputation_info(
+        self,
+        chatId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Fetches VC reputation information for the current or specified community.
 
         :param chatId: The ID of the chat to fetch VC reputation information for.
         :type chatId: str
         :param comId: The ID of the community to fetch VC reputation information for. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5791,15 +6327,21 @@ class Community:
         ... else:
         ...     print("Failed to fetch VC reputation information.")
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/avchat-reputation",
-            data = {
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/avchat-reputation",
+                data={"timestamp": int(time.time() * 1000)},
+            )
+        )
 
-
-    def subscribe_influencer(self, userId: str, autoRenew: bool = False, transactionId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def subscribe_influencer(
+        self,
+        userId: str,
+        autoRenew: bool = False,
+        transactionId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Subscribes to an influencer.
 
@@ -5810,7 +6352,7 @@ class Community:
         :param transactionId: The ID of the transaction. If not provided, a random UUID is used.
         :type transactionId: str
         :param comId: The ID of the community to subscribe to the influencer in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
         :rtype: ApiResponse
 
@@ -5841,37 +6383,40 @@ class Community:
         ... else:
         ...     print("Failed to subscribe.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/influencer/{userId}/subscribe",
-            data = {
-            "paymentContext": {
-                "transactionId": str(uuid4()) if transactionId is None else transactionId,
-                "isAutoRenew": autoRenew
-            },
-            "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/influencer/{userId}/subscribe",
+                data={
+                    "paymentContext": {
+                        "transactionId": transactionId or str(uuid.uuid4()),
+                        "isAutoRenew": autoRenew,
+                    },
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def edit_chat(self,
-                  chatId: str,
-                  doNotDisturb: bool = None,
-                  pinChat: bool = None,
-                  title: str = None,
-                  icon: str = None,
-                  backgroundImage: str = None,
-                  content: str = None,
-                  announcement: str = None,
-                  coHost: list = None,
-                  keywords: list = None,
-                  pinAnnouncement: bool = None,
-                  publishToGlobal: bool = None,
-                  canTip: bool = None,
-                  viewOnly: bool = None,
-                  canInvite: bool = None,
-                  fansOnly: bool = None,
-                  comId: Union[str, int] = None):
+    def edit_chat(
+        self,
+        chatId: str,
+        doNotDisturb: Optional[bool] = None,
+        pinChat: Optional[bool] = None,
+        title: Optional[str] = None,
+        icon: Optional["entities.Media"] = None,
+        backgroundImage: Optional["entities.Media"] = None,
+        content: Optional[str] = None,
+        announcement: Optional[str] = None,
+        coHost: Optional["Sequence[str]"] = None,
+        keywords: Optional["Sequence[str]"] = None,
+        pinAnnouncement: Optional[bool] = None,
+        publishToGlobal: Optional[bool] = None,
+        canTip: Optional[bool] = None,
+        viewOnly: Optional[bool] = None,
+        canInvite: Optional[bool] = None,
+        fansOnly: Optional[bool] = None,
+        comId: Optional[int] = None,
+    ) -> List[int]:
         """
         Edits the chat settings.
 
@@ -5908,7 +6453,7 @@ class Community:
         :param fansOnly: Whether the chat is for fans only.
         :type fansOnly: bool
         :param comId: The ID of the community to edit the chat in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A list of `ApiResponse` objects containing the status codes of the API requests.
         :rtype: list
 
@@ -5936,86 +6481,149 @@ class Community:
         ...     else:
         ...         print("Edit failed.")
         """
-        data = dict(timestamp = int(time() * 1000))
-
-        if title: data               .update(dict(title = title))
-        if content: data             .update(dict(content = content))
-        if icon: data                .update(dict(icon = self.upload_media(open(icon, "rb").read()), content_type = "image/jpg"))
-        if keywords: data            .update(dict(keywords = keywords))
-        if announcement: data        .update(dict(extensions = dict(announcement = announcement)))
-        if pinAnnouncement: data     .update(dict(extensions = dict(pinAnnouncement = pinAnnouncement)))
-        if fansOnly: data            .update(dict(extensions = dict(fansOnly = fansOnly)))
-        if publishToGlobal: data     .update(dict(publishToGlobal = 0))
-        if not publishToGlobal: data .update(dict(publishToGlobal = 1))
-
-        responses = []
+        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        extensions: Dict[str, Any] = {}
+        if title:
+            data["title"] = title
+        if content:
+            data[content] = content
+        if icon:
+            data["icon"] = self.__handle_media__(icon, "image/jpg")
+        if keywords is not None:
+            data["keywords"] = list(keywords)
+        if announcement is not None:
+            extensions["announcement"] = announcement
+        if pinAnnouncement is not None:
+            extensions["pinAnnouncement"] = pinAnnouncement
+        if fansOnly is not None:
+            extensions["fansOnly"] = fansOnly
+        if publishToGlobal is not None:
+            data["publishToGlobal"] = int(publishToGlobal)
+        responses: List[int] = []
 
         if doNotDisturb is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/alert",
-                data = {
-                    "alertOption": 2 if doNotDisturb else 1,
-                    "timestamp": int(time() * 1000)
-                }
-            )).status_code)
-            
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member/{self.userId}/alert",
+                        data={
+                            "alertOption": 2 if doNotDisturb else 1,
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    )
+                ).status_code
+            )
+
         if pinChat is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/{'pin' if pinChat else 'unpin'}",
-                data = data
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/{'pin' if pinChat else 'unpin'}",
+                        data=data,
+                    )
+                ).status_code
+            )
+
         if backgroundImage is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/member/{self.userId}/background",
-                data = {
-                    "media": [100, self.__handle_media__(backgroundImage, "image/jpg", True), None],
-                    "timestamp": int(time() * 1000)
-                }
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/member/{self.userId}/background",
+                        data={
+                            "media": [
+                                100,
+                                self.__handle_media__(backgroundImage, "image/jpg"),
+                                None,
+                            ],
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    )
+                ).status_code
+            )
+
         if coHost is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/co-host",
-                data = {
-                    "uidList": coHost,
-                    "timestamp": int(time() * 1000)
-                }
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/co-host",
+                        data={
+                            "uidList": coHost,
+                            "timestamp": int(time.time() * 1000),
+                        },
+                    )
+                ).status_code
+            )
+
         if viewOnly is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}"
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}",
+                    )
+                ).status_code
+            )
+
         if canInvite is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}"
-            )).status_code)
-        
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}",
+                    )
+                ).status_code
+            )
+
         if canTip is not None:
-            responses.append(ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}"
-            )).status_code)
-        
-        responses.append(ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id if comId is None else comId}/s/chat/thread/{chatId}",
-            data = data
-        )).status_code)
+            responses.append(
+                entities.ApiResponse(
+                    self.bot.request.handler(
+                        "POST",
+                        f"/x{comId or self.community_id}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}",
+                    )
+                ).status_code
+            )
+
+        responses.append(
+            entities.ApiResponse(
+                self.bot.request.handler(
+                    "POST",
+                    f"/x{comId or self.community_id}/s/chat/thread/{chatId}",
+                    data=data,
+                )
+            ).status_code
+        )
 
         return responses
 
-    @community
-    def edit_profile(self, nickname: str = None, content: str = None, icon: str = None, chatRequestPrivilege: str = None, imageList: list = None, captionList: list = None, backgroundImage: str = None, backgroundColor: str = None, titles: list = None, colors: list = None, defaultBubbleId: str = None, comId: Union[str, int] = None):
+    #     cover_image: Union[str, BytesIO] = None,
+
+    def edit_profile(
+        self,
+        nickname: Optional[str] = None,
+        content: Optional[str] = None,
+        icon: Optional["entities.Media"] = None,
+        chatRequestPrivilege: Optional[int] = None,
+        imageList: Optional[
+            """Sequence[
+                Union[
+                    entities.Media,
+                    Tuple[entities.Media],
+                    Tuple[entities.Media, Optional[str]],
+                ]
+            ]"""
+        ] = None,
+        backgroundImage: Optional["entities.Media"] = None,
+        backgroundColor: Optional[str] = None,
+        titles: Optional["Sequence[str]"] = None,
+        colors: Optional["Sequence[str]"] = None,
+        defaultBubbleId: Optional[str] = None,
+        comId: Optional[Union[str, int]] = None,
+    ):
         """
         Edits the user profile.
 
@@ -6027,10 +6635,14 @@ class Community:
         :type icon: str
         :param chatRequestPrivilege: The privilege level for chat invite requests.
         :type chatRequestPrivilege: str
-        :param imageList: A list of image files to upload.
-        :type imageList: list
-        :param captionList: A list of captions for the uploaded images.
-        :type captionList: list
+        :param imageList: Optional list of images to include in the blog post.
+            Each item can be:
+            - a `str` (path or URL to an image),
+            - a `bytes` object,
+            - a `BinaryIO` (e.g., open file object),
+            - a 1-tuple containing any of the above,
+            - or a 2-tuple of (media, optional caption as str).
+        :type imageList: list[Media | tuple[Media] | tuple[Media, str | None]] | None
         :param backgroundImage: The new background image file for the user profile.
         :type backgroundImage: str
         :param backgroundColor: The new background color for the user profile.
@@ -6042,7 +6654,7 @@ class Community:
         :param defaultBubbleId: The ID of the default bubble for the user profile.
         :type defaultBubbleId: str
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6075,9 +6687,8 @@ class Community:
 
         To upload multiple images with captions:
 
-        >>> images = ["path/to/image1.jpg", "path/to/image2.jpg"]
-        ... captions = ["Caption 1", "Caption 2"]
-        ... profile = client.community.edit_profile(imageList=images, captionList=captions)
+        >>> images = [("path/to/image1.jpg", "Caption 1"), ("path/to/image2.jpg", "Caption 2")]
+        ... profile = client.community.edit_profile(imageList=images)
         ... print(profile.media)  # List of uploaded image URLs with captions
 
         To set a new background image and color:
@@ -6099,79 +6710,71 @@ class Community:
         >>> profile = client.community.edit_profile(defaultBubbleId="bubble123")
         ... print(profile.defaultBubbleId)  # "bubble123"
         """
-        media = []
-
-        data = dict(timestamp = int(time() * 1000))
-
-        if captionList is not None:
-            media.extend([[100, self.__handle_media__(image, "image/jpg", True), caption] for image, caption in zip(imageList, captionList)])
-        elif imageList is not None:
-            media.extend([[100, self.__handle_media__(image, "image/jpg", True), None] for image in imageList])
-
-        if imageList is not None or captionList is not None:
-            data.update(dict(mediaList=media))
-
+        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        extensions: Dict[str, Any] = {}
+        if imageList is not None:
+            mediaList: List[Any] = []
+            for image in imageList:
+                caption = None
+                if not isinstance(image, (bytes, str)) and isinstance(image, Sequence):
+                    if len(image) == 1:
+                        image = image[0]
+                    else:
+                        image, caption = image
+                mediaList.append(
+                    [100, self.__handle_media__(image, "image/jpg"), caption]
+                )
+            data["mediaList"] = mediaList
         if nickname:
-            data.update(dict(nickname = nickname))
+            data["nickname"] = nickname
         if icon:
-            data.update(dict(icon = self.__handle_media__(icon, "image/jpg", True)))
-        if content:
-            data.update(dict(content = content))
-
-        if chatRequestPrivilege:
-            data["extensions"] = {
-                "privilegeOfChatInviteRequest": chatRequestPrivilege
-            }
-
+            data["icon"] = self.__handle_media__(icon, "image/jpg")
+        if content is not None:
+            data["content"] = content
+        if chatRequestPrivilege is not None:
+            extensions["privilegeOfChatInviteRequest"] = chatRequestPrivilege
         if backgroundImage:
-            data["extensions"] = {
-                "style": {
-                    "backgroundMediaList": [
-                        [
-                            100,
-                            self.__handle_media__(
-                                media=backgroundImage,
-                                content_type="image/jpg",
-                                media_value=True
-                                ),
-                            None,
-                            None,
-                            None,
-                        ]
+            extensions["style"] = {
+                "backgroundMediaList": [
+                    [
+                        100,
+                        self.__handle_media__(backgroundImage, "image/jpg"),
+                        None,
+                        None,
+                        None,
                     ]
-                }
-            }
-
-        if backgroundColor:
-            data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
-
-        if defaultBubbleId:
-            data["extensions"] = {"defaultBubbleId": defaultBubbleId}
-
-        if titles or colors:
-            data["extensions"] = {
-                "customTitles": [
-                    {"title": title, "color": color}
-                    for title, color in zip(titles, colors)
                 ]
             }
+        if backgroundColor:
+            extensions["style"] = {"backgroundColor": backgroundColor}
+        if defaultBubbleId:
+            extensions["defaultBubbleId"] = defaultBubbleId
+        if not (titles is None or colors is None):
+            extensions["customTitles"] = [
+                {"title": title, "color": color} for title, color in zip(titles, colors)
+            ]
+        if extensions:
+            data["extensions"] = extensions
+        return entities.UserProfile(
+            self.bot.request.handler(
+                "POST",
+                f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
+                data=data,
+            )
+        )
 
-        return UserProfile(self.session.handler(
-            method = "POST",
-            url = f"/x{self.community_id or comId}/s/user-profile/{self.userId}",
-            data = data
-        ))
-    
-
-    @community
-    def change_username(self, username: str, comId: Union[str, int] = None) -> UserProfile:
+    def change_username(
+        self,
+        username: str,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user profile username.
 
         :param username: The new username for the user profile.
         :type username: str
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6186,18 +6789,20 @@ class Community:
         >>> profile = client.community.edit_profile_username("JohnDoe")
         ... print(profile.username)
         """
-        return self.edit_profile(username=username, comId=comId)
-    
+        return self.edit_profile(nickname=username, comId=comId)
 
-    @community
-    def change_icon(self, icon: str, comId: Union[str, int] = None) -> UserProfile:
+    def change_icon(
+        self,
+        icon: str,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user profile icon.
 
         :param icon: The new icon image file for the user profile.
         :type icon: str
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6213,10 +6818,13 @@ class Community:
         ... print(profile.icon)
         """
         return self.edit_profile(icon=icon, comId=comId)
-    
 
-    @community
-    def edit_profile_background(self, backgroundImage: str, backgroundColor: str = None, comId: Union[str, int] = None) -> UserProfile:
+    def edit_profile_background(
+        self,
+        backgroundImage: str,
+        backgroundColor: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user profile background.
 
@@ -6225,7 +6833,7 @@ class Community:
         :param backgroundColor: The new background color for the user profile.
         :type backgroundColor: str
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6242,11 +6850,18 @@ class Community:
         ... print(profile.backgroundImage)
         ... print(profile.backgroundColor)
         """
-        return self.edit_profile(backgroundImage=backgroundImage, backgroundColor=backgroundColor, comId=comId)
-    
+        return self.edit_profile(
+            backgroundImage=backgroundImage,
+            backgroundColor=backgroundColor,
+            comId=comId,
+        )
 
-    @community
-    def edit_profile_titles(self, titles: list, colors: list, comId: Union[str, int] = None) -> UserProfile:
+    def edit_profile_titles(
+        self,
+        titles: "Sequence[str]",
+        colors: "Sequence[str]",
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user profile custom titles.
 
@@ -6255,7 +6870,7 @@ class Community:
         :param colors: A list of colors corresponding to the custom titles.
         :type colors: list
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6275,17 +6890,19 @@ class Community:
         ... print(profile.colors)
         """
         return self.edit_profile(titles=titles, colors=colors, comId=comId)
-    
 
-    @community
-    def edit_profile_default_bubble(self, defaultBubbleId: str, comId: Union[str, int] = None) -> UserProfile:
+    def edit_profile_default_bubble(
+        self,
+        defaultBubbleId: str,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user profile default bubble.
 
         :param defaultBubbleId: The ID of the default bubble to set.
         :type defaultBubbleId: str
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6301,17 +6918,19 @@ class Community:
         ... print(profile.defaultBubbleId)
         """
         return self.edit_profile(defaultBubbleId=defaultBubbleId, comId=comId)
-    
 
-    @community
-    def chat_request_privilege(self, privilege: bool, comId: Union[str, int] = None) -> UserProfile:
+    def chat_request_privilege(
+        self,
+        privilege: bool,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfile":
         """
         Edits the user profile chat request privilege.
 
         :param privilege: Whether or not to enable chat request privilege.
         :type privilege: bool
         :param comId: The ID of the community to edit the user profile in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `UserProfile` object containing the updated user profile information.
         :rtype: UserProfile
 
@@ -6326,21 +6945,28 @@ class Community:
         >>> profile = client.community.chat_request_privilege(True)
         ... print(profile.chatRequestPrivilege)
         """
-        return self.edit_profile(chatRequestPrivilege=1 if privilege else 2, comId=comId)
+        return self.edit_profile(
+            chatRequestPrivilege=1 if privilege else 2, comId=comId
+        )
 
-
-    @community
-    def post_blog(self,
-                  title: str,
-                  content: str,
-                  imageList: List[str] = None,
-                  captionList: List[list] = None,
-                  categoriesList: list = None,
-                  backgroundColor: str = None,
-                  fansOnly: bool = False,
-                  extensions: dict = None,
-                  comId: Union[str, int] = None
-        ) -> CBlog:
+    def post_blog(
+        self,
+        title: str,
+        content: str,
+        imageList: Optional[
+            """Sequence[
+                Union[
+                    entities.Media,
+                    Tuple[entities.Media],
+                    Tuple[entities.Media, Optional[str]],
+                ]
+            ]"""
+        ] = None,
+        categoriesList: Optional["Sequence[str]"] = None,  # must be int?
+        backgroundColor: Optional[str] = None,
+        fansOnly: bool = False,
+        comId: Optional[int] = None,
+    ) -> entities.CBlog:
         """
         Posts a blog in the community.
 
@@ -6348,10 +6974,14 @@ class Community:
         :type title: str
         :param content: The content of the blog.
         :type content: str
-        :param imageList: A list of image paths to include in the blog. (Optional)
-        :type imageList: list, optional
-        :param captionList: A list of captions corresponding to the images. (Optional)
-        :type captionList: list, optional
+        :param imageList: Optional list of images to include in the blog post.
+            Each item can be:
+            - a `str` (path or URL to an image),
+            - a `bytes` object,
+            - a `BinaryIO` (e.g., open file object),
+            - a 1-tuple containing any of the above,
+            - or a 2-tuple of (media, optional caption as str).
+        :type imageList: list[Media | tuple[Media] | tuple[Media, str | None]] | None
         :param categoriesList: A list of category IDs to assign to the blog. (Optional)
         :type categoriesList: list, optional
         :param backgroundColor: The background color of the blog. (Optional)
@@ -6361,7 +6991,7 @@ class Community:
         :param extensions: Additional extensions for the blog. (Optional)
         :type extensions: dict, optional
         :param comId: The ID of the community to post the blog in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `CBlog` object representing the posted blog.
         :rtype: CBlog
 
@@ -6375,40 +7005,52 @@ class Community:
         ... print(blog.title)
         ... print(blog.content)
         """
-        media = []
-        if captionList is not None: [media.append([100, self.__handle_media__(image[0], "image/jpg", True), image[1]]) for image in captionList]
-        elif imageList is not None: [media.append([100, self.__handle_media__(image, "image/jpg", True), None]) for image in imageList]
-
-        data = dict(address = None,
-                    content = content,
-                    title = title,
-                    mediaList = media,
-                    extensions = extensions,
-                    latitude = 0,
-                    longitude = 0,
-                    eventSource = "GlobalComposeMenu",
-                    timestamp = int(time() * 1000))
-        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+        data: Dict[str, Any] = dict(
+            address=None,
+            content=content,
+            title=title,
+            latitude=0,
+            longitude=0,
+            eventSource="GlobalComposeMenu",
+            timestamp=int(time.time() * 1000),
+        )
+        extensions: Dict[str, Any] = {}
+        if imageList is not None:
+            mediaList: List[Any] = []
+            for image in imageList:
+                caption = None
+                if not isinstance(image, (bytes, str)) and isinstance(image, Sequence):
+                    if len(image) == 1:
+                        image = image[0]
+                    else:
+                        image, caption = image
+                mediaList.append(
+                    [100, self.__handle_media__(image, "image/jpg"), caption]
+                )
+            data["mediaList"] = mediaList
+        if fansOnly:
+            extensions["fansOnly"] = fansOnly
         if backgroundColor:
-            data["extensions"] = {
-                "style": {
-                    "backgroundColor": backgroundColor
-                    if backgroundColor.startswith("#")
-                    else f"#{backgroundColor}"
-                }
-            }
-        if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
+            if not backgroundColor.startswith("#"):
+                backgroundColor = f"#{backgroundColor}"
+            extensions["style"] = {"backgroundColor": backgroundColor}
+        if categoriesList:
+            data["taggedBlogCategoryIdList"] = categoriesList
+        return entities.CBlog(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog",
+                data=data,
+            )
+        )
 
-        return CBlog(
-            self.session.handler(
-                method = "POST",
-                url = f"/x{comId or self.community_id}/s/blog",
-                data = data
-        ))
-
-
-    @community
-    def fetch_invites(self, size: int = 25, status: str = "normal", start: int = 0, comId: Union[str, int] = None) -> ApiResponse:
+    def fetch_invites(
+        self,
+        size: int = 25,
+        status: str = "normal",
+        start: int = 0,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Fetches generated invites for the community.
 
@@ -6430,7 +7072,7 @@ class Community:
         - `api:status` (int): The status of the API response.
         - `api:statuscode` (int): The status code of the API response.
         - `api:message` (str): The message of the API response.
-        
+
         **Example usage:**
 
         >>> invites = client.community.fetch_invites()
@@ -6438,57 +7080,69 @@ class Community:
         ... for invite in invites.json()['communityInvitationList']:
         ...     print(invite['invitationId'])
         """
-        return ApiResponse(self.session.handler(
-            method = "GET",
-            url = f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation?size={size}&status={status}&start={start}"
-        ))
-    
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "GET",
+                f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation",
+                params={"size": size, "status": status, "start": start},
+            )
+        )
 
-    @community
-    def revoke_invite(self, invitationId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def revoke_invite(
+        self,
+        invitationId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Revokes an invite for the community.
         Used for revoking invites that have been generated.
-        
+
         :param invitationId: The ID of the invite to revoke.
         :type invitationId: str
         :param comId: The ID of the community to revoke the invite in. If not provided, the current community ID is used.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: A `ApiResponse` object containing the API response.
         :rtype: ApiResponse
-        
+
         This function sends a DELETE request to the API to revoke an invite for the community.
-        
+
         :returns: A `ApiResponse` object containing the API response.
         :rtype: ApiResponse
-        
+
         `ApiResponse`:
-        
+
         - `code` (int): The status code of the API response.
         - `api:status` (int): The status of the API response.
         - `api:statuscode` (int): The status code of the API response.
         - `api:message` (str): The message of the API response.
-        
+
         **Example usage:**
-        
+
         >>> client.community.revoke_invite("invitationId")
         """
         try:
-            return ApiResponse(
-                self.session.handler(
-                    method = "DELETE",
-                    url = f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation/{invitationId}"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to revoke invites.") from e
+            return entities.ApiResponse(
+                self.bot.request.handler(
+                    "DELETE",
+                    f"https://service.aminoapps.com/api/v1/g/s-x{self.community_id or comId}/community/invitation/{invitationId}",
+                )
+            )
+        except entities.AccessDenied as e:
+            raise entities.AccessDenied(
+                "You must be a leader to revoke invites."
+            ) from e
 
-
-    @community
-    def fetch_membership_requests(self, size: int = 25, status: str = "pending", start: int = 0, comId: Union[str, int] = None) -> CommunityMembershipRequestList:
+    def fetch_membership_requests(
+        self,
+        size: int = 25,
+        status: str = "pending",
+        start: int = 0,
+        comId: Optional[int] = None,
+    ) -> entities.CommunityMembershipRequestList:
         """
         Fetches membership requests for the community.
         Used for approving or declining membership requests into the community.
-        
+
         :param size: The number of requests to fetch. (Default: 25)
         :type size: int, optional
         :param status: The status of the requests to fetch. (Default: "pending")
@@ -6496,12 +7150,12 @@ class Community:
         :param start: The index to start fetching requests from. (Default: 0)
         :type start: int, optional
         :param comId: The ID of the community to fetch requests from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `CommunityMembershipRequestList` object containing the membership requests for the community.
         :rtype: CommunityMembershipRequestList
-        
+
         This function sends a GET request to the API to fetch membership requests for the community.
-        
+
         :returns: A `CommunityMembershipRequestList` object containing the membership requests for the community.
         :rtype: CommunityMembershipRequestList
         >>> userIds = client.community.fetch_membership_requests().applicant.userId
@@ -6509,69 +7163,83 @@ class Community:
         ...     client.community.approve_membership_request(userId)
         """
         try:
-            return CommunityMembershipRequestList(
-                self.session.handler(
-                    method = "GET",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request?size={size}&status={status}&start={start}"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to fetch membership requests.") from e
+            return entities.CommunityMembershipRequestList(
+                self.bot.request.handler(
+                    "GET",
+                    f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request",
+                    params={
+                        "size": size,
+                        "status": status,
+                        "start": start,
+                    },
+                )
+            )
+        except entities.AccessDenied as e:
+            raise entities.AccessDenied(
+                "You must be a leader to fetch membership requests."
+            ) from e
 
-
-
-    @community
-    def approve_membership_request(self, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def approve_membership_request(
+        self,
+        requestId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Approves a membership request for the community.
-        
+
         :param requestId: The ID of the request to approve.
         :type requestId: str
         :param comId: The ID of the community to approve the request in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `ApiResponse` object containing the API response.
-        
+
         This function sends a POST request to the API to approve a membership request for the community.
-        
+
         :returns: A `ApiResponse` object containing the API response.
         :rtype: ApiResponse
-        
+
         `ApiResponse`:
             - `message` (str): The message of the API response.
             - `status_code` (int): The status code of the API response.
             - `duration` (float): The duration of the API response.
             - `timestamp` (int): The timestamp of the API response.
-        
+
         **Example usage:**
-        
+
         >>> client.community.approve_membership_request("requestId")
         ... client.community.approve_membership_request("requestId", comId="comId")
         """
         try:
-            return ApiResponse(
-                self.session.handler(
-                    method = "POST",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/approve"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to approve membership requests.") from e
+            return entities.ApiResponse(
+                self.bot.request.handler(
+                    "POST",
+                    f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/approve",
+                )
+            )
+        except entities.AccessDenied as e:
+            raise entities.AccessDenied(
+                "You must be a leader to approve membership requests."
+            ) from e
 
-
-    @community
-    def decline_membership_request(self, requestId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def decline_membership_request(
+        self,
+        requestId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Declines a membership request for the community.
-        
+
         :param requestId: The ID of the request to decline.
         :type requestId: str
         :param comId: The ID of the community to decline the request in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `ApiResponse` object containing the API response.
-        
+
         This function sends a POST request to the API to decline a membership request for the community.
-        
+
         :returns: A `ApiResponse` object containing the API response.
         :rtype: ApiResponse
-        
+
         `ApiResponse`:
             - `message` (str): The message of the API response.
             - `status_code` (int): The status code of the API response.
@@ -6584,27 +7252,31 @@ class Community:
         ... client.community.decline_membership_request("requestId", comId="comId")
         """
         try:
-            return ApiResponse(
-                self.session.handler(
-                    method = "POST",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/reject"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to decline membership requests.") from e
+            return entities.ApiResponse(
+                self.bot.request.handler(
+                    "POST",
+                    f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/membership-request/{requestId}/reject",
+                )
+            )
+        except entities.AccessDenied as e:
+            raise entities.AccessDenied(
+                "You must be a leader to decline membership requests."
+            ) from e
 
-
-    @community
-    def fetch_community_stats(self, comId: Union[str, int] = None) -> CommunityStats:
+    def fetch_community_stats(
+        self,
+        comId: Optional[int] = None,
+    ) -> entities.CommunityStats:
         """
         Fetches community statistics.
-        
+
         :param comId: The ID of the community to fetch statistics from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `CommunityStats` object containing the community statistics.
         :rtype: CommunityStats
-        
+
         This function sends a GET request to the API to fetch community statistics.
-        
+
         :returns: A `CommunityStats` object containing the community statistics.
         :rtype: CommunityStats
 
@@ -6627,24 +7299,36 @@ class Community:
         ... print(community.total_members)
         """
         try:
-            return CommunityStats(
-                self.session.handler(
-                    method = "GET",
-                    url = f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats"
-            ))
-        except AccessDenied as e:
-            raise AccessDenied("You must be a leader to fetch community statistics.") from e
+            return entities.CommunityStats(
+                self.bot.request.handler(
+                    "GET",
+                    f"https://service.aminoapps.com/api/v1/x{comId or self.community_id}/s/community/stats",
+                )
+            )
+        except entities.AccessDenied as e:
+            raise entities.AccessDenied(
+                "You must be a leader to fetch community statistics."
+            ) from e
 
-
-    @community
-    def edit_blog(self, blogId: str,
-                  title: str = None,
-                  content: str = None,
-                  imageList: list = None,
-                  categoriesList: list = None,
-                  backgroundColor: str = None,
-                  fansOnly: bool = False,
-                  comId: Union[str, int] = None) -> CBlog:
+    def edit_blog(
+        self,
+        blogId: str,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        imageList: Optional[
+            """Sequence[
+                Union[
+                    entities.Media,
+                    Tuple[entities.Media],
+                    Tuple[entities.Media, Optional[str]],
+                ]
+            ]"""
+        ] = None,
+        categoriesList: Optional["Sequence[str]"] = None,
+        backgroundColor: Optional[str] = None,
+        fansOnly: bool = False,
+        comId: Optional[int] = None,
+    ) -> entities.CBlog:
         """
         Edits a blog post.
 
@@ -6689,35 +7373,52 @@ class Community:
         ... else:
         ...     print("Failed to edit blog post.")
         """
-        media = []
-        if imageList is not None: media = [[100, self.upload_media(open(image, "rb").read(), "image/jpg"), None] for image in imageList]
-        
-        data = {
+        data: Dict[str, Any] = {
             "address": None,
-            "mediaList": media,
             "latitude": 0,
             "longitude": 0,
             "eventSource": "PostDetailView",
-            "timestamp": int(time() * 1000)
+            "timestamp": int(time.time() * 1000),
         }
+        extensions: Dict[str, Any] = {}
+        if imageList is not None:
+            mediaList: List[Any] = []
+            for image in imageList:
+                caption = None
+                if not isinstance(image, (bytes, str)) and isinstance(image, Sequence):
+                    if len(image) == 1:
+                        image = image[0]
+                    else:
+                        image, caption = image
+                mediaList.append(
+                    [100, self.__handle_media__(image, "image/jpg"), caption]
+                )
+            data["mediaList"] = mediaList
+        if title:
+            data["title"] = title
+        if content:
+            data["content"] = content
+        if fansOnly:
+            extensions["fansOnly"] = fansOnly
+        if backgroundColor:
+            if not backgroundColor.startswith("#"):
+                backgroundColor = f"#{backgroundColor}"
+            extensions["style"] = {"backgroundColor": backgroundColor}
+        if categoriesList is not None:
+            data["taggedBlogCategoryIdList"] = list(categoriesList)
+        return entities.CBlog(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/blog/{blogId}",
+                data=data,
+            )
+        )
 
-        if title: data["title"] = title
-        if content: data["content"] = content
-        if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-        if backgroundColor: data["extensions"] = {"style0": {
-            "backgroundColor": backgroundColor if backgroundColor.startswith("#") else f"#{backgroundColor}"
-        }}
-        if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
-        
-        return CBlog(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/blog/{blogId}",
-            data = data
-        ))
-
-
-    @community
-    def delete_notification(self, notificationId: str, comId: Union[str, int]= None) -> ApiResponse:
+    def delete_notification(
+        self,
+        notificationId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Deletes a notification.
 
@@ -6745,21 +7446,23 @@ class Community:
         ... except:
         ...     print("Failed to delete notification.")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{comId or self.community_id}/s/notification/{notificationId}"
-        ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/notification/{notificationId}",
+            )
+        )
 
-
-    @community
-    def flag(self,
-             reason: str,
-             flagType: int,
-             userId: str = None,
-             blogId: str = None,
-             wikiId: str = None,
-             asGuest: bool = False,
-             comId: Union[str, int]= None) -> ApiResponse:
+    def flag(
+        self,
+        reason: str,
+        flagType: int,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        asGuest: bool = False,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Flags content in the community.
 
@@ -6796,43 +7499,38 @@ class Community:
         ... except:
         ...     print("Failed to flag content.")
         """
-        if reason is None: raise ValueError("Reason can't be None.")
-        if flagType is None: raise ValueError("flagType can't be None.")
-
-        data = {
-            "flagType": flagType,
-            "message": reason,
-            "timestamp": int(time() * 1000)
-        }
-
-        if userId: data.update({
-            "objectId": userId,
-            "objectType": 0
-        })
-
-        elif blogId: data.update({
-            "objectId": blogId,
-            "objectType": 1
-        })
-
-        elif wikiId: data.update({
-            "objectId": wikiId,
-            "objectType": 2
-        })
-
-        else: raise ValueError("There must be a value inside one of the following variables: userId, blogId, wikiId.")
-
+        for objectId, objectType in (
+            (userId, 0),
+            (blogId, 1),
+            (wikiId, 2),
+        ):
+            if objectId:
+                break
+        else:
+            raise ValueError(
+                "There must be a value inside one of the following variables: userId, blogId, wikiId."
+            )
         flagMethod = "g-flag" if asGuest else "flag"
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId}/s/{flagMethod}",
+                data={
+                    "flagType": flagType,
+                    "message": reason,
+                    "objectId": objectId,
+                    "objectType": objectType,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId}/s/{flagMethod}",
-            data = data
-        ))
-
-
-    @community
-    def promotion(self, noticeId: str, type: str = "accept", comId: Union[str, int]= None) -> ApiResponse:
+    def promotion(
+        self,
+        noticeId: str,
+        type: Literal["accept", "cancel", "reject"] = "accept",
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Promotes or performs an action on a community notice.
 
@@ -6862,14 +7560,19 @@ class Community:
         ... else:
         ...     print("Failed to accept notice promotion.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/notice/{noticeId}/{type}"
-        ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/notice/{noticeId}/{type}",
+            )
+        )
 
-
-    @community
-    def change_vc_permission(self, chatId: str, permission: int, comId: Union[str, int]) -> ApiResponse:
+    def change_vc_permission(
+        self,
+        chatId: str,
+        permission: int,
+        comId: Optional[int],
+    ) -> entities.ApiResponse:
         """
         Changes the voice chat permission for a chat in the community.
 
@@ -6878,7 +7581,7 @@ class Community:
         :param permission: The new voice chat permission to set. Options: 1 (Open), 2 (Approval required), 3 (Invite only).
         :type permission: int
         :param comId: The ID of the community where the chat belongs. Defaults to the current community ID if not specified.
-        :type comId: Union[str, int]
+        :type comId: Optional[int]
         :return: The API response from changing the voice chat permission.
         :rtype: ApiResponse
         :raises ValueError: If an incorrect permission type is provided.
@@ -6901,20 +7604,25 @@ class Community:
         ...     print("Failed to change voice chat permission.")
         """
         if permission in {1, 2, 3}:
-            return ApiResponse(self.session.handler(
-                method = "POST",
-                url = f"/x/{comId or self.community_id}/chat/thread/{chatId}/vvchat-permission",
-                data = {
-                    "vvChatJoinType": permission,
-                    "timestamp": int(time() * 1000)
-                }
-            ))
+            return entities.ApiResponse(
+                self.bot.request.handler(
+                    "POST",
+                    f"/x/{comId or self.community_id}/chat/thread/{chatId}/vvchat-permission",
+                    data={
+                        "vvChatJoinType": permission,
+                        "timestamp": int(time.time() * 1000),
+                    },
+                )
+            )
         else:
             raise ValueError("Incorrect permission type.")
 
-
-    @community
-    def fetch_blocked_users(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+    def fetch_blocked_users(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Fetches a list of blocked users in the community.
 
@@ -6923,7 +7631,7 @@ class Community:
         :param size: The number of blocked users to fetch (pagination). Default is 25.
         :type size: int, optional
         :param comId: The ID of the community to fetch blocked users from. If not provided, the method uses the current community ID.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The list of blocked users in the community.
         :rtype: UserProfileList
 
@@ -6939,14 +7647,24 @@ class Community:
         >>> for user in blocked_users:
         ...     print(user.username)
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/block?start={start}&size={size}"
-        ))
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/block",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def search_users(self, nickname: str, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> UserProfileList:
+    def search_users(
+        self,
+        nickname: str,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Searches for users based on their nickname.
 
@@ -6957,7 +7675,7 @@ class Community:
         :param size: The number of search results to retrieve (pagination). Default is 25.
         :type size: int, optional
         :param comId: The ID or name of the community to search within. If not provided, the search will be performed within the current community.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The list of user profiles matching the search criteria.
         :rtype: UserProfileList
 
@@ -6976,14 +7694,25 @@ class Community:
         >>> for profile in results:
         ...     print(profile.nickname)
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/user-profile?type=name&q={nickname}&start={start}&size={size}"
-        ))
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/user-profile",
+                params={
+                    "type": "name",
+                    "q": nickname,
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_message(self, chatId: str, messageId: str, comId: Union[str, int] = None) -> Message:
+    def fetch_message(
+        self,
+        chatId: str,
+        messageId: str,
+        comId: Optional[int] = None,
+    ) -> "entities.Message":
         """
         Fetches a specific message from a chat thread.
 
@@ -6992,7 +7721,7 @@ class Community:
         :param messageId: The ID of the message to fetch.
         :type messageId: str
         :param comId: The ID of the community where the chat thread is located. If not provided, the default community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The fetched message.
         :rtype: Message
 
@@ -7009,19 +7738,21 @@ class Community:
         >>> message = client.fetch_message(chatId="chat123", messageId="message456")
         >>> print(message.text)
         """
-        return Message(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
-        ))
+        return entities.Message(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}",
+            )
+        )
 
-
-    @community
-    def purchase(self,
-                 objectId: str,
-                 objectType: int,
-                 aminoPlus: bool = True,
-                 autoRenew: bool = False,
-                 comId: Union[str, int] = None) -> ApiResponse:
+    def purchase(
+        self,
+        objectId: str,
+        objectType: int,
+        aminoPlus: bool = True,
+        autoRenew: bool = False,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Purchases an object from the store.
 
@@ -7034,7 +7765,7 @@ class Community:
         :param autoRenew: Indicates whether the purchase should be set to auto-renew. Default is False.
         :type autoRenew: bool, optional
         :param comId: The ID or alias of the community where the purchase will be made. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The response from the store's purchase endpoint.
         :rtype: ApiResponse
 
@@ -7056,25 +7787,30 @@ class Community:
         ... except:
         ...     print("Failed to make the purchase.")
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/store/purchase",
-            data = {
-                "objectId": objectId,
-                "objectType": objectType,
-                "v": 1,
-                "timestamp": int(time() * 1000),
-                "paymentContext": {
-                    "discountStatus": 1 if aminoPlus else 0,
-                    "discountValue": 1,
-                    "isAutoRenew": autoRenew
-                }
-            }
-        ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/store/purchase",
+                data={
+                    "objectId": objectId,
+                    "objectType": objectType,
+                    "v": 1,
+                    "timestamp": int(time.time() * 1000),
+                    "paymentContext": {
+                        "discountStatus": 1 if aminoPlus else 0,
+                        "discountValue": 1,
+                        "isAutoRenew": autoRenew,
+                    },
+                },
+            )
+        )
 
-
-    @community
-    def fetch_store_bubbles(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> BubbleList:
+    def fetch_store_bubbles(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.BubbleList:
         """
         Fetches a list of chat bubbles from the store.
 
@@ -7083,7 +7819,7 @@ class Community:
         :param size: The number of bubbles to fetch. (Default: 25)
         :type size: int, optional
         :param comId: The ID of the community to fetch the bubbles from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `BubbleList` object containing the fetched chat bubbles.
         :rtype: BubbleList
 
@@ -7097,14 +7833,24 @@ class Community:
         ... for bubble in bubbles.name:
         ...     print(bubble)
         """
-        return Bubble(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}"
-        ))
+        return entities.BubbleList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/store/items",
+                params={
+                    "sectionGroupId": "chat-bubble",
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_store_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> StickerList:
+    def fetch_store_stickers(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.StickerList":
         """
         Fetches a list of stickers from the community store.
 
@@ -7113,7 +7859,7 @@ class Community:
         :param size: The number of stickers to retrieve. (Default: 25)
         :type size: int, optional
         :param comId: The ID of the community to fetch stickers from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `StickerList` object containing the fetched stickers.
         :rtype: StickerList
 
@@ -7127,14 +7873,24 @@ class Community:
         ... for sticker in stickers.name:
         ...     print(sticker)
         """
-        return StickerList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/store/items?sectionGroupId=sticker&start={start}&size={size}"
-        ))
+        return entities.StickerList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/store/items",
+                params={
+                    "sectionGroupId": "sticker",
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def fetch_community_stickers(self, start: int = 0, size: int = 25, comId: Union[str, int] = None) -> CommunityStickerList:
+    def fetch_community_stickers(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> "entities.CommunityStickerList":
         """
         Fetches a list of community stickers.
 
@@ -7143,7 +7899,7 @@ class Community:
         :param size: The number of stickers to fetch. (Default: 25)
         :type size: int, optional
         :param comId: The ID of the community to fetch stickers from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A `CommunityStickerList` object containing the fetched community stickers.
         :rtype: CommunityStickerList
 
@@ -7158,21 +7914,30 @@ class Community:
         ... for sticker in stickers.name:
         ...     print(sticker)
         """
-        return CommunityStickerList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/sticker-collection?type=community-shared&start={start}&size={size}"
-        ))
+        return entities.CommunityStickerList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/sticker-collection",
+                params={
+                    "type": "community-shared",
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )
 
-
-    @community
-    def reorder_featured_users(self, userIds: List[str], comId: Union[str, int] = None) -> ApiResponse:
+    def reorder_featured_users(
+        self,
+        userIds: "Sequence[str]",
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Reorders the featured users in the community.
 
         :param userIds: A list of user IDs representing the desired order of the featured users.
         :type userIds: list[str]
         :param comId: The ID of the community to reorder the featured users in. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: An `ApiResponse` object representing the result of the reorder operation.
         :rtype: ApiResponse
 
@@ -7186,18 +7951,22 @@ class Community:
         ... print(response.status_code)
         ... print(response.json())
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/user-profile/featured/reorder",
-            data = {
-                "uidList": userIds,
-                "timestamp": int(time() * 1000)
-            }
-        ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-profile/featured/reorder",
+                data={
+                    "uidList": list(userIds),
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-
-    @community
-    def add_to_favorites(self, userId: str, comId: Union[str, int] = None) -> ApiResponse:
+    def add_to_favorites(
+        self,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Adds a user to yout favorite users list in the community.
 
@@ -7205,7 +7974,7 @@ class Community:
         :type userId: str
         :param comId: The ID of the community to add the user to the favorites list in.
                     If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: An `ApiResponse` object representing the response of the API request.
         :rtype: ApiResponse
 
@@ -7219,23 +7988,24 @@ class Community:
         ... print(response.status_code)
         ... print(response.json())
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/user-group/quick-access/{userId}"
-        ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/user-group/quick-access/{userId}",
+            )
+        )
 
-
-    @community
-    def fetch_admin_log(self,
-                  userId: str = None,
-                  blogId: str = None,
-                  wikiId: str = None,
-                  quizId: str = None,
-                  fileId: str = None,
-                  pageToken: str = None,
-                  size: int = 25,
-                  comId: Union[str, int] = None
-    ) -> AdminLogList:
+    def fetch_admin_log(
+        self,
+        userId: Optional[str] = None,
+        blogId: Optional[str] = None,
+        wikiId: Optional[str] = None,
+        quizId: Optional[str] = None,
+        fileId: Optional[str] = None,
+        pageToken: Optional[str] = None,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.AdminLogList:
         """
         Fetches the admin log entries for the specified parameters.
 
@@ -7254,7 +8024,7 @@ class Community:
         :param size: The number of log entries to fetch per page. (Default: 25)
         :type size: int, optional
         :param comId: The ID of the community to fetch the admin log from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The admin log entries matching the specified parameters.
         :rtype: response object
 
@@ -7269,65 +8039,35 @@ class Community:
         ...     print(entry.action)
         ...     print(entry.timestamp)
         """
-        if pageToken is None:
-            if userId: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}"
-            ))
-            elif blogId: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={blogId}&objectType=1&pagingType=t&size={size}"
-            ))
-            elif wikiId: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={wikiId}&objectType=2&pagingType=t&size={size}"
-            ))
-            elif quizId: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={quizId}&objectType=1&pagingType=t&size={size}"
-            ))
-            elif fileId: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?objectId={fileId}&objectType=109&pagingType=t&size={size}"
-            ))
-            else: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?pagingType=t&size={size}"
-            ))
-        elif userId: return AdminLogList(self.session.handler(
-                method = "GET",
-                url =  f"/x{comId or self.community_id}/s/admin/operation?objectId={userId}&objectType=0&pagingType=t&size={size}&pageToken={pageToken}"
-            ))
-        elif blogId: return AdminLogList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={blogId}&objectType=1&pagingType=t&size={size}&pageToken={pageToken}"
-        ))
-        elif wikiId: return AdminLogList(self.session.hadler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={wikiId}&objectType=2&pagingType=t&size={size}&pageToken={pageToken}"
-        ))
-        elif quizId: return AdminLogList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={quizId}&objectType=1&pagingType=t&size={size}&pageToken={pageToken}"
-        ))
-        elif fileId: return AdminLogList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/admin/operation?objectId={fileId}&objectType=109&pagingType=t&size={size}&pageToken={pageToken}"
-        ))
-        else: return AdminLogList(self.session.handler(
-                method = "GET",
-                url = f"/x{comId or self.community_id}/s/admin/operation?pagingType=t&size={size}&pageToken={pageToken}"
-            ))
+        params: Dict[str, Any] = {"pagingType": "t", "size": size}
+        if pageToken:
+            params = {"pageToken": pageToken}
+        for objectId, objectType in (
+            (userId, 0),
+            (blogId, 1),
+            (wikiId, 2),
+            (quizId, 1),
+            (fileId, 109),
+        ):
+            if objectId:
+                params["objectId"] = objectId
+                params["objectType"] = objectType
+                break
+        return entities.AdminLogList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/admin/operation",
+                params=params,
+            )
+        )
 
-
-    @community
     def fetch_user_moderation_history(
         self,
         userId: str,
-        pageToken: str = None,
+        pageToken: Optional[str] = None,
         size: int = 25,
-        comId: Union[str, int] = None
-    ) -> AdminLogList:
+        comId: Optional[int] = None,
+    ) -> entities.AdminLogList:
         """
         Fetches the moderation history for the specified user.
 
@@ -7338,7 +8078,7 @@ class Community:
         :param size: The number of log entries to fetch per page. (Default: 25)
         :type size: int, optional
         :param comId: The ID of the community to fetch the moderation history from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The moderation history for the specified user.
         :rtype: response object
 
@@ -7353,17 +8093,20 @@ class Community:
         ...     print(entry.action)
         ...     print(entry.timestamp)
         """
-        return self.fetch_admin_log(userId=userId, pageToken=pageToken, size=size, comId=comId)
+        return self.fetch_admin_log(
+            userId=userId,
+            pageToken=pageToken,
+            size=size,
+            comId=comId,
+        )
 
-
-    @community
     def fetch_leader_log(
         self,
         userId: str,
         size: int = 25,
-        pageToken: str = None,
-        comId: Union[str, int] = None
-    ) -> AdminLogList:
+        pageToken: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.AdminLogList:
         """
         Fetches the admin log entries for the specified parameters.
 
@@ -7374,7 +8117,7 @@ class Community:
         :param pageToken: The token for pagination. (Optional)
         :type pageToken: str, optional
         :param comId: The ID of the community to fetch the admin log from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The admin log entries matching the specified parameters.
         :rtype: response object
 
@@ -7388,24 +8131,34 @@ class Community:
         ... for penalty_type, ban_reason, userId in zip(adminLog.operation_name, adminLog.ext_data.note, adminLog.objectId):
         ...     print(f"{penalty_type} - {ban_reason} - {userId}")
         """
-        if pageToken: return AdminLogList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/admin/operation?size={size}&operatorUid={userId}&pageToken={pageToken}&pagingType=t"
-        ))
-        else: return AdminLogList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/admin/operation?size={size}&operatorUid={userId}&pagingType=t"
-        ))
+        params = {
+            "pagingType": "t",
+            "operatorUid": userId,
+            "size": size,
+        }
+        if pageToken:
+            params["pageToken"] = pageToken
+        return entities.AdminLogList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/admin/operation",
+                params=params,
+            )
+        )
 
-    @community
-    def apply_bubble(self, bubbleId: str, chatId: str = None, comId: Union[str, int] = None) -> ApiResponse:
+    def apply_bubble(
+        self,
+        bubbleId: str,
+        chatId: Optional[str] = None,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Applies the specified bubble to the community.
 
         :param bubbleId: The ID of the bubble to apply.
         :type bubbleId: str
         :param comId: The ID of the community to apply the bubble to. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The response of the request.
         :rtype: response object
 
@@ -7417,26 +8170,27 @@ class Community:
 
         >>> client.community.apply_bubble("000000")
         """
-        if bubbleId is None:
-            raise ValueError("bubbleId cannot be None.")
-        
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/chat/thread/apply-bubble",
-            data = {
-                "applyToAll": False,
-                "bubbleId": bubbleId,
-                "threadId": chatId,
-                "timestamp": int(time() * 1000)
-            } if chatId else {
-                "applyToAll": True,
-                "bubbleId": bubbleId,
-                "timestamp": int(time() * 1000)
-            }
-        ))
+        data = {
+            "applyToAll": bool(chatId),
+            "bubbleId": bubbleId,
+            "timestamp": int(time.time() * 1000),
+        }
+        if chatId:
+            data["threadId"] = chatId
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/chat/thread/apply-bubble",
+                data=data,
+            )
+        )
 
-    @community
-    def add_influencer(self, userId: str, monthlyFee: int, comId: Union[str, int] = None):
+    def add_influencer(
+        self,
+        userId: str,
+        monthlyFee: int,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Adds an influencer to the community with the specified monthly fee.
 
@@ -7445,7 +8199,7 @@ class Community:
         :param monthlyFee: The monthly fee to be charged to the influencer.
         :type monthlyFee: int
         :param comId: The ID of the community to add the influencer to. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The response of the request.
         :rtype: response object
 
@@ -7457,17 +8211,22 @@ class Community:
 
         >>> client.community.add_influencer("123456", 500)
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url = f"/x{comId or self.community_id}/s/influencer/{userId}",
-            data = {
-                "monthlyFee": monthlyFee,
-                "timestamp": int(time() * 1000)
-            }
-        ))
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "POST",
+                f"/x{comId or self.community_id}/s/influencer/{userId}",
+                data={
+                    "monthlyFee": monthlyFee,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    @community
-    def remove_influencer(self, userId: str, comId: Union[str, int] = None):
+    def remove_influencer(
+        self,
+        userId: str,
+        comId: Optional[int] = None,
+    ) -> entities.ApiResponse:
         """
         Removes the specified user from the list of influencers in the community.
 
@@ -7475,7 +8234,7 @@ class Community:
         :type userId: str
         :param comId: The ID of the community from which to remove the influencer. If not provided,
                     the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: The response of the request.
         :rtype: response object
 
@@ -7487,18 +8246,22 @@ class Community:
 
         >>> client.community.remove_influencer("123456")
         """
-        return ApiResponse(self.session.handler(
-            method = "DELETE",
-            url = f"/x{comId or self.community_id}/s/influencer/{userId}"
-        ))
-    
-    @community
-    def get_all_influencers(self, comId: Union[str, int] = None):
+        return entities.ApiResponse(
+            self.bot.request.handler(
+                "DELETE",
+                f"/x{comId or self.community_id}/s/influencer/{userId}",
+            )
+        )
+
+    def get_all_influencers(
+        self,
+        comId: Optional[int] = None,
+    ) -> "entities.UserProfileList":
         """
         Retrieves a list of all influencers within the specified community or the current community if comId is not provided.
 
         :param comId: The ID of the community to retrieve influencers from. If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A list of user profiles representing the influencers in the community.
         :rtype: UserProfileList
 
@@ -7510,13 +8273,19 @@ class Community:
         >>> for influencer in influencers:
         ...     print(influencer.username)
         """
-        return UserProfileList(self.session.handler(
-            method = "GET",
-            url = f"/x{comId or self.community_id}/s/influencer"
-        ))
-    
-    @community
-    def joined_by_code(self, start: int = 0, size: int = 25, comId: Union[str, int] = None):
+        return entities.UserProfileList(
+            self.bot.request.handler(
+                "GET",
+                f"/x{comId or self.community_id}/s/influencer",
+            )
+        )
+
+    def joined_by_code(
+        self,
+        start: int = 0,
+        size: int = 25,
+        comId: Optional[int] = None,
+    ) -> entities.InvitationLogList:
         """
         Retrieves a list of users who joined the community using an invitation code.
 
@@ -7526,7 +8295,7 @@ class Community:
         :type size: int, optional
         :param comId: The ID of the community for which to retrieve invitation logs.
                     If not provided, the current community ID is used.
-        :type comId: Union[str, int], optional
+        :type comId: Optional[int], optional
         :return: A list of invitation logs.
         :rtype: InvitationLogList
 
@@ -7540,7 +8309,13 @@ class Community:
         ...     print(log.user_name, log.join_date)
 
         """
-        return InvitationLogList(self.session.handler(
-            method = "GET",
-            url = f"/g/s-x{comId or self.community_id}/community/invitation/logs?start{start}&size={size}"
-        ))
+        return entities.InvitationLogList(
+            self.bot.request.handler(
+                "GET",
+                f"/g/s-x{comId or self.community_id}/community/invitation/logs",
+                params={
+                    "start": start,
+                    "size": size,
+                },
+            )
+        )

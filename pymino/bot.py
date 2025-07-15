@@ -1,116 +1,93 @@
-from os import path
-from threading import Thread
-from typing import Optional, Union
-from time import perf_counter, time
-from logging.handlers import RotatingFileHandler
-from logging import Logger, getLogger, Formatter, DEBUG
-import requests
+import logging
+import os
+import threading
+import time
+from collections.abc import Iterator
+from typing import Any, Dict, Optional
 
-from .ext.console import *
-from .ext.entities import *
-from .ext.account import Account
-from .ext.socket import WSClient
-from .ext.community import Community
-from .ext.global_client import Global
-from .ext.utilities.generate import Generator
-from .ext.utilities.request_handler import RequestHandler
+import diskcache
 
-__all__ = (
-    'Bot',
+from pymino.ext import (
+    account,
+    community,
+    console,
+    entities,
+    global_client,
+    socket,
+    utilities,
 )
 
+__all__ = ("Bot",)
 
-class Bot(WSClient, Global):
+logger = logging.getLogger("pymino")
+local_cache = diskcache.Cache(f"{os.path.dirname(os.path.realpath(__file__))}/cache")
+
+
+class Bot(socket.WSClient, global_client.Global):
     """
     Bot class that interacts with aminoapps API.
 
     This class extends `WSClient` and `Global` classes, allowing the bot to use WebSocket functionality and global client features.
 
-    Special Attributes:
-    __slots__ : tuple
-        A tuple containing a fixed set of attributes to optimize memory usage.
-
     Attributes:
-    _debug : bool
-        Whether or not debug mode is enabled.
-    _console_enabled : bool
-        Whether or not the CONSOLE is enabled.
-    _cooldown_message : str
-        The default cooldown message used when a command is on cooldown.
-    _intents : bool
-        Whether or not intents are enabled.
-    _is_ready : bool
-        Whether the bot is ready after successful login.
-    _userId : str
-        The ID of the user associated with the bot.
-    _sid : str
-        The session ID of the client.
-    _cached : bool
-        Whether the login credentials are cached.
-    logger : Logger
-        The logger object.
-    cache : Cache
-        An instance of the Cache class for caching data.
-    command_prefix : Optional[str]
-        The prefix used for bot commands.
-    community_id : Union[str, int]
-        The ID of the community associated with the bot.
-    generate : Generator
-        An instance of the Generator class for generating data.
-    online_status : bool
-        Whether the bot's online status is enabled.
-    device_id : Optional[str]
-        The device ID used for logging in. If not provided, it will be generated using the Generator class.
-    _is_authenticated : bool
-        Whether the bot is authenticated.
-    request : RequestHandler
-        An instance of the RequestHandler class for handling API requests.
-    community : Community
-        An instance of the Community class for community-related actions.
-    account : Account
-        An instance of the Account class for account-related actions.
-    profile : UserProfile
-        An instance of the UserProfile class representing the bot's user profile.
+        command_prefix : Optional[str]
+            The prefix used for bot commands.
+        community_id : Union[str, int]
+            The ID of the community associated with the bot.
+        generate : Generator
+            An instance of the Generator class for generating data.
+        online_status : bool
+            Whether the bot's online status is enabled.
+        device_id : Optional[str]
+            The device ID used for logging in. If not provided, it will be generated using the Generator class.
+        request : RequestHandler
+            An instance of the RequestHandler class for handling API requests.
+        community : Community
+            An instance of the Community class for community-related actions.
+        account : Account
+            An instance of the Account class for account-related actions.
+        profile : UserProfile
+            An instance of the UserProfile class representing the bot's user profile.
     """
+
     __slots__ = (
-        '_debug',
-        '_console_enabled',
-        '_cooldown_message',
-        '_intents',
-        '_is_ready',
-        '_userId',
-        '_sid',
-        '_secret',
-        '_cached',
-        'cache',
-        'logger',
-        'command_prefix',
-        'community_id',
-        'debug_log',
-        'generate',
-        'online_status',
-        'device_id',
-        '_is_authenticated'
-        'request',
-        'community',
-        'account',
-        'profile',
+        "__hash_prefix__",
+        "__device_key__",
+        "__signature_key__",
+        "__service_key__",
+        "_cached",
+        "_command_prefix",
+        "_community_id",
+        "_console_enabled",
+        "_debug",
+        "_generate",
+        "_intents",
+        "_is_ready",
+        "_proxy",
+        "_request",
+        "_sid",
+        "_userId",
+        "account",
+        "cooldown_message",
+        "device_id",
+        "online_status",
     )
+
     def __init__(
         self,
-        command_prefix: Optional[str] = "!",
-        community_id: Union[str, int] = None,
+        command_prefix: str = "!",
+        community_id: Optional[int] = None,
         console_enabled: bool = False,
         debug_log: bool = False,
-        device_id: str = None,
+        device_id: Optional[str] = None,
         intents: bool = False,
         online_status: bool = False,
-        proxy: str = None,
-        hash_prefix: Union[str, int] = 52,
+        proxy: Optional[str] = None,
+        hash_prefix: str = "52",
         device_key: str = "AE49550458D8E7C51D566916B04888BFB8B3CA7D",
-        signature_key: str  = "EAB4F1B9E3340CD1631EDE3B587CC3EBEDF1AFA9",
-        service_key: str = None,
-        ) -> None:
+        signature_key: str = "EAB4F1B9E3340CD1631EDE3B587CC3EBEDF1AFA9",
+        service_key: Optional[str] = None,
+    ) -> None:
         """
         `Bot` - This is the main client.
 
@@ -142,7 +119,7 @@ class Bot(WSClient, Global):
         ----------------------------
 
         How do I use the `run` method?
-        
+
         - It's simple! Just use the `run` method like this:
 
             ```py
@@ -293,7 +270,7 @@ class Bot(WSClient, Global):
         Is there a help command built in?
         - Yes! There is a built in help command that you can use.
         - It will return a list of all the commands that the bot has and their descriptions.
-        
+
         How do I set the description for my command?
         - You can set the description for your command by using the `command_description` parameter in the `command` decorator.
         - You can set the description for your command like this:
@@ -311,54 +288,46 @@ class Bot(WSClient, Global):
             bot.run(email="email", password="password")
             ```
         """
-        self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
-        self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
-        self.__key__:        str = self.__local_cache__.get("KEY", service_key)
-        self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
-        if not self.__key__:
-            raise MissingServiceKey
-        if not all([self.__device_key__, self.__signature_key__]):
-            raise MissingDeviceKeyOrSignatureKey
+        hash_prefix = local_cache.get("hash_prefix", hash_prefix)
+        device_key = local_cache.get("device_key", device_key)
+        signature_key = local_cache.get("signature_key", signature_key)
+        service_key = local_cache.get("service_key", service_key)
+        if hash_prefix and device_key and signature_key:
+            self.__hash_prefix__ = hash_prefix
+            self.__device_key__ = device_key
+            self.__signature_key__ = signature_key
+        else:
+            raise entities.MissingDeviceKeyOrSignatureKey
+        if service_key:
+            self.__service_key__ = service_key
+        else:
+            raise entities.MissingServiceKey
+        self.debug = entities.check_debugger()
+        self.console_enabled = console_enabled
+        self.cooldown_message = None
+        self.intents = intents
+        self.is_ready = False
+        self.userId = None
+        self.sid = None
+        self._cached: bool = False
+        self.command_prefix = command_prefix
+        self.community_id = community_id
+        self.proxy = proxy
+        self.generate = utilities.Generator(
+            self.__hash_prefix__,
+            self.__device_key__,
+            self.__signature_key__,
+            self.__service_key__,
+        )
+        self.online_status = online_status
+        self.device_id = device_id or self.generate.device_id()
+        self.request = utilities.RequestHandler(self, self.generate)
+        self.account = account.Account(session=self.request)
+        if debug_log:
+            utilities.enable_file_logging()
+        super().__init__()
 
-        self._debug:            bool = check_debugger()
-        self._console_enabled:  bool = console_enabled
-        self._cooldown_message: Optional[str] = None
-        self._is_authenticated: bool = False
-        self._intents:          bool = intents
-        self._is_ready:         bool = False
-        self._userId:           str = None
-        self._sid:              str = None
-        self._cached:           bool = False
-        self.cache:             Cache = Cache("cache")
-        self.command_prefix:    Optional[str] = command_prefix
-        if self.command_prefix == "":
-            raise InvalidCommandPrefix()
-
-        self.logger:            Optional[Logger] = self._create_logger() if debug_log else None
-        self.community_id:      Union[str, int] = community_id
-        self.generate:          Generator = Generator(hash_prefix, self.__device_key__, self.__signature_key__, self.__key__)
-        self.online_status:     bool = online_status
-        self.device_id:         Optional[str] = device_id or self.generate.device_id()
-        self.request:           RequestHandler = RequestHandler(
-                                bot = self,
-                                proxy=proxy,
-                                generator=self.generate,
-                                KEY=self.__key__
-                                )
-        self.community:         Community = Community(
-                                bot = self,
-                                session=self.request,
-                                community_id=self.community_id
-                                )
-        self.account:           Account = Account(
-                                session=self.request
-                                )
-
-        if self.community_id:   self.set_community_id(community_id)
-
-        super().__init__(proxy = proxy)
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Returns a string representation of the Bot object.
 
@@ -367,7 +336,7 @@ class Bot(WSClient, Global):
         """
         return f"Bot(command_prefix='{self.command_prefix}', community_id={self.community_id}, device_id='{self.device_id}')"
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns a user-friendly string representation of the Bot object.
 
@@ -376,7 +345,7 @@ class Bot(WSClient, Global):
         """
         return f"Bot: Prefix='{self.command_prefix}', Community ID={self.community_id}, Device ID='{self.device_id}'"
 
-    def __iter__(self) -> iter:
+    def __iter__(self) -> "Iterator[str]":
         """
         Allows iteration over the Bot object.
 
@@ -384,6 +353,54 @@ class Bot(WSClient, Global):
         :rtype: iter
         """
         return iter(self.__slots__)
+
+    @property
+    def community(self) -> community.Community:
+        if not self.userId:
+            raise entities.NotLoggedIn()
+        return community.Community(self)
+
+    @property
+    def community_id(self) -> Optional[int]:
+        return self._community_id
+
+    @community_id.setter
+    def community_id(self, value: Optional[int]) -> None:
+        self._community_id = value
+
+    @property
+    def command_prefix(self) -> str:
+        return self._command_prefix
+
+    @command_prefix.setter
+    def command_prefix(self, value: str) -> None:
+        if not value:
+            raise entities.InvalidCommandPrefix()
+        self._command_prefix = value
+
+    @property
+    def proxy(self) -> Optional[str]:
+        return self._proxy
+
+    @proxy.setter
+    def proxy(self, value: Optional[str]) -> None:
+        self._proxy = value
+
+    @property
+    def generate(self) -> utilities.Generator:
+        return self._generate
+
+    @generate.setter
+    def generate(self, value: utilities.Generator) -> None:
+        self._generate = value
+
+    @property
+    def request(self) -> utilities.RequestHandler:
+        return self._request
+
+    @request.setter
+    def request(self, value: utilities.RequestHandler) -> None:
+        self._request = value
 
     @property
     def debug(self) -> bool:
@@ -517,7 +534,7 @@ class Bot(WSClient, Global):
         self._is_ready = value
 
     @property
-    def userId(self) -> str:
+    def userId(self) -> Optional[str]:
         """
         The ID of the user associated with the client.
 
@@ -533,7 +550,7 @@ class Bot(WSClient, Global):
         return self._userId
 
     @userId.setter
-    def userId(self, value: str) -> None: # Human is gay.
+    def userId(self, value: Optional[str]) -> None:  # Human is gay.
         """
         Sets the ID of the user associated with the client.
 
@@ -550,7 +567,7 @@ class Bot(WSClient, Global):
         self._userId = value
 
     @property
-    def sid(self) -> str:
+    def sid(self) -> Optional[str]:
         """
         The session ID of the client.
 
@@ -566,7 +583,7 @@ class Bot(WSClient, Global):
         return self._sid
 
     @sid.setter
-    def sid(self, value: str) -> None:
+    def sid(self, value: Optional[str]) -> None:
         """
         Sets the session ID of the client.
 
@@ -583,7 +600,7 @@ class Bot(WSClient, Global):
         self._sid = value
 
     @property
-    def secret(self) -> str:
+    def secret(self) -> Optional[str]:
         """
         The secret of the client.
 
@@ -597,9 +614,9 @@ class Bot(WSClient, Global):
         `self._secret` attribute directly.
         """
         return self._secret
-    
+
     @secret.setter
-    def secret(self, value: str) -> None:
+    def secret(self, value: Optional[str]) -> None:
         """
         Sets the secret of the client.
 
@@ -618,13 +635,13 @@ class Bot(WSClient, Global):
     def set_cooldown_message(self, message: str) -> None:
         """
         Changes the default cooldown message.
-        
+
         :param message: The message to set as the default cooldown message.
         :type message: str
         :return: None
-        
+
         This method changes the default cooldown message. The default cooldown message is used when a command is on cooldown
-        
+
         **Note:** This method only sets the default cooldown message and cannot be used to retrieve the default cooldown message.
         """
         self._cooldown_message = message
@@ -639,54 +656,16 @@ class Bot(WSClient, Global):
 
         This property returns whether or not the client is authenticated. The client is authenticated after logging in to
         Amino and receiving a valid session ID.
-
-        **Note:** This property only returns the authentication state and cannot be used to set the authentication state. To
-        set the authentication state, use the `self._is_authenticated` attribute directly.
         """
-        return self._is_authenticated
+        return bool(self.sid and self.userId)
 
-    @is_authenticated.setter
-    def is_authenticated(self, value: bool) -> None:
-        """
-        Sets the authentication state of the client.
-
-        :param value: True to authenticate the client, False to deauthenticate it.
-        :type value: bool
-        :return: None
-
-        This setter sets the authentication state of the client. The client is authenticated after logging in to Amino and
-        receiving a valid session ID.
-
-        **Note:** This setter only sets the authentication state and cannot be used to retrieve the authentication state. To
-        retrieve the authentication state, use the `self.is_authenticated` property.
-        """
-        self._is_authenticated = value
-
-    def _create_logger(self) -> Logger:
-        """
-        Creates a logger object.
-        
-        :return: A logger object.
-        :rtype: Logger
-        
-        This method creates a logger object. The logger object is used to log debug information to debug.log.
-        """
-        logger = getLogger("pymino")
-        logger.setLevel(DEBUG)
-
-        max_log_size = 10 * 1024 * 1024
-
-        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0, encoding="utf-8")
-        file_handler.setLevel(DEBUG)
-
-        formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        file_handler.setFormatter(formatter)
-
-        logger.addHandler(file_handler)
-
-        return logger
-
-    def authenticate(self, email: str=None, password: str=None, secret: str=None, device_id: str=None) -> dict:
+    def authenticate(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        secret: Optional[str] = None,
+        device_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
         Authenticates the bot with the provided email and password.
 
@@ -702,34 +681,36 @@ class Bot(WSClient, Global):
         """
         if device_id:
             self.device_id = device_id
-        
-        self.request.device = self.device_id
-        data = {
-                    "secret": secret or f"0 {password}",
-                    "clientType": 100,
-                    "systemPushEnabled": 0,
-                    "timestamp": int(time() * 1000),
-                    "locale": "en_US",
-                    "action": "normal",
-                    "bundleID": "com.narvii.master",
-                    "timezone": -480,
-                    "deviceID": self.device_id,
-                    "email": email,
-                    "v": 2,
-                    "clientCallbackURL": "narviiapp://default"
-                    }
-        response = self.make_request(
-                method="POST",
-                url = "/g/s/auth/login",
-                data = data
-                )            
-
-        if not response.get('sid'):
-            raise exceptions.AccountLoginRatelimited()
-
+        response = self.request.handler(
+            method="POST",
+            url="/g/s/auth/login",
+            data={
+                "secret": secret or f"0 {password}",
+                "clientType": 100,
+                "systemPushEnabled": 0,
+                "timestamp": int(time.time() * 1000),
+                "locale": "en_US",
+                "action": "normal",
+                "bundleID": "com.narvii.master",
+                "timezone": -480,
+                "deviceID": self.device_id,
+                "email": email,
+                "v": 2,
+                "clientCallbackURL": "narviiapp://default",
+            },
+        )
+        if not response.get("sid"):
+            raise entities.AccountLoginRatelimited()
         return response
 
-    def _login_handler(self, email: str=None, password: str=None, secret: str=None, device_id: str=None, use_cache: bool=True) -> dict:
+    def _login_handler(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        secret: Optional[str] = None,
+        device_id: Optional[str] = None,
+        use_cache: bool = True,
+    ) -> Dict[str, Any]:
         """
         Authenticates the user with the provided email and password.
 
@@ -745,7 +726,7 @@ class Bot(WSClient, Global):
         :type use_cache: bool
         :return: A dictionary containing the login response from the server.
         :rtype: dict
-        
+
         The function first checks if cached login credentials are available for the provided email. If so, it uses the cached
         session ID and device ID to fetch the account details from the server. If the server returns an exception, it falls
         back to authenticating with the provided email and password, and the device ID from the cache.
@@ -757,58 +738,50 @@ class Bot(WSClient, Global):
 
         **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
         """
-        if use_cache and cache_exists(email=email):
-            cached = fetch_cache(email=email)
-
+        if use_cache and email and entities.cache_exists(email=email):
+            cached = entities.fetch_cache(email=email)
+            assert cached  # cast for type checking
             self.device_id = cached[1]
-            self.request.device = cached[1]
-            self.sid: str = cached[0]
-            self.request.sid = cached[0]
-            self.userId: str = parse_auid(cached[0])
-
+            self.sid = cached[0]
+            self.userId = entities.parse_auid(cached[0])
             try:
-                response: dict = self.fetch_account()
+                response = self.fetch_account()
             except Exception:
-                response: dict = self.authenticate(
+                response = self.authenticate(
                     email=email,
                     password=password,
-                    device_id=cached[1]
-                    )
-
+                    device_id=self.device_id,
+                )
         else:
             self.sid = None
             self._cached = True
-            response: dict = self.authenticate(
+            response = self.authenticate(
                 email=email,
                 password=password,
                 secret=secret,
-                device_id=device_id
-                )
-
+                device_id=device_id,
+            )
         self.request.email = email
-        self.request.password = password          
-
+        self.request.password = password
         return response
-    
-    def call_amino_certificate(self):
-        response = requests.get(
+
+    def call_amino_certificate(self) -> None:
+        response = self.request.http_handler.get(
             "https://app.pymino.site/amino_certificate",
             params={
-                "key": self.__key__,
-                "user_id": self.userId
-            }
+                "key": self.__service_key__,
+                "user_id": self.userId,
+            },
         )
-        if response.status_code == 200:
-            response = self.make_request(
-                "POST",
-                "/g/s/security/public_key",
-                response.json()
-            )
-            is_ok = lambda r: r.get("api:statuscode") == 0
-            if not is_ok(response):
-                raise Exception(str(response))
-        else:
+        if response.status_code != 200:
             raise Exception(response.text)
+        response = self.request.handler(
+            "POST",
+            "/g/s/security/public_key",
+            data=response.json(),
+        )
+        if response.get("api:statuscode") != 0:
+            raise Exception(str(response))
 
     def run(
         self,
@@ -817,8 +790,8 @@ class Bot(WSClient, Global):
         secret: Optional[str] = None,
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
-        use_cache: bool = True
-    ) -> None:
+        use_cache: bool = True,
+    ) -> Dict[str, Any]:
         """
         Logs in to the client using the provided credentials.
 
@@ -846,12 +819,11 @@ class Bot(WSClient, Global):
         """
 
         if not any([email, password, sid, secret]):
-            raise MissingEmailPasswordOrSid
+            raise entities.MissingEmailPasswordOrSid
 
         if sid:
             self.sid = sid
-            self.request.sid = sid
-            self.userId = parse_auid(sid)
+            self.userId = entities.parse_auid(sid)
             response = self.fetch_account()
         else:
             response = self._login_handler(
@@ -859,16 +831,13 @@ class Bot(WSClient, Global):
                 password=password,
                 secret=secret,
                 device_id=device_id,
-                use_cache=use_cache
-                )
-            
-
+                use_cache=use_cache,
+            )
         if not response:
-            raise LoginFailed
-
+            raise entities.LoginFailed
         return self._run(response)
 
-    def _run(self, response: dict) -> dict:
+    def _run(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """
         Processes the response from a successful login attempt and sets up the authenticated client.
 
@@ -890,38 +859,40 @@ class Bot(WSClient, Global):
         >>> response = client.authenticate(email="example@example.com", password="password")
         >>> client.__run__(response)
         """
-        if response.get("api:statuscode") != 0: input(response), exit()
-
-        if not hasattr(self, "profile"): 
-            self.profile: UserProfile = UserProfile(response)
-
+        if response.get("api:statuscode") != 0:
+            input(response)
+            exit()
+        if not hasattr(self, "profile"):
+            self.profile = entities.UserProfile(response)
         if not self.sid:
-            self.sid: str = response.get("sid")
+            self.sid = response.get("sid")
+        self.userId = self.profile.userId
+        self.secret = response.get("secret")
 
-        self.userId: str = self.profile.userId
-        self.community.userId: str = self.userId
-        self.request.sid: str = self.sid
-        self.request.userId: str = self.userId
-        self._secret: str = response.get("secret")
-        
-        if hasattr(self.request, "email") and self._cached:
-            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
+        if self.request.email and self.sid and self._cached:
+            entities.cache_login(
+                email=self.request.email, device=self.device_id, sid=self.sid
+            )
 
         if not self.is_ready:
-            self._is_ready = True
-            self._is_authenticated = True
-            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
+            self.is_ready = True
+            logger.debug(
+                f"Logged in as {self.profile.username} ({self.profile.userId})"
+            )
             self.connect()
         else:
-            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
+            logger.debug(
+                f"Reconnected as {self.profile.username} ({self.profile.userId})"
+            )
 
-        Thread(target=self.__run_console__).start()
-        self.cache.set(key=f"{self.userId}-account", value=response, expire=43200)
+        threading.Thread(target=self.__run_console__).start()
+        with entities.cache as cache:
+            cache.set(key=f"{self.userId}-account", value=response, expire=43200)
 
         self.__set_keys__()
         self.call_amino_certificate()
         return response
-    
+
     def __set_keys__(self):
         """
         Sets the device key and signature key on the client instance.
@@ -932,11 +903,13 @@ class Bot(WSClient, Global):
         This method is called internally by the `login` and `run` methods after a successful login attempt.
         It sets the device key and signature key on the client instance.
         """
-        def check_keys(key: str, value: str) -> None:
-            self.__local_cache__.set(key=key, value=value) if self.__local_cache__.get(key) != value else None
-            
-        for key, value in {"device_key": self.__device_key__, "signature_key": self.__signature_key__}.items():
-            check_keys(key, value)
+        with local_cache:
+            for key, value in (
+                ("device_key", self.__device_key__),
+                ("signature_key", self.__signature_key__),
+            ):
+                if local_cache.get(key) != value:
+                    local_cache.set(key=key, value=value)
 
     def reset_keys(self) -> None:
         """
@@ -947,16 +920,17 @@ class Bot(WSClient, Global):
 
         This method resets the device key and signature key on the client instance.
         """
-        for key in ["device_key", "signature_key"]:
-            self.__local_cache__.delete(key)
-        raise MissingDeviceKeyOrSignatureKey
+        with local_cache:
+            for key in ["device_key", "signature_key"]:
+                local_cache.delete(key)
+        raise entities.MissingDeviceKeyOrSignatureKey
 
     def __run_console__(self) -> None:
         if self.console_enabled:
             self._debug = False
-            Console(self).fetch_menu()
+            console.Console(self).fetch_menu()
 
-    def fetch_account(self) -> dict:
+    def fetch_account(self) -> Dict[str, Any]:
         """
         Fetches the account information for the authenticated user.
 
@@ -974,25 +948,24 @@ class Bot(WSClient, Global):
 
         The method returns a dictionary containing the user's account information.
         """
-        if cached_info := self.cache.get(f"{self.userId}-account"):
-            return cached_info
-
-        profile = self.make_request(
-            method="GET",
-            url=f"/g/s/user-profile/{self.userId}"
+        with entities.cache as cache:
+            if cached_info := cache.get(f"{self.userId}-account"):
+                return cached_info
+            profile = self.request.handler(
+                method="GET", url=f"/g/s/user-profile/{self.userId}"
             )
-        self.profile = UserProfile(profile)
-        account = self.make_request(
-            method="GET",
-            url="/g/s/account"
-            )
+            self.profile = entities.UserProfile(profile)
+            account = self.request.handler(method="GET", url="/g/s/account")
 
-        account.update(profile)
-        self.cache.set(key=f"{self.userId}-account", value=account, expire=43200)
-
+            account.update(profile)
+            cache.set(key=f"{self.userId}-account", value=account, expire=43200)
         return account
 
-    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
+    def fetch_community_id(
+        self,
+        community_link: str,
+        set_community_id: Optional[bool] = True,
+    ) -> int:
         """
         Fetches the community ID associated with the provided community link.
 
@@ -1015,20 +988,23 @@ class Bot(WSClient, Global):
         **Note:** The community ID is required for making API calls related to a specific community, such as posting or
         retrieving posts. It is recommended to use this function if you do not already know the community ID.
         """
-        KEY = str((community_link, "comId"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, CCommunity(self.request.handler(
-                method="GET", url=f"/g/s/link-resolution?q={community_link}")
-                ).comId)
-            
-        community_id = self.cache.get(KEY)
-
+        key = str((community_link, "comId"))
+        with entities.cache as cache:
+            if not cache.get(key):
+                cache.set(
+                    key,
+                    entities.CCommunity(
+                        self.request.handler(
+                            method="GET", url=f"/g/s/link-resolution?q={community_link}"
+                        )
+                    ).comId,
+                )
+            community_id = cache.get(key)
         if set_community_id:
             self.set_community_id(community_id)
-
         return community_id
 
-    def set_community_id(self, community_id: Union[str, int]) -> int:
+    def set_community_id(self, community_id: int) -> int:
         """
         Sets the community ID on the client instance and the Community object.
 
@@ -1048,33 +1024,25 @@ class Bot(WSClient, Global):
         retrieving posts. It is recommended to use the `fetch_community_id` function if you do not already know the
         community ID.
         """
-        try:
-            if community_id is not None and not isinstance(community_id, int):
-                community_id = int(community_id)
-        except VerifyCommunityIdIsCorrect as e:
-            raise VerifyCommunityIdIsCorrect from e
-
         self.community_id = community_id
-        self.community.community_id = community_id
-
         return community_id
 
     def ping(self) -> float:
         """
         Pings the server and returns the elapsed time in milliseconds.
-        
+
         :return: The elapsed time in milliseconds.
         :rtype: float
-        
+
         This method pings the server by sending a GET request to the account endpoint. It then calculates the elapsed
         time in milliseconds and returns it.
-        
+
         If the ping fails, the method raises a PingFailed exception.
-        
+
         **Note:** This method is not recommended for production use. It is intended for testing purposes only.
-        
+
         **Example usage:**
-        
+
         ```python
         bot = Bot()
         @bot.command("ping")
@@ -1083,16 +1051,16 @@ class Bot(WSClient, Global):
             ctx.reply(f"Pong! {ping}ms")
         ```
         """
+        start = time.perf_counter()
         try:
-            start = perf_counter()
             self.request.handler(method="GET", url="/g/s/account")
-            end = perf_counter()
-            elapsed_time_ms = (end - start) * 1000
-            return round(elapsed_time_ms, 2)
         except Exception as e:
-            raise PingFailed from e
+            raise entities.PingFailed from e
+        end = time.perf_counter()
+        elapsed_time_ms = (end - start) * 1000
+        return round(elapsed_time_ms, 2)
 
-    def fetch_wallet(self) -> Wallet:
+    def fetch_wallet(self) -> entities.Wallet:
         """
         Fetches the wallet information for the authenticated user.
 

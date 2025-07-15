@@ -1,9 +1,13 @@
-from typing import Callable
+from typing import Any, Callable, Dict, Set
+
+__all__ = ("MessageDispatcher",)
+
+Handler = Callable[[Dict[str, Any]], None]
+
 
 class MessageDispatcher:
-    """
-    `MessageDispatcher` - Simple message dispatcher that allows you to register handlers for specific message types.
- 
+    """Simple message dispatcher that allows you to register handlers for specific message types.
+
     `**Example**`
 
     ```py
@@ -19,46 +23,16 @@ class MessageDispatcher:
     ```
 
     """
-    def __init__(self):
-        self.dispatch_table = {}
 
-    def register(self, message_type: int, handler: Callable):
-        self.dispatch_table[message_type] = handler
+    def __init__(self) -> None:
+        self.dispatch_table: Dict[int, Set[Handler]] = {}
 
-    def handle(self, message: dict):
-        message_type = message.get("t")
+    def register(self, message_type: int, handler: Handler) -> None:
+        self.dispatch_table.setdefault(message_type, set()).add(handler)
+
+    def handle(self, message: Dict[str, Any]) -> None:
+        message_type = message.get("t", 0)
         if message_type not in self.dispatch_table:
             return None
-        self.dispatch_table[message_type](message)
-
-
-class AsyncMessageDispatcher:
-    """
-    `AsyncMessageDispatcher` - Simple async message dispatcher that allows you to register handlers for specific message types.
- 
-    `**Example**`
-
-    ```py
-
-    dispatcher = AsyncMessageDispatcher()
-
-    message_type = 1000
-    message = {"t": message_type, "d": {"foo": "bar"}}
-    handler = lambda message: print(message)
-
-    dispatcher.register(message_type, handler)
-    await dispatcher.handle(message)
-    ```
-
-    """
-    def __init__(self):
-        self.dispatch_table = {}
-
-    def register(self, message_type: int, handler: Callable):
-        self.dispatch_table[message_type] = handler
-
-    async def handle(self, message: dict):
-        message_type = message.get("t")
-        if message_type not in self.dispatch_table:
-            return
-        await self.dispatch_table[message_type](message)
+        for handler in self.dispatch_table[message_type]:
+            handler(message)

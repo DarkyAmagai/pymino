@@ -1,21 +1,27 @@
-from time import time
+import time
 
-from .utilities.generate import Generator
-from .entities.userprofile import UserProfile
-from .entities.general import (
-    ApiResponse, Authenticate, ResetPassword, Wallet
-    )
+from pymino.ext import entities, utilities
+
+__all__ = ("Account",)
+
 
 class Account:
     """
     Account class for handling account related requests.
     """
-    def __init__(self, session):
+
+    def __init__(self, session: utilities.RequestHandler) -> None:
         self.session = session
 
-    def register(self, email: str, password: str, username: str, verificationCode: str) -> Authenticate:
+    def register(
+        self,
+        email: str,
+        password: str,
+        username: str,
+        verificationCode: str,
+    ) -> entities.Authenticate:
         """
-        `**register**` - Registers a new account.
+        Registers a new account.
 
         `**Parameters**`
 
@@ -26,7 +32,7 @@ class Account:
         - `username` - The username of the account.
 
         - `verificationCode` - The verification code sent to the email.
-        
+
         `**Example**`
 
         ```py
@@ -39,308 +45,323 @@ class Account:
         print(response.json())
         ```
         """
-        return Authenticate(self.session.handler(
-            method = "POST",
-            url="/g/s/auth/register",
-            data={
-                "secret": f"0 {password}",
-                "deviceID": self.session.generate.device_id(),
-                "email": email,
-                "clientType": 100,
-                "nickname": username,
-                "validationContext": {
-                    "data": {"code": verificationCode}, "type": 1, "identity": email},
-                "type": 1,
-                "identity": email,
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.Authenticate(
+            self.session.handler(
+                "POST",
+                "/g/s/auth/register",
+                data={
+                    "secret": f"0 {password}",
+                    "deviceID": self.session.generate.device_id(),
+                    "email": email,
+                    "clientType": 100,
+                    "nickname": username,
+                    "validationContext": {
+                        "data": {"code": verificationCode},
+                        "type": 1,
+                        "identity": email,
+                    },
+                    "type": 1,
+                    "identity": email,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    def delete_request(self, email: str, password: str) -> ApiResponse:
+    def delete_request(self, email: str, password: str) -> entities.ApiResponse:
         """
-        `**delete_request**` - Sends a delete request to the account.
+        Sends a delete request to the account.
 
         `**Parameters**`
 
         - `email` - The email of the account.
 
         - `password` - The password of the account.
-        
+
         `**Example**`
 
         ```py
         from pymino import *
-        
+
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.delete_request(email=email, password=password)
         print(response)
-        ```"""
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url="/g/s/account/delete-request",
-            data={
-                "secret": f"0 {password}",
-                "deviceID": self.session.generate.device_id(),
-                "email": email,
-                "timestamp": int(time() * 1000)
-            }))
-
-    def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
+        ```
         """
-        `**delete_request_cancel**` - Cancels the delete request.
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/account/delete-request",
+                data={
+                    "secret": f"0 {password}",
+                    "deviceID": self.session.generate.device_id(),
+                    "email": email,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
+
+    def delete_request_cancel(self, email: str, password: str) -> entities.ApiResponse:
+        """
+        Cancels the delete request.
 
         `**Parameters**`
 
         - `email` - The email of the account.
 
         - `password` - The password of the account.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.delete_request_cancel(email=email, password=password)
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url="/g/s/account/delete-request/cancel",
-            data={
-                "secret": f"0 {password}",
-                "deviceID": self.session.generate.device_id(),
-                "email": email,
-                "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/account/delete-request/cancel",
+                data={
+                    "secret": f"0 {password}",
+                    "deviceID": self.session.generate.device_id(),
+                    "email": email,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    def check_device(self, deviceId: str) -> ApiResponse:
+    def check_device(self, deviceId: str) -> entities.ApiResponse:
         """
-        `**check_device**` - Checks if the device is valid.
+        Checks if the device is valid.
 
         `**Parameters**`
 
         - `deviceId` - The device id of the account.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         response = bot.check_device(deviceId=device_id())
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url="/g/s/device",
-            data={
-                "deviceID": deviceId,
-                "clientType": 100,
-                "timezone": -310,
-                "systemPushEnabled": True,
-                "timestamp": int(time() * 1000)
-                }))
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/device",
+                data={
+                    "deviceID": deviceId,
+                    "clientType": 100,
+                    "timezone": -310,
+                    "systemPushEnabled": True,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    def fetch_account(self) -> ApiResponse:
+    def fetch_account(self) -> entities.ApiResponse:
         """
-        `**fetch_account**` - Fetches the account information.
-        
+        Fetches the account information.
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.fetch_account()
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(method = "GET", url="/g/s/account"))
+        return entities.ApiResponse(self.session.handler("GET", "/g/s/account"))
 
-    def upload_image(self, image: str) -> str:
+    def fetch_profile(self, userId: str) -> entities.UserProfile:
         """
-        `**upload_image**` - Uploads an image to the server.
+        Fetches the profile information.
 
-        `**Parameters**`
-
-        - `image` - The image to upload.
-        
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
-        bot = Bot()
-        bot.run(email=email, password=password)
-        response = bot.upload_image(image="image.jpg")
-        print(response)
-        ```
-        """
-        return ApiResponse(self.session.handler(method="POST", url="/g/s/media/upload",
-            data=open(image, "rb").read(), content_type="image/jpg")).mediaValue
 
-    def fetch_profile(self, userId: str) -> UserProfile:
-        """
-        `**fetch_profile**` - Fetches the profile information.
-        
-        `**Example**`
-        
-        ```py
-        from pymino import *
-        
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.fetch_profile()
         print(response)
         ```
         """
-        return UserProfile(self.session.handler(
-            method = "GET", url = f"/g/s/user-profile/{userId}"))
+        return entities.UserProfile(self.session.handler("GET", f"/g/s/user-profile/{userId}"))
 
-    def set_amino_id(self, aminoId: str) -> ApiResponse:
+    def set_amino_id(self, amino_id: str) -> entities.ApiResponse:
         """
-        `**set_amino_id**` - Sets the amino id.
+        Sets the amino id.
 
         `**Parameters**`
 
         - `aminoId` - The amino id to set.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.set_amino_id(aminoId="aminoId")
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method="POST",
-            url="/g/s/account/change-amino-id",
-            data={"aminoId": aminoId, "timestamp": int(time() * 1000)}))
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/account/change-amino-id",
+                data={"aminoId": amino_id, "timestamp": int(time.time() * 1000)},
+            )
+        )
 
-    def fetch_wallet(self) -> Wallet:
+    def fetch_wallet(self) -> entities.Wallet:
         """
-        `**fetch_wallet**` - Fetches the wallet information.
-        
+        Fetches the wallet information.
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.fetch_wallet()
         print(response)
         """
-        return Wallet(self.session.handler(method="GET", url="/g/s/wallet"))
+        return entities.Wallet(self.session.handler("GET", "/g/s/wallet"))
 
-    def request_security_validation(self, email: str, resetPassword: bool = False) -> ApiResponse:
+    def request_security_validation(
+        self,
+        email: str,
+        reset_password: bool = False,
+    ) -> entities.ApiResponse:
         """
-        `**request_security_validation**` - Requests a security validation.
+        Requests a security validation.
 
         `**Parameters**`
 
         - `email` - The email of the account.
 
         - `resetPassword` - Whether to reset the password or not.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         response = bot.request_security_validation(email=email)
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method = "POST", url="/g/s/auth/request-security-validation",
-            data={
-                "identity": email,
-                "type": 1,
-                "deviceID": self.session.generate.device_id(),
-                "level": 2 if resetPassword else None,
-                "purpose": "reset-password" if resetPassword else None,
-                "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/auth/request-security-validation",
+                data={
+                    "identity": email,
+                    "type": 1,
+                    "deviceID": self.session.generate.device_id(),
+                    "level": 2 if reset_password else None,
+                    "purpose": "reset-password" if reset_password else None,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    def activate_email(self, email: str, code: str) -> ApiResponse:
+    def activate_email(self, email: str, code: str) -> entities.ApiResponse:
         """
-        `**activate_email**` - Activates an email.
+        Activates an email.
 
         `**Parameters**`
 
         - `email` - The email of the account.
 
         - `code` - The code sent to the email.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         response = bot.activate_email(email=email, code=code)
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url="/g/s/auth/activate-email",
-            data={
-                "type": 1,
-                "identity": email,
-                "data": {"code":code},
-                "deviceID": self.session.generate.device_id(),
-                "timestamp": int(time() * 1000)
-            }))
-    
-    
-    def verify(self, email: str, code: str, deviceId: str) -> ApiResponse:
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/auth/activate-email",
+                data={
+                    "type": 1,
+                    "identity": email,
+                    "data": {"code": code},
+                    "deviceID": self.session.generate.device_id(),
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
+
+    def verify(self, email: str, code: str, device_id: str) -> entities.ApiResponse:
         """
-        `**verify**` - Verifies the code sent to the email.
+        Verifies the code sent to the email.
 
         `**Parameters**`
-        
+
         - `email` - The email of the account.
-        
+
         - `code` - The code sent to the email.
 
         - `deviceId` - The device id.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         response = bot.verify(email=email, code=code, deviceId=deviceId)
         print(response)
         ```
         """
-        return ApiResponse(self.session.handler(
-            method = "POST",
-            url="/g/s/auth/check-security-validation",
-            data={
-                "type": 1,
-                "identity": email,
-                "data": {"code":code},
-                "deviceID": deviceId,
-                "timestamp": int(time() * 1000)
-            }))
+        return entities.ApiResponse(
+            self.session.handler(
+                "POST",
+                "/g/s/auth/check-security-validation",
+                data={
+                    "type": 1,
+                    "identity": email,
+                    "data": {"code": code},
+                    "deviceID": device_id,
+                    "timestamp": int(time.time() * 1000),
+                },
+            )
+        )
 
-    def reset_password(self, email: str, newPassword: str, code: str, deviceId: str) -> ResetPassword:
+    def reset_password(
+        self,
+        email: str,
+        new_password: str,
+        code: str,
+        device_id: str
+    ) -> entities.ResetPassword:
         """
-        `**reset_password**` - Resets the password.
+        Resets the password.
 
         `**Parameters**`
 
@@ -349,29 +370,33 @@ class Account:
         - `newPassword` - The new password of the account.
 
         - `code` - The code sent to the email.
-        
+
         `**Example**`
-        
+
         ```py
         from pymino import *
-        
+
         bot = Bot()
         bot.run(email=email, password=password)
         response = bot.reset_password(email=email, newPassword=newPassword, code=code)
         print(response)
         ```
         """
-        return ResetPassword(self.session.handler(
-            method = "POST", url="/g/s/auth/reset-password",
-            data={
-                "updateSecret": f"0 {newPassword}",
-                "emailValidationContext": {
-                    "data": {"code": code},
-                    "type": 1,
-                    "identity": email,
-                    "level": 2,
-                    "deviceID": deviceId
+        return entities.ResetPassword(
+            self.session.handler(
+                "POST",
+                "/g/s/auth/reset-password",
+                data={
+                    "updateSecret": f"0 {new_password}",
+                    "emailValidationContext": {
+                        "data": {"code": code},
+                        "type": 1,
+                        "identity": email,
+                        "level": 2,
+                        "deviceID": device_id,
+                    },
+                    "phoneNumberValidationContext": None,
+                    "deviceID": device_id,
                 },
-                "phoneNumberValidationContext": None,
-                "deviceID": deviceId
-            }))
+            )
+        )

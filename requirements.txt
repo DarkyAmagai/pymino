@@ -1,8 +1,11 @@
 requests==2.32.4
+types-requests
 ujson==5.10.0
 colorama==0.4.6
-websocket-client==1.8.0
+types-colorama
+websocket-client>=1.6.1
 diskcache==5.6.3
-aiohttp==3.12.13
-wsaccel==0.6.7
+diskcache-stubs
+typing-extensions
+wsaccel>=0.6.3; python_version >= "3.9"
 dotenv==0.9.9
