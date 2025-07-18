@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from collections.abc import Iterator
-from typing import Any, Dict, Optional, cast
+from typing import Any, Optional, cast
 
 import diskcache
 
@@ -218,7 +218,7 @@ class Client(socket.WSClient, global_client.Global):
         """
         return f"Client(community_id={self.community_id}, device_id={self.device_id})"
 
-    def __iter__(self) -> "Iterator[str]":
+    def __iter__(self) -> Iterator[str]:
         """
         Allows iteration over the Client object.
 
@@ -494,7 +494,7 @@ class Client(socket.WSClient, global_client.Global):
         password: Optional[str] = None,
         secret: Optional[str] = None,
         device_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Authenticates the bot with the provided email and password.
 
@@ -540,7 +540,7 @@ class Client(socket.WSClient, global_client.Global):
         secret: Optional[str] = None,
         device_id: Optional[str] = None,
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Authenticates the user with the provided email and password.
 
@@ -625,7 +625,7 @@ class Client(socket.WSClient, global_client.Global):
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Logs in to the client using the provided credentials.
 
@@ -680,7 +680,7 @@ class Client(socket.WSClient, global_client.Global):
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
         use_cache: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Logs in to the client and starts running it.
 
@@ -715,7 +715,7 @@ class Client(socket.WSClient, global_client.Global):
             use_cache=use_cache,
         )
 
-    def _run(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    def _run(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Processes the response from a successful login attempt and sets up the authenticated client.
 
@@ -802,7 +802,7 @@ class Client(socket.WSClient, global_client.Global):
         raise entities.MissingDeviceKeyOrSignatureKey
 
     @utilities.authenticated
-    def disconnect_google(self, password: str) -> Dict[str, Any]:
+    def disconnect_google(self, password: str) -> dict[str, Any]:
         """
         Disconnects the user's Google account from their account on Amino.
 
@@ -909,7 +909,7 @@ class Client(socket.WSClient, global_client.Global):
         return self.account.check_device(deviceId=device_id)
 
     @utilities.authenticated
-    def fetch_account(self) -> Dict[str, Any]:
+    def fetch_account(self) -> dict[str, Any]:
         """
         Fetches the account information for the authenticated user.
 

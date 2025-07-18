@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 __all__ = (
     "AdminLog",
@@ -9,11 +9,11 @@ __all__ = (
 
 
 class ExtData:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
-    def value(self) -> Dict[str, Any]:
+    def value(self) -> dict[str, Any]:
         """Returns the value of the ext data"""
         return self.data.get("value") or {}
 
@@ -22,32 +22,32 @@ class ExtData:
         """Returns the note the moderator/admin left on the request"""
         return self.data.get("note")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw json data"""
         return self.data
 
 
 class ExtDataList:
-    def __init__(self, data: List[Dict[str, Any]]) -> None:
+    def __init__(self, data: list[dict[str, Any]]) -> None:
         self.data = data
 
     @property
-    def value(self) -> List[Dict[str, Any]]:
+    def value(self) -> list[dict[str, Any]]:
         """Returns a list of values of the ext data"""
         return [data.get("value") or {} for data in self.data]
 
     @property
-    def note(self) -> List[Optional[str]]:
+    def note(self) -> list[Optional[str]]:
         """Returns a list of notes the moderator/admin left on the request"""
         return [note.get("note") for note in self.data]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         """Returns the raw json data"""
         return self.data
 
 
 class AdminLog:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -116,7 +116,7 @@ class AdminLog:
         return self.data.get("objectId", 0)
 
     @property
-    def moderator(self) -> Dict[str, Any]:
+    def moderator(self) -> dict[str, Any]:
         """Returns the moderator of the operation"""
         return self.data.get("author") or {}
 
@@ -135,22 +135,22 @@ class AdminLog:
         """Returns the icon of the moderator of the operation"""
         return self.moderator.get("icon")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw json data"""
         return self.data
 
 
 class AdminLogList:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
-    def parser(self) -> List[AdminLog]:
+    def parser(self) -> list[AdminLog]:
         """Returns a list of AdminLog objects"""
-        adminLogList: List[Dict[str, Any]] = self.data.get("adminLogList") or []
+        adminLogList: list[dict[str, Any]] = self.data.get("adminLogList") or []
         return [AdminLog(i) for i in adminLogList]
 
     @property
-    def paging(self) -> Dict[str, Any]:
+    def paging(self) -> dict[str, Any]:
         """Returns the paging data"""
         return self.data.get("paging") or {}
 
@@ -165,27 +165,27 @@ class AdminLogList:
         return self.paging.get("prevPageToken")
 
     @property
-    def operation_name(self) -> List[str]:
+    def operation_name(self) -> list[str]:
         """Returns a list of operation names"""
         return [i.operation_name for i in self.parser()]
 
     @property
-    def comId(self) -> List[int]:
+    def comId(self) -> list[int]:
         """Returns a list of comIds"""
         return [i.comId for i in self.parser()]
 
     @property
-    def refer_ticket_id(self) -> List[int]:
+    def refer_ticket_id(self) -> list[int]:
         """Returns a list of ticket ids"""
         return [i.refer_ticket_id for i in self.parser()]
 
     @property
-    def object_url(self) -> List[Optional[str]]:
+    def object_url(self) -> list[Optional[str]]:
         """Returns a list of object urls"""
         return [i.object_url for i in self.parser()]
 
     @property
-    def created_time(self) -> List[str]:
+    def created_time(self) -> list[str]:
         """Returns a list of created times"""
         return [i.created_time for i in self.parser()]
 
@@ -195,60 +195,60 @@ class AdminLogList:
         return ExtDataList([i.ext_data.json() for i in self.parser()])
 
     @property
-    def operation_level(self) -> List[int]:
+    def operation_level(self) -> list[int]:
         """Returns a list of operation levels"""
         return [i.operation_level for i in self.parser()]
 
     @property
-    def operation_id(self) -> List[int]:
+    def operation_id(self) -> list[int]:
         """Returns a list of operation ids"""
         return [i.operation_id for i in self.parser()]
 
     @property
-    def object_type(self) -> List[int]:
+    def object_type(self) -> list[int]:
         """Returns a list of object types"""
         return [i.object_type for i in self.parser()]
 
     @property
-    def operation_details(self) -> List[Optional[str]]:
+    def operation_details(self) -> list[Optional[str]]:
         """Returns a list of operation details"""
         return [i.operation_details for i in self.parser()]
 
     @property
-    def log_id(self) -> List[int]:
+    def log_id(self) -> list[int]:
         """Returns a list of log ids"""
         return [i.log_id for i in self.parser()]
 
     @property
-    def moderation_level(self) -> List[int]:
+    def moderation_level(self) -> list[int]:
         """Returns a list of moderation levels"""
         return [i.moderation_level for i in self.parser()]
 
     @property
-    def objectId(self) -> List[int]:
+    def objectId(self) -> list[int]:
         """Returns a list of object ids"""
         return [i.objectId for i in self.parser()]
 
     @property
-    def moderator(self) -> List[Dict[str, Any]]:
+    def moderator(self) -> list[dict[str, Any]]:
         """Returns a list of moderators"""
         return [i.moderator for i in self.parser()]
 
     @property
-    def moderator_username(self) -> List[str]:
+    def moderator_username(self) -> list[str]:
         """Returns a list of moderator usernames"""
         return [i.moderator_username for i in self.parser()]
 
     @property
-    def moderator_uid(self) -> List[str]:
+    def moderator_uid(self) -> list[str]:
         """Returns a list of moderator uids"""
         return [i.moderator_uid for i in self.parser()]
 
     @property
-    def moderator_icon(self) -> List[Optional[str]]:
+    def moderator_icon(self) -> list[Optional[str]]:
         """Returns a list of moderator icons"""
         return [i.moderator_icon for i in self.parser()]
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw json data"""
         return self.data

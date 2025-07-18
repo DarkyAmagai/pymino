@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 __all__ = (
     "Applicant",
@@ -12,8 +12,8 @@ __all__ = (
 
 
 class CommunityStats:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("communityStats", data) or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("communityStats", data) or {}
 
     @property
     def daily_active_members(self) -> int:
@@ -47,8 +47,8 @@ class CommunityStats:
 
 
 class Applicant:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("applicant", data) or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("applicant", data) or {}
 
     @property
     def status(self) -> int:
@@ -87,47 +87,47 @@ class Applicant:
 
 
 class ApplicantList:
-    def __init__(self, data: List[Dict[str, Any]]) -> None:
+    def __init__(self, data: list[dict[str, Any]]) -> None:
         self.data = data
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         """Returns the status of the applicant."""
         return [applicant.get("status", 0) for applicant in self.data]
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         """Returns the uid of the applicant."""
         return [applicant.get("uid", "") for applicant in self.data]
 
     @property
-    def is_global(self) -> List[bool]:
+    def is_global(self) -> list[bool]:
         """Returns whether the applicant is global."""
         return [applicant.get("isGlobal", False) for applicant in self.data]
 
     @property
-    def role(self) -> List[int]:
+    def role(self) -> list[int]:
         """Returns the role of the applicant."""
         return [applicant.get("role", 0) for applicant in self.data]
 
     @property
-    def is_staff(self) -> List[bool]:
+    def is_staff(self) -> list[bool]:
         """Returns whether the applicant is staff."""
         return [applicant.get("isStaff", False) for applicant in self.data]
 
     @property
-    def nickname(self) -> List[Optional[str]]:
+    def nickname(self) -> list[Optional[str]]:
         """Returns the nickname of the applicant."""
         return [applicant.get("nickname") for applicant in self.data]
 
     @property
-    def icon(self) -> List[Optional[str]]:
+    def icon(self) -> list[Optional[str]]:
         """Returns the icon of the applicant."""
         return [applicant.get("icon") for applicant in self.data]
 
 
 class CommunityMembershipRequest:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -177,48 +177,48 @@ class CommunityMembershipRequest:
 
 
 class CommunityMembershipRequestList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = (
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = (
             data.get("communityMembershipRequestList") or []
         )
 
     @property
-    def parser(self) -> List[CommunityMembershipRequest]:
+    def parser(self) -> list[CommunityMembershipRequest]:
         """Returns the parser of the community membership request list."""
         return [CommunityMembershipRequest(data) for data in self.data]
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         """Returns the status of the community membership request list."""
         return [x.get("status", 0) for x in self.data]
 
     @property
-    def request_id(self) -> List[str]:
+    def request_id(self) -> list[str]:
         """Returns the request id of the community membership request list."""
         return [x.get("requestId", "") for x in self.data]
 
     @property
-    def modified_time(self) -> List[Optional[str]]:
+    def modified_time(self) -> list[Optional[str]]:
         """Returns the modified time of the community membership request list."""
         return [x.get("modifiedTime") for x in self.data]
 
     @property
-    def ndcId(self) -> List[int]:
+    def ndcId(self) -> list[int]:
         """Returns the ndc id of the community membership request list."""
         return [x.get("ndcId", 0) for x in self.data]
 
     @property
-    def comId(self) -> List[int]:
+    def comId(self) -> list[int]:
         """Returns the ndc id of the community membership request list."""
         return self.ndcId
 
     @property
-    def created_time(self) -> List[str]:
+    def created_time(self) -> list[str]:
         """Returns the created time of the community membership request list."""
         return [x.get("createdTime", "") for x in self.data]
 
     @property
-    def message(self) -> List[Optional[str]]:
+    def message(self) -> list[Optional[str]]:
         """Returns the message of the community membership request list."""
         return [x.get("message") for x in self.data]
 
@@ -228,18 +228,18 @@ class CommunityMembershipRequestList:
         return ApplicantList([x.get("applicant") or {} for x in self.data])
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         """Returns the uid of the community membership request list."""
         return [x.get("uid", "") for x in self.data]
 
     @property
-    def userId(self) -> List[str]:
+    def userId(self) -> list[str]:
         """Returns the user id of the community membership request list."""
         return self.uid
 
 
 class InvitationLog:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -334,9 +334,9 @@ class InvitationLog:
 
 
 class InvitationLogList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get("invitationLogList") or []
-        parser: List[InvitationLog] = [InvitationLog(x) for x in self.data]
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("invitationLogList") or []
+        parser: list[InvitationLog] = [InvitationLog(x) for x in self.data]
         self.created_time = [x.created_time for x in parser]
         self.invitationId = [x.invitationId for x in parser]
         self.isNicknameVerified = [x.isNicknameVerified for x in parser]

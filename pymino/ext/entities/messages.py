@@ -1,6 +1,6 @@
 import re
 import time
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Optional, cast
 
 from pymino.ext.entities import userprofile
 
@@ -25,7 +25,7 @@ class PrepareMessage:
         type: int = 0,
         **kwargs: Any,
     ) -> None:
-        self.base_message: Dict[str, Any] = {
+        self.base_message: dict[str, Any] = {
             "content": content,
             "mediaType": mediaType,
             "type": type,
@@ -34,13 +34,13 @@ class PrepareMessage:
         }
         self.base_message.update(kwargs)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.base_message
 
 
 class MessageAuthor:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -102,18 +102,18 @@ class MessageAuthor:
         return self.data.get("accountMembershipStatus", 0)
 
     @property
-    def avatarFrame(self) -> Dict[str, Any]:
+    def avatarFrame(self) -> dict[str, Any]:
         """Returns the avatar frame of the author."""
         return self.data.get("avatarFrame") or {}
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.data
 
 
 class CMessage:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("result") or data.get("message", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("result") or data.get("message", data)
 
     @property
     def includedInSummary(self) -> bool:
@@ -131,7 +131,7 @@ class CMessage:
         return self.uid
 
     @property
-    def author(self) -> Dict[str, Any]:
+    def author(self) -> dict[str, Any]:
         """Returns the author object of the message."""
         return self.data.get("author") or {}
 
@@ -176,7 +176,7 @@ class CMessage:
         return self.data.get("createdTime", "")
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         """Returns the extensions of the message."""
         return self.data.get("extensions") or {}
 
@@ -190,13 +190,13 @@ class CMessage:
         """Returns the media value of the message."""
         return self.data.get("mediaValue")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.data
 
 
 class ReplyMessage:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -293,13 +293,13 @@ class ReplyMessage:
         """Is the media value of the message that was replied to."""
         return self.data.get("mediaValue")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.data
 
 
 class CMessageExtensions:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -320,88 +320,88 @@ class CMessageExtensions:
         """
         return ReplyMessage(self.data.get("replyMessage") or {})
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.data
 
 
 class CMessageAuthorList:
-    def __init__(self, data: List[Dict[str, Any]]) -> None:
+    def __init__(self, data: list[dict[str, Any]]) -> None:
         self.data = data
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         """Returns a list of the status of the users in the chat."""
         return [i.get("status", 0) for i in self.data]
 
     @property
-    def icon(self) -> List[Optional[str]]:
+    def icon(self) -> list[Optional[str]]:
         """Returns a list of the icon of the users in the chat."""
         return [i.get("icon") for i in self.data]
 
     @property
-    def avatar(self) -> List[Optional[str]]:
+    def avatar(self) -> list[Optional[str]]:
         """Returns a list of the avatar of the users in the chat."""
         return self.icon
 
     @property
-    def reputation(self) -> List[int]:
+    def reputation(self) -> list[int]:
         """Returns a list of the reputation of the users in the chat."""
         return [i.get("reputation", 0) for i in self.data]
 
     @property
-    def role(self) -> List[int]:
+    def role(self) -> list[int]:
         """Returns a list of the role of the users in the chat."""
         return [i.get("role", 0) for i in self.data]
 
     @property
-    def nickname(self) -> List[str]:
+    def nickname(self) -> list[str]:
         """Returns a list of the nickname of the users in the chat."""
         return [i.get("nickname", "") for i in self.data]
 
     @property
-    def username(self) -> List[str]:
+    def username(self) -> list[str]:
         """Returns a list of the username of the users in the chat."""
         return self.nickname
 
     @property
-    def level(self) -> List[int]:
+    def level(self) -> list[int]:
         """Returns a list of the level of the users in the chat."""
         return [i.get("level", 0) for i in self.data]
 
     @property
-    def accountMembershipStatus(self) -> List[int]:
+    def accountMembershipStatus(self) -> list[int]:
         """Returns a list of the account membership status of the users in the chat."""
         return [i.get("accountMembershipStatus", 0) for i in self.data]
 
     @property
-    def avatarFrame(self) -> List[Dict[str, Any]]:
+    def avatarFrame(self) -> list[dict[str, Any]]:
         """Returns a list of the avatar frame of the users in the chat."""
         return [i.get("avatarFrame") or {} for i in self.data]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         """`JSON` - returns the raw data."""
         return self.data
 
 
 class CMessages:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = (
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = (
             data.get("result") or data.get("messageList") or []
         )
 
     @property
-    def includedInSummary(self) -> List[bool]:
+    def includedInSummary(self) -> list[bool]:
         """Returns a list of the included in summary of the messages in the chat."""
         return [i.get("includedInSummary", False) for i in self.data]
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         """Returns a list of the uid of the messages in the chat."""
         return [i.get("uid", "") for i in self.data]
 
     @property
-    def userId(self) -> List[str]:
+    def userId(self) -> list[str]:
         """Returns a list of the user id of the messages in the chat."""
         return self.uid
 
@@ -411,68 +411,68 @@ class CMessages:
         return CMessageAuthorList([i.get("author") or {} for i in self.data])
 
     @property
-    def isHidden(self) -> List[bool]:
+    def isHidden(self) -> list[bool]:
         """Returns a list of the is hidden of the messages in the chat."""
         return [i.get("isHidden", False) for i in self.data]
 
     @property
-    def messageId(self) -> List[str]:
+    def messageId(self) -> list[str]:
         """Returns a list of the message id of the messages in the chat."""
         return [i.get("messageId", "") for i in self.data]
 
     @property
-    def mediaType(self) -> List[Optional[int]]:
+    def mediaType(self) -> list[Optional[int]]:
         """Returns a list of the media type of the messages in the chat."""
         return [i.get("mediaType") for i in self.data]
 
     @property
-    def content(self) -> List[Optional[str]]:
+    def content(self) -> list[Optional[str]]:
         """Returns a list of the content of the messages in the chat."""
         return [i.get("content") for i in self.data]
 
     @property
-    def clientRefId(self) -> List[int]:
+    def clientRefId(self) -> list[int]:
         """Returns a list of the client ref id of the messages in the chat."""
         return [i.get("clientRefId", 0) for i in self.data]
 
     @property
-    def threadId(self) -> List[str]:
+    def threadId(self) -> list[str]:
         """Returns a list of the thread id of the messages in the chat."""
         return [i.get("threadId", "") for i in self.data]
 
     @property
-    def chatId(self) -> List[str]:
+    def chatId(self) -> list[str]:
         """Returns a list of the chat id of the messages in the chat."""
         return self.threadId
 
     @property
-    def createdTime(self) -> List[str]:
+    def createdTime(self) -> list[str]:
         """Returns a list of the created time of the messages in the chat."""
         return [i.get("createdTime", "") for i in self.data]
 
     @property
-    def extensions(self) -> List[Dict[str, Any]]:
+    def extensions(self) -> list[dict[str, Any]]:
         """Returns a list of the extensions of the messages in the chat."""
         return [i.get("extensions") or {} for i in self.data]
 
     @property
-    def type(self) -> List[int]:
+    def type(self) -> list[int]:
         """Returns a list of the type of the messages in the chat."""
         return [i.get("type", 0) for i in self.data]
 
     @property
-    def mediaValue(self) -> List[Optional[str]]:
+    def mediaValue(self) -> list[Optional[str]]:
         """Returns a list of the media value of the messages in the chat."""
         return [i.get("mediaValue") for i in self.data]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         """Returns the raw data."""
         return self.data
 
 
 class Message:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("o", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("o", data)
 
     @property
     def ndcId(self) -> int:
@@ -485,7 +485,7 @@ class Message:
         return self.ndcId
 
     @property
-    def chatMessage(self) -> Dict[str, Any]:
+    def chatMessage(self) -> dict[str, Any]:
         """Is the message that was sent."""
         return self.data.get("chatMessage") or {}
 
@@ -572,25 +572,25 @@ class Message:
         return CMessageExtensions(self.chatMessage.get("extensions") or {})
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         """Returns the extensions of the message."""
         return self.chatMessage.get("extensions") or {}
 
     @property
-    def mentioned_user_ids(self) -> List[str]:
+    def mentioned_user_ids(self) -> list[str]:
         """Returns a list of the mentioned user ids."""
         return [
             i["uid"]
-            for i in cast(List[Any], self.extensions.get("mentionedArray") or [])
+            for i in cast(list[Any], self.extensions.get("mentionedArray") or [])
         ]
 
     @property
-    def mentioned_user_names(self) -> List[str]:
+    def mentioned_user_names(self) -> list[str]:
         """Returns a list of the mentioned user names."""
         return re.findall(r"@([^\u202c\u202d]+)", self.content or "")
 
     @property
-    def mentioned_dictionary(self) -> Dict[str, str]:
+    def mentioned_dictionary(self) -> dict[str, str]:
         """Returns a dictionary of the mentioned {userid: username}."""
         return dict(zip(self.mentioned_user_ids, self.mentioned_user_names))
 
@@ -604,14 +604,14 @@ class Message:
         """Is the membership status of the message."""
         return self.chatMessage.get("membershipStatus", 0)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.data
 
 
 class Channel:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("o", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("o", data)
 
     @property
     def id(self) -> str:
@@ -658,6 +658,6 @@ class Channel:
         """Is the chat id of the channel."""
         return self.threadId
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the raw data."""
         return self.data

@@ -5,7 +5,7 @@ import random
 import re
 import time
 import urllib.request
-from typing import BinaryIO, Optional, Tuple, Union
+from typing import BinaryIO, Optional, Union
 
 import colorama
 import diskcache
@@ -84,7 +84,7 @@ def cache_login(email: str, device: str, sid: str) -> None:
         cache.set(email, {"device": device, "sid": sid}, expire=86400)
 
 
-def fetch_cache(email: str) -> Optional[Tuple[str, str]]:
+def fetch_cache(email: str) -> Optional[tuple[str, str]]:
     """Fetch the login credentials for the current user."""
     with contextlib.suppress(Exception), cache:
         cache.expire()

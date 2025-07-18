@@ -5,7 +5,7 @@ import signal
 import threading
 import time
 import urllib.parse
-from typing import Any, Dict, Optional, Set, Union
+from typing import Any, Optional, Union
 
 import ujson
 import websocket
@@ -82,7 +82,7 @@ class WSClient(context.EventHandler):
         self.dispatcher.register(
             entities.WsMessageTypes.CHAT_MESSAGE_DTO, self._handle_message
         )
-        self._communities: Set[int] = set()
+        self._communities: set[int] = set()
         self._task_runner_active: bool = False
         self.channel: Optional[entities.Channel] = None
 
@@ -119,7 +119,7 @@ class WSClient(context.EventHandler):
                 url = f"{self.fetch_ws_url()}?" + urllib.parse.urlencode(
                     {"signbody": ws_data}
                 )
-                kwargs: Dict[str, Any] = {
+                kwargs: dict[str, Any] = {
                     "header": {
                         "NDCDEVICEID": self.generate.device_id(),
                         "NDCAUTH": f"sid={self.sid}",
@@ -185,7 +185,7 @@ class WSClient(context.EventHandler):
         """Handles websocket messages."""
         self.dispatcher.handle(ujson.loads(message))
 
-    def _handle_message(self, data: Dict[str, Any]) -> None:
+    def _handle_message(self, data: dict[str, Any]) -> None:
         """Sends the message to the event handler."""
         message = entities.Message(data)
 
@@ -199,23 +199,23 @@ class WSClient(context.EventHandler):
         if key:
             self._handle_event(key, message)
 
-    def _handle_notification(self, message: Dict[str, Any]) -> None:
+    def _handle_notification(self, message: dict[str, Any]) -> None:
         """Handles notifications."""
         notification = entities.Notification(message)
         key = entities.NOTIF_TYPES.get(notification.notification_type)
         if key:
             self._handle_event(key, notification)
 
-    def _handle_agora_channel(self, message: Dict[str, Any]) -> None:
+    def _handle_agora_channel(self, message: dict[str, Any]) -> None:
         """Sets the agora channel."""
         self.channel = entities.Channel(message)
 
-    def _handle_user_online(self, message: Dict[str, Any]) -> None:
+    def _handle_user_online(self, message: dict[str, Any]) -> None:
         self._handle_event("user_online", entities.OnlineMembers(message))
 
     def send_websocket_message(
         self,
-        message: Union[Dict[str, Any], bytes, str],
+        message: Union[dict[str, Any], bytes, str],
     ) -> None:
         """Sends a websocket message."""
         if not self.ws:

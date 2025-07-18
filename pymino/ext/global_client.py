@@ -1,7 +1,7 @@
 import abc
 import time
 from collections.abc import Sequence
-from typing import Any, Dict, List, Literal, Optional, Union, cast
+from typing import Any, Literal, Optional, Union, cast
 
 from pymino.ext import entities, utilities
 
@@ -38,7 +38,7 @@ class Global(abc.ABC):
     def proxy(self) -> Optional[str]: ...
 
     @abc.abstractmethod
-    def send_websocket_message(self, message: Dict[str, Any]) -> None: ...
+    def send_websocket_message(self, message: dict[str, Any]) -> None: ...
 
     @abc.abstractmethod
     def run(
@@ -49,7 +49,7 @@ class Global(abc.ABC):
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
         use_cache: bool = True,
-    ) -> Dict[str, Any]: ...
+    ) -> dict[str, Any]: ...
 
     def fetch_user(self, userId: Optional[str] = None) -> "entities.UserProfile":
         """
@@ -117,7 +117,7 @@ class Global(abc.ABC):
         ... else:
         ...     print("Failed to edit profile.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "address": None,
             "latitude": 0,
             "longitude": 0,
@@ -125,7 +125,7 @@ class Global(abc.ABC):
             "eventSource": "UserProfileView",
             "timestamp": int(time.time() * 1000),
         }
-        extensions: Dict[str, Any] = {}
+        extensions: dict[str, Any] = {}
         if nickname:
             data["nickname"] = nickname
         if icon:
@@ -212,7 +212,7 @@ class Global(abc.ABC):
     @utilities.authenticated
     def start_chat(
         self,
-        userId: Union["Sequence[str]", str],
+        userId: Union[Sequence[str], str],
         message: str,
         title: Optional[str] = None,
         content: Optional[str] = None,
@@ -257,7 +257,7 @@ class Global(abc.ABC):
         )
 
     @utilities.authenticated
-    def blocker_users(self, start: int = 0, size: int = 25) -> List[str]:
+    def blocker_users(self, start: int = 0, size: int = 25) -> list[str]:
         """
         Retrieves a list of users what are blocking the logged account.
 
@@ -373,15 +373,15 @@ class Global(abc.ABC):
         backgroundImage: Optional[str] = None,
         content: Optional[str] = None,
         announcement: Optional[str] = None,
-        coHosts: Optional["Sequence[str]"] = None,
-        keywords: Optional["Sequence[str]"] = None,
+        coHosts: Optional[Sequence[str]] = None,
+        keywords: Optional[Sequence[str]] = None,
         pinAnnouncement: Optional[bool] = None,
         publishToGlobal: Optional[bool] = None,
         canTip: Optional[bool] = None,
         viewOnly: Optional[bool] = None,
         canInvite: Optional[bool] = None,
         fansOnly: Optional[bool] = None,
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Edits the settings of a chat.
 
@@ -437,8 +437,8 @@ class Global(abc.ABC):
         ... else:
         ...     print("Failed to edit chat.")
         """
-        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
-        extensions: Dict[str, Any] = {}
+        data: dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        extensions: dict[str, Any] = {}
         if title:
             data["title"] = title
         if content:
@@ -457,7 +457,7 @@ class Global(abc.ABC):
             data["publishToGlobal"] = int(publishToGlobal)
         if extensions:
             data["extensions"] = extensions
-        responses: List[int] = []
+        responses: list[int] = []
         if doNotDisturb is not None:
             responses.append(
                 entities.ApiResponse(
@@ -547,7 +547,7 @@ class Global(abc.ABC):
         return responses
 
     @utilities.authenticated
-    def follow(self, userId: Union["Sequence[str]", str]) -> entities.ApiResponse:
+    def follow(self, userId: Union[Sequence[str], str]) -> entities.ApiResponse:
         """
         Follows a user or a list of users.
 
@@ -707,7 +707,7 @@ class Global(abc.ABC):
     def invite_to_chat(
         self,
         chatId: str,
-        userId: Union["Sequence[str]", str],
+        userId: Union[Sequence[str], str],
     ) -> entities.ApiResponse:
         """
         Invites user(s) to a chat.
@@ -863,7 +863,7 @@ class Global(abc.ABC):
         )
 
     @utilities.authenticated
-    def search_community(self, aminoId: str) -> Dict[str, Any]:
+    def search_community(self, aminoId: str) -> dict[str, Any]:
         """
         Search for a community by Amino ID or link.
 
@@ -1270,7 +1270,7 @@ class Global(abc.ABC):
             )
         )
 
-    def fetch_linked_communities(self, userId: str) -> List[Dict[str, Any]]:
+    def fetch_linked_communities(self, userId: str) -> list[dict[str, Any]]:
         """
         Fetches a user's linked communities.
 
@@ -1293,7 +1293,7 @@ class Global(abc.ABC):
             )
         )["linkedCommunityList"]
 
-    def fetch_unlinked_communities(self, userId: str) -> List[Dict[str, Any]]:
+    def fetch_unlinked_communities(self, userId: str) -> list[dict[str, Any]]:
         """
         Fetches a user's unlinked communities.
 
@@ -1316,12 +1316,12 @@ class Global(abc.ABC):
         )["unlinkedCommunityList"]
 
     @utilities.authenticated
-    def reorder_linked_communities(self, comIds: "Sequence[int]") -> entities.ApiResponse:
+    def reorder_linked_communities(self, comIds: Sequence[int]) -> entities.ApiResponse:
         """
         Reorders a user's linked communities.
 
         :param comIds: A list of community IDs to reorder.
-        :type comIds: List[int]
+        :type comIds: list[int]
         :return: An `ApiResponse` object containing the response from the API.
         :rtype: ApiResponse
 
@@ -1519,7 +1519,7 @@ class Global(abc.ABC):
     @utilities.authenticated
     def like_blog(
         self,
-        blogId: Optional[Union["Sequence[str]", str]] = None,
+        blogId: Optional[Union[Sequence[str], str]] = None,
         wikiId: Optional[str] = None,
     ) -> entities.ApiResponse:
         """
@@ -1541,7 +1541,7 @@ class Global(abc.ABC):
         >>> x = client.like_blog("000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        data: Dict[str, Any] = {"value": 4, "timestamp": int(time.time() * 1000)}
+        data: dict[str, Any] = {"value": 4, "timestamp": int(time.time() * 1000)}
         if blogId:
             if isinstance(blogId, str):
                 data["eventSource"] = ("UserProfileView",)
@@ -1650,7 +1650,7 @@ class Global(abc.ABC):
         >>> x = client.like_comment("000000-0000-0000-000000", userId="000000-0000-0000-000000")
         ... print(x.status_code)
         """
-        data: Dict[str, Any] = {"value": 4, "timestamp": int(time.time() * 1000)}
+        data: dict[str, Any] = {"value": 4, "timestamp": int(time.time() * 1000)}
         if userId:
             data["eventSource"] = "UserProfileView"
             return entities.ApiResponse(
@@ -1742,12 +1742,12 @@ class Global(abc.ABC):
         else:
             raise ValueError("Either userId, blogId or wikiId must be specified.")
 
-    def fetch_supported_languages(self) -> List[str]:
+    def fetch_supported_languages(self) -> list[str]:
         """
         Fetches a list of supported languages for the API.
 
         :return: A list of supported languages.
-        :rtype: List[str]
+        :rtype: list[str]
 
         This function sends a GET request to the API to fetch a list of supported languages.
 
@@ -1773,7 +1773,7 @@ class Global(abc.ABC):
         language: str = "en",
         start: int = 0,
         size: int = 25,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Fetches the latest announcements from the API.
 
@@ -1829,12 +1829,12 @@ class Global(abc.ABC):
         )
 
     @utilities.authenticated
-    def leave_chat(self, chatId: Union["Sequence[str]", str]) -> entities.ApiResponse:
+    def leave_chat(self, chatId: Union[Sequence[str], str]) -> entities.ApiResponse:
         """
         Removes the authenticated user from a chat thread.
 
         :param chatId: A list of chat thread IDs to leave or a single chat thread ID to leave.
-        :type chatId: Union[str, List[str]]
+        :type chatId: Union[str, list[str]]
         :return: The API response.
         :rtype: ApiResponse
 
@@ -1881,7 +1881,7 @@ class Global(abc.ABC):
         **Note:** This function can be used to join the user to a community with the provided community ID. Once joined,
         the user can make API calls related to the community, such as posting or retrieving posts.
         """
-        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        data: dict[str, Any] = {"timestamp": int(time.time() * 1000)}
         if invitationId:
             data["invitationId"] = invitationId
         return entities.ApiResponse(

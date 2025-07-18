@@ -3,7 +3,7 @@ import random
 import time
 import uuid
 from collections.abc import Sequence
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
 from pymino.ext import entities, global_client
 
@@ -1428,7 +1428,7 @@ class Community:
         chatId: str,
         comId: Optional[int] = None,
         moderators: Literal["all", "co-hosts", "host"] = "all",
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Fetches a list of moderators for a specified chat thread in the current or specified community.
 
@@ -1443,7 +1443,7 @@ class Community:
         :type moderators: Optional[str]
         :raises NotLoggedIn: If the user is not logged in.
         :return: A list of moderator user IDs.
-        :rtype: List[str]
+        :rtype: list[str]
         """
         response = self.fetch_chat(chatId=chatId, comId=comId)
         return {
@@ -1456,7 +1456,7 @@ class Community:
         self,
         chatId: str,
         comId: Optional[int] = None,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Fetches a list of all moderators for a specified chat thread in the current or specified community.
 
@@ -1465,7 +1465,7 @@ class Community:
         :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
         :type comId: Optional[int]
         :return: A list of moderator user IDs.
-        :rtype: List[str]
+        :rtype: list[str]
         """
         return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="all")
 
@@ -1473,7 +1473,7 @@ class Community:
         self,
         chatId: str,
         comId: Optional[int] = None,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Fetches a list of co-hosts for a specified chat thread in the current or specified community.
 
@@ -1482,7 +1482,7 @@ class Community:
         :param comId: The ID of the community that the chat belongs to. If not provided, the current community ID is used.
         :type comId: Optional[int]
         :return: A list of co-host user IDs.
-        :rtype: List[str]
+        :rtype: list[str]
         """
         return self.fetch_chat_mods(chatId=chatId, comId=comId, moderators="co-hosts")
 
@@ -2233,7 +2233,7 @@ class Community:
     def set_cohost(
         self,
         chatId: str,
-        userIds: Union["Sequence[str]", str],
+        userIds: Union[Sequence[str], str],
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
@@ -2333,7 +2333,7 @@ class Community:
 
     def follow(
         self,
-        userId: Union["Sequence[str]", str],
+        userId: Union[Sequence[str], str],
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
@@ -2543,7 +2543,7 @@ class Community:
         title: str,
         content: str,
         icon: Optional["entities.Media"] = None,
-        imageList: Optional["Sequence[entities.Media]"] = None,
+        imageList: Optional[Sequence["entities.Media"]] = None,
         keywords: Optional[str] = None,
         backgroundColor: Optional[str] = None,
         fansOnly: bool = False,
@@ -2607,7 +2607,7 @@ class Community:
         ... except:
         ...     print("Wiki article could not be posted.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "content": content,
             "latitude": 0,
             "longitude": 0,
@@ -2617,7 +2617,7 @@ class Community:
             "eventSource": "GlobalComposeMenu",
             "timestamp": int(time.time() * 1000),
         }
-        extensions: Dict[str, Any] = {}
+        extensions: dict[str, Any] = {}
         if imageList:
             data["mediaList"] = [
                 [100, self.__handle_media__(image, "image/jpg"), None]
@@ -2908,7 +2908,7 @@ class Community:
         ... print(comment.content)
         Hello world
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "timestamp": int(time.time() * 1000),
             "content": content,
         }
@@ -3995,8 +3995,8 @@ class Community:
     def edit_titles(
         self,
         userId: str,
-        titles: "Sequence[str]",
-        colors: "Sequence[str]",
+        titles: Sequence[str],
+        colors: Sequence[str],
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
@@ -4364,7 +4364,7 @@ class Community:
         image: "entities.Media",
         message: str = "[c]",
         link: str = "ndc://user-me",
-        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        mentioned: Optional[Union[Sequence[str], str]] = None,
         comId: Optional[int] = None,
     ) -> "entities.CMessage":
         if isinstance(mentioned, str):
@@ -4399,7 +4399,7 @@ class Community:
         chatId: str,
         content: str,
         comId: Optional[int] = None,
-        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        mentioned: Optional[Union[Sequence[str], str]] = None,
     ) -> "entities.CMessage":
         if isinstance(mentioned, str):
             mentioned = [mentioned]
@@ -4613,14 +4613,14 @@ class Community:
 
     def leave_chat(
         self,
-        chatId: Union["Sequence[str]", str],
+        chatId: Union[Sequence[str], str],
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
         Leaves a chat or multiple chats.
 
         :param chatId: A list of chat thread IDs to leave or a single chat thread ID to leave.
-        :type chatId: Union[str, List[str]]
+        :type chatId: Union[str, list[str]]
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
         :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
@@ -4788,7 +4788,7 @@ class Community:
         ...     print("Failed to delete message.")
         """
         method = "DELETE"
-        data: Optional[Dict[str, Any]] = None
+        data: Optional[dict[str, Any]] = None
         endpoint = (
             f"/x{comId or self.community_id}/s/chat/thread/{chatId}/message/{messageId}"
         )
@@ -5001,7 +5001,7 @@ class Community:
         tz: int = -time.timezone // 1000,
         start: Optional[float] = None,
         end: Optional[float] = None,
-        timers: Optional["Sequence[Dict[str, int]]"] = None,
+        timers: Optional[Sequence[dict[str, int]]] = None,
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
@@ -5042,7 +5042,7 @@ class Community:
         ... else:
         ...     print("Failed to send user activity data.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "optInAdsFlags": 2147483647,
             "timezone": tz,
             "timestamp": int(time.time() * 1000),
@@ -5162,7 +5162,7 @@ class Community:
 
     def start_chat(
         self,
-        userIds: Union["Sequence[str]", str],
+        userIds: Union[Sequence[str], str],
         title: Optional[str] = None,
         message: Optional[str] = None,
         content: Optional[str] = None,
@@ -5172,7 +5172,7 @@ class Community:
         Creates a new chat with the given users.
 
         :param userIds: A single user ID or a list of user IDs to invite to the chat.
-        :type userIds: Union[str, List[str]]
+        :type userIds: Union[str, list[str]]
         :param title: The title of the chat. Defaults to `None`.
         :type title: Optional[str]
         :param message: The message to send to the users when inviting them to the chat. Defaults to `None`.
@@ -5222,7 +5222,7 @@ class Community:
     def invite_chat(
         self,
         chatId: str,
-        userIds: Union["Sequence[str]", str],
+        userIds: Union[Sequence[str], str],
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
@@ -5231,7 +5231,7 @@ class Community:
         :param chatId: The ID of the chat to invite users to.
         :type chatId: str
         :param userIds: The ID(s) of the user(s) to invite to the chat. Can be a string or a list of strings.
-        :type userIds: Union[str, List[str]]
+        :type userIds: Union[str, list[str]]
         :param comId: The ID of the community where the chat is located. If not provided, the current community ID is used.
         :type comId: Optional[int]
         :return: An `ApiResponse` object containing information about the request status.
@@ -5432,7 +5432,7 @@ class Community:
     def solve_quiz(
         self,
         quizId: str,
-        quizAnswers: "Sequence[Tuple[str, str]]",
+        quizAnswers: Sequence[tuple[str, str]],
         hellMode: bool = False,
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
@@ -5584,7 +5584,7 @@ class Community:
         ... else:
         ...     print("Failed to disable chat thread.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "adminOpName": 110,
             "adminOpValue": 9,
             "timestamp": int(time.time() * 1000),
@@ -5644,7 +5644,7 @@ class Community:
         ... else:
         ...     print("Failed to disable blog.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "adminOpName": 110,
             "adminOpValue": 9,
             "timestamp": int(time.time() * 1000),
@@ -5704,7 +5704,7 @@ class Community:
         ... else:
         ...     print("Failed to hide user.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "adminOpName": 18,
             "timestamp": int(time.time() * 1000),
         }
@@ -6407,8 +6407,8 @@ class Community:
         backgroundImage: Optional["entities.Media"] = None,
         content: Optional[str] = None,
         announcement: Optional[str] = None,
-        coHost: Optional["Sequence[str]"] = None,
-        keywords: Optional["Sequence[str]"] = None,
+        coHost: Optional[Sequence[str]] = None,
+        keywords: Optional[Sequence[str]] = None,
         pinAnnouncement: Optional[bool] = None,
         publishToGlobal: Optional[bool] = None,
         canTip: Optional[bool] = None,
@@ -6416,7 +6416,7 @@ class Community:
         canInvite: Optional[bool] = None,
         fansOnly: Optional[bool] = None,
         comId: Optional[int] = None,
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Edits the chat settings.
 
@@ -6481,8 +6481,8 @@ class Community:
         ...     else:
         ...         print("Edit failed.")
         """
-        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
-        extensions: Dict[str, Any] = {}
+        data: dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        extensions: dict[str, Any] = {}
         if title:
             data["title"] = title
         if content:
@@ -6499,7 +6499,7 @@ class Community:
             extensions["fansOnly"] = fansOnly
         if publishToGlobal is not None:
             data["publishToGlobal"] = int(publishToGlobal)
-        responses: List[int] = []
+        responses: list[int] = []
 
         if doNotDisturb is not None:
             responses.append(
@@ -6609,18 +6609,18 @@ class Community:
         icon: Optional["entities.Media"] = None,
         chatRequestPrivilege: Optional[int] = None,
         imageList: Optional[
-            """Sequence[
+            Sequence[
                 Union[
-                    entities.Media,
-                    Tuple[entities.Media],
-                    Tuple[entities.Media, Optional[str]],
+                    "entities.Media",
+                    tuple["entities.Media"],
+                    tuple["entities.Media", Optional[str]],
                 ]
-            ]"""
+            ]
         ] = None,
         backgroundImage: Optional["entities.Media"] = None,
         backgroundColor: Optional[str] = None,
-        titles: Optional["Sequence[str]"] = None,
-        colors: Optional["Sequence[str]"] = None,
+        titles: Optional[Sequence[str]] = None,
+        colors: Optional[Sequence[str]] = None,
         defaultBubbleId: Optional[str] = None,
         comId: Optional[Union[str, int]] = None,
     ):
@@ -6689,7 +6689,7 @@ class Community:
 
         >>> images = [("path/to/image1.jpg", "Caption 1"), ("path/to/image2.jpg", "Caption 2")]
         ... profile = client.community.edit_profile(imageList=images)
-        ... print(profile.media)  # List of uploaded image URLs with captions
+        ... print(profile.media)  # list of uploaded image URLs with captions
 
         To set a new background image and color:
 
@@ -6710,10 +6710,10 @@ class Community:
         >>> profile = client.community.edit_profile(defaultBubbleId="bubble123")
         ... print(profile.defaultBubbleId)  # "bubble123"
         """
-        data: Dict[str, Any] = {"timestamp": int(time.time() * 1000)}
-        extensions: Dict[str, Any] = {}
+        data: dict[str, Any] = {"timestamp": int(time.time() * 1000)}
+        extensions: dict[str, Any] = {}
         if imageList is not None:
-            mediaList: List[Any] = []
+            mediaList: list[Any] = []
             for image in imageList:
                 caption = None
                 if not isinstance(image, (bytes, str)) and isinstance(image, Sequence):
@@ -6858,8 +6858,8 @@ class Community:
 
     def edit_profile_titles(
         self,
-        titles: "Sequence[str]",
-        colors: "Sequence[str]",
+        titles: Sequence[str],
+        colors: Sequence[str],
         comId: Optional[int] = None,
     ) -> "entities.UserProfile":
         """
@@ -6954,15 +6954,15 @@ class Community:
         title: str,
         content: str,
         imageList: Optional[
-            """Sequence[
+            Sequence[
                 Union[
-                    entities.Media,
-                    Tuple[entities.Media],
-                    Tuple[entities.Media, Optional[str]],
+                    "entities.Media",
+                    tuple["entities.Media"],
+                    tuple["entities.Media", Optional[str]],
                 ]
-            ]"""
+            ]
         ] = None,
-        categoriesList: Optional["Sequence[str]"] = None,  # must be int?
+        categoriesList: Optional[Sequence[str]] = None,  # must be int?
         backgroundColor: Optional[str] = None,
         fansOnly: bool = False,
         comId: Optional[int] = None,
@@ -7005,7 +7005,7 @@ class Community:
         ... print(blog.title)
         ... print(blog.content)
         """
-        data: Dict[str, Any] = dict(
+        data: dict[str, Any] = dict(
             address=None,
             content=content,
             title=title,
@@ -7014,9 +7014,9 @@ class Community:
             eventSource="GlobalComposeMenu",
             timestamp=int(time.time() * 1000),
         )
-        extensions: Dict[str, Any] = {}
+        extensions: dict[str, Any] = {}
         if imageList is not None:
-            mediaList: List[Any] = []
+            mediaList: list[Any] = []
             for image in imageList:
                 caption = None
                 if not isinstance(image, (bytes, str)) and isinstance(image, Sequence):
@@ -7316,15 +7316,15 @@ class Community:
         title: Optional[str] = None,
         content: Optional[str] = None,
         imageList: Optional[
-            """Sequence[
+            Sequence[
                 Union[
-                    entities.Media,
-                    Tuple[entities.Media],
-                    Tuple[entities.Media, Optional[str]],
+                    "entities.Media",
+                    tuple["entities.Media"],
+                    tuple["entities.Media", Optional[str]],
                 ]
-            ]"""
+            ]
         ] = None,
-        categoriesList: Optional["Sequence[str]"] = None,
+        categoriesList: Optional[Sequence[str]] = None,
         backgroundColor: Optional[str] = None,
         fansOnly: bool = False,
         comId: Optional[int] = None,
@@ -7373,16 +7373,16 @@ class Community:
         ... else:
         ...     print("Failed to edit blog post.")
         """
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "address": None,
             "latitude": 0,
             "longitude": 0,
             "eventSource": "PostDetailView",
             "timestamp": int(time.time() * 1000),
         }
-        extensions: Dict[str, Any] = {}
+        extensions: dict[str, Any] = {}
         if imageList is not None:
-            mediaList: List[Any] = []
+            mediaList: list[Any] = []
             for image in imageList:
                 caption = None
                 if not isinstance(image, (bytes, str)) and isinstance(image, Sequence):
@@ -7928,7 +7928,7 @@ class Community:
 
     def reorder_featured_users(
         self,
-        userIds: "Sequence[str]",
+        userIds: Sequence[str],
         comId: Optional[int] = None,
     ) -> entities.ApiResponse:
         """
@@ -8039,7 +8039,7 @@ class Community:
         ...     print(entry.action)
         ...     print(entry.timestamp)
         """
-        params: Dict[str, Any] = {"pagingType": "t", "size": size}
+        params: dict[str, Any] = {"pagingType": "t", "size": size}
         if pageToken:
             params = {"pageToken": pageToken}
         for objectId, objectType in (

@@ -1,10 +1,10 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 __all__ = ("Member", "MemberAvatar")
 
 
 class MemberAvatar:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -48,7 +48,7 @@ class MemberAvatar:
 
 
 class Member:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:

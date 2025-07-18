@@ -1,6 +1,6 @@
 import time
-from collections.abc import Sequence
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable, Sequence
+from typing import Any, Optional
 
 __all__ = ("CommandCallback", "Command", "Commands")
 
@@ -28,7 +28,7 @@ class Command:
         name: str,
         description: Optional[str] = None,
         usage: Optional[str] = None,
-        aliases: Optional["Sequence[str]"] = None,
+        aliases: Optional[Sequence[str]] = None,
         cooldown: float = 0.0,
     ) -> None:
         self.func = func
@@ -41,8 +41,8 @@ class Command:
 
 class Commands:
     def __init__(self) -> None:
-        self.commands: Dict[str, Command] = {}
-        self.cooldowns: Dict[str, Dict[str, float]] = {}
+        self.commands: dict[str, Command] = {}
+        self.cooldowns: dict[str, dict[str, float]] = {}
 
     def add_command(self, command: Command) -> Command:
         """
@@ -76,7 +76,7 @@ class Commands:
                 return command
         return None
 
-    def fetch_commands(self) -> List[Command]:
+    def fetch_commands(self) -> list[Command]:
         """
         Fetches all commands from the command list.
 
@@ -86,7 +86,7 @@ class Commands:
         """
         return list(self.commands.values())
 
-    def __command_functions__(self) -> Dict[str, CommandCallback]:
+    def __command_functions__(self) -> dict[str, CommandCallback]:
         """
         Fetches all command functions from the command list.
 
@@ -96,7 +96,7 @@ class Commands:
         """
         return {command.name: command.func for command in self.commands.values()}
 
-    def __command_names__(self) -> List[str]:
+    def __command_names__(self) -> list[str]:
         """
         Fetches all command names from the command list.
 
@@ -106,7 +106,7 @@ class Commands:
         """
         return [command.name for command in self.commands.values()]
 
-    def __command_aliases__(self) -> Dict[str, str]:
+    def __command_aliases__(self) -> dict[str, str]:
         """
         Fetches all command aliases from the command list.
 
@@ -114,13 +114,13 @@ class Commands:
         - `dict[str, str]` - The command aliases that were fetched.
 
         """
-        aliases: Dict[str, str] = {}
+        aliases: dict[str, str] = {}
         for command in self.commands.values():
             for alias in command.aliases:
                 aliases[alias] = command.name
         return aliases
 
-    def __command_descriptions__(self) -> Dict[str, Optional[str]]:
+    def __command_descriptions__(self) -> dict[str, Optional[str]]:
         """
         Fetches all command descriptions from the command list.
 
@@ -130,7 +130,7 @@ class Commands:
         """
         return {command.name: command.description for command in self.commands.values()}
 
-    def __command_usages__(self) -> Dict[str, Optional[str]]:
+    def __command_usages__(self) -> dict[str, Optional[str]]:
         """
         Fetches all command usages from the command list.
 
@@ -140,7 +140,7 @@ class Commands:
         """
         return {command.name: command.usage for command in self.commands.values()}
 
-    def __command_cooldowns__(self) -> Dict[str, float]:
+    def __command_cooldowns__(self) -> dict[str, float]:
         """
         Fetches all command cooldowns from the command list.
 

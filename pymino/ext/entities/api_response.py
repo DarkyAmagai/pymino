@@ -1,10 +1,10 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 __all__ = ("ApiResponse",)
 
 
 class ApiResponse:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -40,7 +40,7 @@ class ApiResponse:
         """Returns the media value of the API response."""
         return self.media_value
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON data of the API response."""
         return self.data
 

@@ -1,8 +1,9 @@
-from typing import Any, Callable, Dict, Set
+from collections.abc import Callable
+from typing import Any
 
 __all__ = ("MessageDispatcher",)
 
-Handler = Callable[[Dict[str, Any]], None]
+Handler = Callable[[dict[str, Any]], None]
 
 
 class MessageDispatcher:
@@ -25,12 +26,12 @@ class MessageDispatcher:
     """
 
     def __init__(self) -> None:
-        self.dispatch_table: Dict[int, Set[Handler]] = {}
+        self.dispatch_table: dict[int, set[Handler]] = {}
 
     def register(self, message_type: int, handler: Handler) -> None:
         self.dispatch_table.setdefault(message_type, set()).add(handler)
 
-    def handle(self, message: Dict[str, Any]) -> None:
+    def handle(self, message: dict[str, Any]) -> None:
         message_type = message.get("t", 0)
         if message_type not in self.dispatch_table:
             return None

@@ -1,5 +1,5 @@
 import contextlib
-from typing import Any, Dict
+from typing import Any
 
 from pymino.ext import console
 
@@ -59,7 +59,7 @@ class ProfileConsole:
             self.edit_profile()
             return
         try:
-            kwargs: Dict[str, Any] = {field_name: new_value}
+            kwargs: dict[str, Any] = {field_name: new_value}
             self.console.bot.community.edit_profile(**kwargs)
             self.console.print(f"{field_name.capitalize()} changed successfully to {new_value}.")
         except Exception as e:

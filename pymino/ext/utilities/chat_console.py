@@ -1,6 +1,6 @@
 import contextlib
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from pymino.ext import console, context
 
@@ -41,7 +41,7 @@ class ChatConsole:
             10: {"Smirk emoji": "e/f09f988f"},
         }
         self.help_message = HELP_MESSAGE
-        self.replies: Dict[int, str] = {}
+        self.replies: dict[int, str] = {}
 
     def join_public_chat(self) -> None:
         """
@@ -115,14 +115,14 @@ class ChatConsole:
         if chat_id and chat_title:
             self.interact_with_chat(chat_id, chat_title)
 
-    def select_chat(self) -> Tuple[Optional[str], Optional[str]]:
+    def select_chat(self) -> tuple[Optional[str], Optional[str]]:
         """
         Prints the user's chats.
         """
         self.console.print("My Chats")
         chats = self.console.bot.community.fetch_chats()
-        chat_titles: List[str] = []
-        chat_ids: List[str] = []
+        chat_titles: list[str] = []
+        chat_ids: list[str] = []
         for index, (chatId, title) in enumerate(zip(chats.chatId, chats.title), 1):
             if title is None:
                 chat_users = self.console.bot.community.fetch_chat_members(chatId)

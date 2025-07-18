@@ -1,4 +1,4 @@
-from typing import Any, Dict, NoReturn, cast
+from typing import Any, NoReturn, cast
 
 __all__ = (
     "APIException",
@@ -321,7 +321,7 @@ class InvalidVoiceNote(PyminoException): ...
 class PostedTooRecently(PyminoException): ...
 
 
-def APIException(response: Dict[str, Any]) -> NoReturn:
+def APIException(response: dict[str, Any]) -> NoReturn:
     exception_map = {
         100: UnsupportedService,
         101: InternalServerError,

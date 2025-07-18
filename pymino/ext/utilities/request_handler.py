@@ -1,7 +1,7 @@
 import logging
 import urllib.parse
 import uuid
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 import colorama
 import requests
@@ -57,7 +57,7 @@ class RequestHandler:
         """
         return f"{self.api_url}{url}" if url.startswith("/") else url
 
-    def service_headers(self) -> Dict[str, str]:
+    def service_headers(self) -> dict[str, str]:
         """Returns the service headers"""
         headers = {
             "NDCLANG": "en",
@@ -78,10 +78,10 @@ class RequestHandler:
         self,
         method: str,
         url: str,
-        data: Optional[Union[Dict[str, Any], bytes, str]],
-        headers: Dict[str, str],
+        data: Optional[Union[dict[str, Any], bytes, str]],
+        headers: dict[str, str],
         content_type: Optional[str],
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         """
         Sends a request.
 
@@ -93,7 +93,7 @@ class RequestHandler:
         - `content_type` - The content type of the data.
 
         `**Returns**``
-        - `Tuple[int, str]` - The status code and response from the request.
+        - `tuple[int, str]` - The status code and response from the request.
 
         """
         proxies = dict.fromkeys(["http", "https"], self.bot.proxy) if self.bot.proxy else None
@@ -115,11 +115,11 @@ class RequestHandler:
         method: str,
         url: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Union[Dict[str, Any], bytes, str]] = None,
+        params: Optional[dict[str, Any]] = None,
+        data: Optional[Union[dict[str, Any], bytes, str]] = None,
         content_type: Optional[str] = None,
         is_login_required: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Handles all requests.
 
@@ -171,9 +171,9 @@ class RequestHandler:
     def service_handler(
         self,
         url: str,
-        data: Optional[Union[Dict[str, Any], bytes, str]] = None,
+        data: Optional[Union[dict[str, Any], bytes, str]] = None,
         content_type: Optional[str] = None,
-    ) -> Tuple[str, Dict[str, Any], Optional[bytes]]:
+    ) -> tuple[str, dict[str, Any], Optional[bytes]]:
         """
         Signs the request and returns the service url, headers and data
 
@@ -183,7 +183,7 @@ class RequestHandler:
         - `content_type` - The content type of the data.
 
         `**Returns**``
-        - `Tuple[str, dict, Union[dict, bytes, None]]` - The service url, headers and data.
+        - `tuple[str, dict, Union[dict, bytes, None]]` - The service url, headers and data.
 
         """
         headers = self.service_headers()
@@ -196,10 +196,10 @@ class RequestHandler:
 
     def fetch_signature(
         self,
-        data: Union[Dict[str, Any], bytes, str],
-        headers: Dict[str, str],
+        data: Union[dict[str, Any], bytes, str],
+        headers: dict[str, str],
         content_type: Optional[str] = None,
-    ) -> Tuple[Dict[str, str], bytes]:
+    ) -> tuple[dict[str, str], bytes]:
         """Fetches the signature and returns the data and updated headers.
 
         `**Parameters**``
@@ -208,7 +208,7 @@ class RequestHandler:
         - `content_type` - The content type of the data.
 
         `**Returns**``
-        - `Tuple[dict, bytes]` - The headers and data.
+        - `tuple[dict, bytes]` - The headers and data.
 
         """
         if isinstance(data, dict):
@@ -232,7 +232,7 @@ class RequestHandler:
 
         return headers, data
 
-    def raise_error(self, response: Dict[str, Any]) -> None:
+    def raise_error(self, response: dict[str, Any]) -> None:
         """
         Raises an error if an error is in the response
 
@@ -255,7 +255,7 @@ class RequestHandler:
         self,
         status_code: int,
         response: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """
         Handles the response and returns the response as a dict.
 

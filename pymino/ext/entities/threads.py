@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 __all__ = (
     "CThreadExtensionsList",
@@ -11,11 +11,11 @@ __all__ = (
 
 
 class CThreadExtensions:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("extensions", data) or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("extensions", data) or {}
 
     @property
-    def coHost(self) -> List[str]:
+    def coHost(self) -> list[str]:
         return self.data.get("coHost") or []
 
     @property
@@ -27,7 +27,7 @@ class CThreadExtensions:
         return self.data.get("membersCanInvite", False)
 
     @property
-    def background(self) -> List[Any]:
+    def background(self) -> list[Any]:
         return self.data["bm"]
 
     @property
@@ -55,139 +55,139 @@ class CThreadExtensions:
         return self.data.get("vvChatJoinType")
 
     @property
-    def avchatMemberUidList(self) -> List[str]:
+    def avchatMemberUidList(self) -> list[str]:
         return self.data.get("avchatMemberUidList") or []
 
     @property
-    def screeningRoomPermission(self) -> Dict[str, Any]:
+    def screeningRoomPermission(self) -> dict[str, Any]:
         return self.data.get("screeningRoomPermission") or {}
 
     @property
     def disabledTime(self) -> Optional[str]:
         return self.data.get("__disabledTime__")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CThreadExtensionsList:
-    def __init__(self, data: List[Dict[str, Any]]) -> None:
+    def __init__(self, data: list[dict[str, Any]]) -> None:
         self.data = data
 
-    def __iter__(self) -> "Iterator[CThreadExtensions]":
+    def __iter__(self) -> Iterator[CThreadExtensions]:
         return (CThreadExtensions(x) for x in self.data)
 
     @property
-    def coHost(self) -> List[List[str]]:
+    def coHost(self) -> list[list[str]]:
         return [x.coHost for x in self]
 
     @property
-    def language(self) -> List[str]:
+    def language(self) -> list[str]:
         return [x.language for x in self]
 
     @property
-    def membersCanInvite(self) -> List[bool]:
+    def membersCanInvite(self) -> list[bool]:
         return [x.membersCanInvite for x in self]
 
     @property
-    def background(self) -> List[List[Any]]:
+    def background(self) -> list[list[Any]]:
         return [x.background for x in self]
 
     @property
-    def creatorUid(self) -> List[str]:
+    def creatorUid(self) -> list[str]:
         return [x.creatorUid for x in self]
 
     @property
-    def visibility(self) -> List[int]:
+    def visibility(self) -> list[int]:
         return [x.visibility for x in self]
 
     @property
-    def lastMembersSummaryUpdateTime(self) -> List[Optional[str]]:
+    def lastMembersSummaryUpdateTime(self) -> list[Optional[str]]:
         return [x.lastMembersSummaryUpdateTime for x in self]
 
     @property
-    def fansOnly(self) -> List[bool]:
+    def fansOnly(self) -> list[bool]:
         return [x.fansOnly for x in self]
 
     @property
-    def channelType(self) -> List[Optional[int]]:
+    def channelType(self) -> list[Optional[int]]:
         return [x.channelType for x in self]
 
     @property
-    def vvChatJoinType(self) -> List[Optional[int]]:
+    def vvChatJoinType(self) -> list[Optional[int]]:
         return [x.vvChatJoinType for x in self]
 
     @property
-    def avchatMemberUidList(self) -> List[List[str]]:
+    def avchatMemberUidList(self) -> list[list[str]]:
         return [x.avchatMemberUidList for x in self]
 
     @property
-    def screeningRoomPermission(self) -> List[Dict[str, Any]]:
+    def screeningRoomPermission(self) -> list[dict[str, Any]]:
         return [x.screeningRoomPermission for x in self]
 
     @property
-    def disabledTime(self) -> List[Optional[str]]:
+    def disabledTime(self) -> list[Optional[str]]:
         return [x.disabledTime for x in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class MemberSummary:
-    def __init__(self, data: Union[List[Dict[str, Any]], Dict[str, Any]]) -> None:
+    def __init__(self, data: Union[list[dict[str, Any]], dict[str, Any]]) -> None:
         if isinstance(data, dict):
             data = list(data.get("membersSummary") or [])
         self.data = data
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         return [x.get("status", 0) for x in self.data]
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         return [x.get("uid", "") for x in self.data]
 
     @property
-    def userId(self) -> List[str]:
+    def userId(self) -> list[str]:
         return self.uid
 
     @property
-    def membershipStatus(self) -> List[int]:
+    def membershipStatus(self) -> list[int]:
         return [x.get("membershipStatus", 0) for x in self.data]
 
     @property
-    def role(self) -> List[int]:
+    def role(self) -> list[int]:
         return [x.get("role", 0) for x in self.data]
 
     @property
-    def nickname(self) -> List[str]:
+    def nickname(self) -> list[str]:
         return [x.get("nickname", "") for x in self.data]
 
     @property
-    def username(self) -> List[str]:
+    def username(self) -> list[str]:
         return self.nickname
 
     @property
-    def icon(self) -> List[Optional[str]]:
+    def icon(self) -> list[Optional[str]]:
         return [x.get("icon") for x in self.data]
 
     @property
-    def avatar(self) -> List[Optional[str]]:
+    def avatar(self) -> list[Optional[str]]:
         return self.icon
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class CThread:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("thread", data) or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("thread", data) or {}
 
     def __bool__(self) -> bool:
         return bool(self.threadId)
 
     @property
-    def userAddedTopicList(self) -> List[int]:
+    def userAddedTopicList(self) -> list[int]:
         return self.data.get("userAddedTopicList") or []
 
     @property
@@ -278,12 +278,12 @@ class CThread:
     def extensions(self) -> CThreadExtensions:
         return CThreadExtensions(self.data.get("extensions") or {})
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CThreadList:
-    def __init__(self, data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> None:
+    def __init__(self, data: Union[dict[str, Any], list[dict[str, Any]]]) -> None:
         if isinstance(data, dict):
             data = list(data.get("threadList") or [])
         self.data = data
@@ -291,7 +291,7 @@ class CThreadList:
     def __bool__(self) -> bool:
         return bool(self.data)
 
-    def __iter__(self) -> "Iterator[CThread]":
+    def __iter__(self) -> Iterator[CThread]:
         return (CThread(x) for x in self.data)
 
     @property
@@ -299,92 +299,92 @@ class CThreadList:
         return CThreadExtensionsList([x.extensions.json() for x in self])
 
     @property
-    def membersSummary(self) -> List[MemberSummary]:
+    def membersSummary(self) -> list[MemberSummary]:
         return [x.membersSummary for x in self]
 
     @property
-    def userAddedTopicList(self) -> List[List[int]]:
+    def userAddedTopicList(self) -> list[list[int]]:
         return [x.userAddedTopicList for x in self]
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         return [x.uid for x in self]
 
     @property
-    def hostUserId(self) -> List[str]:
+    def hostUserId(self) -> list[str]:
         return [x.hostUserId for x in self]
 
     @property
-    def membersQuota(self) -> List[int]:
+    def membersQuota(self) -> list[int]:
         return [x.membersQuota for x in self]
 
     @property
-    def threadId(self) -> List[str]:
+    def threadId(self) -> list[str]:
         return [x.threadId for x in self]
 
     @property
-    def chatId(self) -> List[str]:
+    def chatId(self) -> list[str]:
         return [x.chatId for x in self]
 
     @property
-    def keywords(self) -> List[str]:
+    def keywords(self) -> list[str]:
         return [x.keywords for x in self]
 
     @property
-    def membersCount(self) -> List[int]:
+    def membersCount(self) -> list[int]:
         return [x.membersCount for x in self]
 
     @property
-    def strategyInfo(self) -> List[str]:
+    def strategyInfo(self) -> list[str]:
         return [x.strategyInfo for x in self]
 
     @property
-    def isPinned(self) -> List[bool]:
+    def isPinned(self) -> list[bool]:
         return [x.isPinned for x in self]
 
     @property
-    def title(self) -> List[Optional[str]]:
+    def title(self) -> list[Optional[str]]:
         return [x.title for x in self]
 
     @property
-    def membershipStatus(self) -> List[int]:
+    def membershipStatus(self) -> list[int]:
         return [x.membershipStatus for x in self]
 
     @property
-    def content(self) -> List[Optional[str]]:
+    def content(self) -> list[Optional[str]]:
         return [x.content for x in self]
 
     @property
-    def needHidden(self) -> List[bool]:
+    def needHidden(self) -> list[bool]:
         return [x.needHidden for x in self]
 
     @property
-    def alertOption(self) -> List[int]:
+    def alertOption(self) -> list[int]:
         return [x.alertOption for x in self]
 
     @property
-    def lastReadTime(self) -> List[Optional[str]]:
+    def lastReadTime(self) -> list[Optional[str]]:
         return [x.lastReadTime for x in self]
 
     @property
-    def type(self) -> List[int]:
+    def type(self) -> list[int]:
         return [x.type for x in self]
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         return [x.status for x in self]
 
     @property
-    def publishToGlobal(self) -> List[bool]:
+    def publishToGlobal(self) -> list[bool]:
         return [x.publishToGlobal for x in self]
 
     @property
-    def modifiedTime(self) -> List[Optional[str]]:
+    def modifiedTime(self) -> list[Optional[str]]:
         return [x.modifiedTime for x in self]
 
     @property
-    def lastMessageSummary(self) -> List[Any]:
+    def lastMessageSummary(self) -> list[Any]:
         return [x.lastMessageSummary for x in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data

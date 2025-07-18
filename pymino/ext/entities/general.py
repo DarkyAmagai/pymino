@@ -1,6 +1,6 @@
 import re
 from collections.abc import Iterator
-from typing import Any, Dict, List, Literal, Optional, Tuple, cast
+from typing import Any, Literal, Optional, cast
 
 from pymino.ext.entities import api_response, userprofile
 
@@ -32,9 +32,9 @@ __all__ = (
 
 
 class CommunityInvitation:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data
-        self.communityInvitation: Dict[str, Any] = self.data.get("communityInvitation", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data
+        self.communityInvitation: dict[str, Any] = self.data.get("communityInvitation", data)
 
     def __bool__(self) -> bool:
         return bool(self.invitationId)
@@ -71,19 +71,19 @@ class CommunityInvitation:
     def inviteCode(self) -> str:
         return self.communityInvitation.get("inviteCode", '')
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CheckIn:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
         return bool(self.data)
 
     @property
-    def checkInHistory(self) -> Dict[str, Any]:
+    def checkInHistory(self) -> dict[str, Any]:
         return self.data.get("checkInHistory") or {}
 
     @property
@@ -99,19 +99,19 @@ class CheckIn:
         return self.checkInHistory.get("hasAnyCheckIn", False)
 
     @property
-    def history(self) -> Dict[str, Any]:
+    def history(self) -> dict[str, Any]:
         return self.checkInHistory.get("history") or {}
 
     @property
-    def userProfile(self) -> Dict[str, Any]:
+    def userProfile(self) -> dict[str, Any]:
         return self.data.get("userProfile") or {}
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class InvitationId:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -146,24 +146,24 @@ class InvitationId:
     def inviteCode(self) -> str:
         return self.data.get("inviteCode", '')
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CCommunity:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("community", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("community", data)
 
     @property
     def keywords(self) -> str:
         return self.data.get("keywords") or ''
 
     @property
-    def activeInfo(self) -> Dict[str, Any]:
+    def activeInfo(self) -> dict[str, Any]:
         return self.data.get("activeInfo") or {}
 
     @property
-    def themePack(self) -> Dict[str, Any]:
+    def themePack(self) -> dict[str, Any]:
         return self.data.get("themePack") or {}
 
     @property
@@ -203,7 +203,7 @@ class CCommunity:
         return self.data.get("endpoint", "")
 
     @property
-    def communityHeadList(self) -> List[Dict[str, Any]]:
+    def communityHeadList(self) -> list[dict[str, Any]]:
         return self.data.get("communityHeadList") or []
 
     @property
@@ -211,20 +211,20 @@ class CCommunity:
         return self.data.get("listedStatus", 0)
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         return self.data.get("extensions") or {}
 
     @property
-    def mediaList(self) -> List[Tuple[int, str, Optional[str], Optional[str]]]:
+    def mediaList(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
         return [(
             m[0],
             m[1],
             m[2] if len(m) > 2 else None,
             m[3] if len(m) > 3 else None
-        ) for m in cast(List[Any], self.data.get("mediaList") or [])]
+        ) for m in cast(list[Any], self.data.get("mediaList") or [])]
 
     @property
-    def userAddedTopicList(self) -> List[Dict[str, Any]]:
+    def userAddedTopicList(self) -> list[dict[str, Any]]:
         return self.data.get("userAddedTopicList") or []
 
     @property
@@ -263,124 +263,124 @@ class CCommunity:
     def icon(self) -> str:
         return self.data.get("icon", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CCommunityList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get("communityList") or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("communityList") or []
 
-    def __iter__(self) -> "Iterator[CCommunity]":
+    def __iter__(self) -> Iterator[CCommunity]:
         return (CCommunity(data) for data in self.data)
 
     @property
-    def keywords(self) -> List[str]:
+    def keywords(self) -> list[str]:
         return [x.keywords for x in self]
 
     @property
-    def activeInfo(self) -> List[Dict[str, Any]]:
+    def activeInfo(self) -> list[dict[str, Any]]:
         return [x.activeInfo for x in self]
 
     @property
-    def themePack(self) -> List[Dict[str, Any]]:
+    def themePack(self) -> list[dict[str, Any]]:
         return [x.themePack for x in self]
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         return [x.status for x in self]
 
     @property
-    def probationStatus(self) -> List[int]:
+    def probationStatus(self) -> list[int]:
         return [x.probationStatus for x in self]
 
     @property
-    def updatedTime(self) -> List[Optional[str]]:
+    def updatedTime(self) -> list[Optional[str]]:
         return [x.updatedTime for x in self]
 
     @property
-    def primaryLanguage(self) -> List[str]:
+    def primaryLanguage(self) -> list[str]:
         return [x.primaryLanguage for x in self]
 
     @property
-    def modifiedTime(self) -> List[Optional[str]]:
+    def modifiedTime(self) -> list[Optional[str]]:
         return [x.modifiedTime for x in self]
 
     @property
-    def membersCount(self) -> List[int]:
+    def membersCount(self) -> list[int]:
         return [x.membersCount for x in self]
 
     @property
-    def tagline(self) -> List[str]:
+    def tagline(self) -> list[str]:
         return [x.tagline for x in self]
 
     @property
-    def name(self) -> List[str]:
+    def name(self) -> list[str]:
         return [x.name for x in self]
 
     @property
-    def endpoint(self) -> List[str]:
+    def endpoint(self) -> list[str]:
         return [x.endpoint for x in self]
 
     @property
-    def communityHeadList(self) -> List[List[Dict[str, Any]]]:
+    def communityHeadList(self) -> list[list[dict[str, Any]]]:
         return [x.communityHeadList for x in self]
 
     @property
-    def listedStatus(self) -> List[int]:
+    def listedStatus(self) -> list[int]:
         return [x.listedStatus for x in self]
 
     @property
-    def extensions(self) -> List[Dict[str, Any]]:
+    def extensions(self) -> list[dict[str, Any]]:
         return [x.extensions for x in self]
 
     @property
-    def mediaList(self) -> List[List[Tuple[int, str, Optional[str], Optional[str]]]]:
+    def mediaList(self) -> list[list[tuple[int, str, Optional[str], Optional[str]]]]:
         return [x.mediaList for x in self]
 
     @property
-    def userAddedTopicList(self) -> List[List[Dict[str, Any]]]:
+    def userAddedTopicList(self) -> list[list[dict[str, Any]]]:
         return [x.userAddedTopicList for x in self]
 
     @property
-    def communityHeat(self) -> List[float]:
+    def communityHeat(self) -> list[float]:
         return [x.communityHeat for x in self]
 
     @property
-    def templateId(self) -> List[int]:
+    def templateId(self) -> list[int]:
         return [x.templateId for x in self]
 
     @property
-    def searchable(self) -> List[bool]:
+    def searchable(self) -> list[bool]:
         return [x.searchable for x in self]
 
     @property
-    def createdTime(self) -> List[str]:
+    def createdTime(self) -> list[str]:
         return [x.createdTime for x in self]
 
     @property
-    def ndcId(self) -> List[int]:
+    def ndcId(self) -> list[int]:
         return [x.ndcId for x in self]
 
     @property
-    def comId(self) -> List[int]:
+    def comId(self) -> list[int]:
         return [x.comId for x in self]
 
     @property
-    def icon(self) -> List[str]:
+    def icon(self) -> list[str]:
         return [x.icon for x in self]
 
     @property
-    def joinType(self) -> List[Literal[1, 2, 3]]:
+    def joinType(self) -> list[Literal[1, 2, 3]]:
         return [x.joinType for x in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class CBlog:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("blog", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("blog", data)
 
     @property
     def globalVotesCount(self) -> int:
@@ -399,16 +399,16 @@ class CBlog:
         return self.data.get("keywords", "")
 
     @property
-    def mediaList(self) -> List[Tuple[int, str, Optional[str], Optional[str]]]:
+    def mediaList(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
         return [(
             m[0],
             m[1],
             m[2] if len(m) > 2 else None,
             m[3] if len(m) > 3 else None
-        ) for m in cast(List[Any], self.data.get("mediaList") or [])]
+        ) for m in cast(list[Any], self.data.get("mediaList") or [])]
 
     @property
-    def style(self) -> Dict[str, Any]:
+    def style(self) -> dict[str, Any]:
         return self.data.get("style") or {}
 
     @property
@@ -420,7 +420,7 @@ class CBlog:
         return self.data.get("title", "")
 
     @property
-    def tipInfo(self) -> Dict[str, Any]:
+    def tipInfo(self) -> dict[str, Any]:
         return self.data.get("tipInfo") or {}
 
     @property
@@ -480,7 +480,7 @@ class CBlog:
         return userprofile.UserProfile(self.data.get("author") or {})
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         return self.data.get("extensions") or {}
 
     @property
@@ -503,13 +503,13 @@ class CBlog:
     def commentsCount(self) -> int:
         return self.data.get("commentsCount") or 0
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CWiki:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("item", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("item", data)
 
     @property
     def globalVotesCount(self) -> int:
@@ -528,16 +528,16 @@ class CWiki:
         return self.data.get("keywords", "")
 
     @property
-    def mediaList(self) -> List[Tuple[int, str, Optional[str], Optional[str]]]:
+    def mediaList(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
         return [(
             m[0],
             m[1],
             m[2] if len(m) > 2 else None,
             m[3] if len(m) > 3 else None
-        ) for m in cast(List[Any], self.data.get("mediaList") or [])]
+        ) for m in cast(list[Any], self.data.get("mediaList") or [])]
 
     @property
-    def style(self) -> Dict[str, Any]:
+    def style(self) -> dict[str, Any]:
         return self.data.get("style") or {}
 
     @property
@@ -549,7 +549,7 @@ class CWiki:
         return self.data.get("title", "")
 
     @property
-    def tipInfo(self) -> Dict[str, Any]:
+    def tipInfo(self) -> dict[str, Any]:
         return self.data.get("tipInfo") or {}
 
     @property
@@ -609,7 +609,7 @@ class CWiki:
         return userprofile.UserProfile(self.data.get("author") or {})
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         return self.data.get("extensions") or {}
 
     @property
@@ -632,13 +632,13 @@ class CWiki:
     def commentsCount(self) -> int:
         return self.data.get("commentsCount") or 0
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CWikiList:
-    def __init__(self, data: Dict[str, Any]):
-        self.data: List[Dict[str, Any]] = data.get("itemList") or []
+    def __init__(self, data: dict[str, Any]):
+        self.data: list[dict[str, Any]] = data.get("itemList") or []
         parser = [CWiki(x) for x in self.data]
         self.author = userprofile.UserProfileList([x.author.json() for x in parser])
         self.globalVotesCount = [x.globalVotesCount for x in parser]
@@ -670,13 +670,13 @@ class CWikiList:
         self.endTime = [x.endTime for x in parser]
         self.commentsCount = [x.commentsCount for x in parser]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class CBlogList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]]= data.get("blogList") or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]]= data.get("blogList") or []
         parser = [CBlog(x) for x in self.data]
         self.author = userprofile.UserProfileList([x.author.json() for x in parser])
         self.globalVotesCount = [x.globalVotesCount for x in parser]
@@ -708,13 +708,13 @@ class CBlogList:
         self.endTime = [x.endTime for x in parser]
         self.commentsCount = [x.commentsCount for x in parser]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class Coupon:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("coupon", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("coupon", data)
 
     @property
     def expiredTime(self) -> Optional[str]:
@@ -756,13 +756,13 @@ class Coupon:
     def createdTime(self) -> str:
         return self.data.get("createdTime", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class Wallet:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("wallet", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("wallet", data)
 
     @property
     def totalCoinsFloat(self) -> float:
@@ -773,7 +773,7 @@ class Wallet:
         return self.data.get("adsEnabled", False)
 
     @property
-    def adsVideoStats(self) -> Dict[str, Any]:
+    def adsVideoStats(self) -> dict[str, Any]:
         return self.data.get("adsVideoStats") or {}
 
     @property
@@ -796,12 +796,12 @@ class Wallet:
     def totalBusinessCoinsFloat(self) -> float:
         return self.data.get("totalBusinessCoinsFloat") or 0.0
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class Themepack:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -820,12 +820,12 @@ class Themepack:
     def themePackUrl(self) -> str:
         return self.data.get("themePackUrl", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class Notification:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -888,12 +888,12 @@ class Notification:
     def objectType(self) -> int:
         return self.data.get("objectType", 0)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 class NotificationList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get("notificationList") or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("notificationList") or []
         self.parser = [Notification(x) for x in self.data]
         self.parentText = [x.parentText for x in self.parser]
         self.objectId = [x.objectId for x in self.parser]
@@ -910,12 +910,12 @@ class NotificationList:
         self.contextComId = [x.contextComId for x in self.parser]
         self.objectType = [x.objectType for x in self.parser]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class ResetPassword:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -926,12 +926,12 @@ class ResetPassword:
     def secret(self) -> str:
         return self.data.get("secret", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class Authenticate:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data    = data
 
     @property
@@ -950,24 +950,24 @@ class Authenticate:
     def secret(self) -> Optional[str]:
         return self.data.get("secret")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CChatMembers:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
     def members(self) -> userprofile.UserProfileList:
         return userprofile.UserProfileList(self.data.get("memberList") or [])
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class FeaturedBlog:
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         self.data = data
 
     @property
@@ -991,7 +991,7 @@ class FeaturedBlog:
         return self.data.get('createdTime', "")
 
     @property
-    def ref_object(self) -> Dict[str, Any]:
+    def ref_object(self) -> dict[str, Any]:
         return self.data.get('refObject') or {}
 
     @property
@@ -1015,16 +1015,16 @@ class FeaturedBlog:
         return self.ref_object.get('strategyInfo') or "{}"
 
     @property
-    def media_list(self) -> List[Tuple[int, str, Optional[str], Optional[str]]]:
+    def media_list(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
         return [(
             m[0],
             m[1],
             m[2] if len(m) > 2 else None,
             m[3] if len(m) > 3 else None
-        ) for m in cast(List[Any], self.ref_object.get('mediaList') or [])]
+        ) for m in cast(list[Any], self.ref_object.get('mediaList') or [])]
 
     @property
-    def style(self) -> Dict[str, Any]:
+    def style(self) -> dict[str, Any]:
         return self.ref_object.get('style') or {}
 
     @property
@@ -1036,7 +1036,7 @@ class FeaturedBlog:
         return self.ref_object.get('title', "")
 
     @property
-    def tip_info(self) -> Dict[str, Any]:
+    def tip_info(self) -> dict[str, Any]:
         return self.ref_object.get('tipInfo') or {}
 
     @property
@@ -1083,13 +1083,13 @@ class FeaturedBlog:
     def author(self) -> userprofile.UserProfile:
         return userprofile.UserProfile(self.ref_object.get('author') or {})
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class FeaturedBlogs:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get("featuredList") or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("featuredList") or []
         parser = [FeaturedBlog(x) for x in self.data]
         self.ref_object_type = [x.ref_object_type for x in parser]
         self.ref_object_id = [x.ref_object_id for x in parser]
@@ -1121,12 +1121,12 @@ class FeaturedBlogs:
         self.ref_object_id = [x.ref_object_id for x in parser]
         self.author = userprofile.UserProfileList([x.author.json() for x in parser])
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class QuizRanking:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -1177,13 +1177,13 @@ class QuizRanking:
     def created_time(self) -> str:
         return self.data.get('createdTime', "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class QuizRankingList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get("quizResultRankingList") or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("quizResultRankingList") or []
         parser = [QuizRanking(x) for x in self.data]
         self.highest_mode = [x.highest_mode for x in parser]
         self.modified_time = [x.modified_time for x in parser]
@@ -1198,12 +1198,12 @@ class QuizRankingList:
         self.latest_mode = [x.latest_mode for x in parser]
         self.created_time = [x.created_time for x in parser]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
 
 
 class FetchNotification:
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         self.data = data
 
     @property
@@ -1266,29 +1266,29 @@ class FetchNotification:
     def objectType(self) -> int:
         return self.data.get("objectType", 0)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class GlobalNotificationList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get('notificationList') or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get('notificationList') or []
 
-    def __iter__(self) -> "Iterator[FetchNotification]":
+    def __iter__(self) -> Iterator[FetchNotification]:
         return (FetchNotification(x) for x in self.data)
 
     @property
-    def parentText(self) -> List[Optional[str]]:
+    def parentText(self) -> list[Optional[str]]:
         """Returns a list of the parent text of the notification."""
         return [x.parentText for x in self]
 
     @property
-    def objectId(self) -> List[str]:
+    def objectId(self) -> list[str]:
         """Returns a list of the object id of the notification."""
         return [x.objectId for x in self]
 
     @property
-    def contextText(self) -> List[Optional[str]]:
+    def contextText(self) -> list[Optional[str]]:
         """Returns a list of the context text of the notification."""
         return [x.contextText for x in self]
 
@@ -1308,49 +1308,49 @@ class GlobalNotificationList:
         return userprofile.UserProfileList([x.operator.json() for x in self])
 
     @property
-    def createdTime(self) -> List[str]:
+    def createdTime(self) -> list[str]:
         """Returns a list of the time the notification was created."""
         return [x.createdTime for x in self]
 
     @property
-    def notificationId(self) -> List[str]:
+    def notificationId(self) -> list[str]:
         """Returns a list of the notification id."""
         return [x.notificationId for x in self]
 
     @property
-    def ndcId(self) -> List[int]:
+    def ndcId(self) -> list[int]:
         """Returns a list of the ndc id of the notification."""
         return [x.ndcId for x in self]
 
     @property
-    def comId(self) -> List[int]:
+    def comId(self) -> list[int]:
         """Returns a list of the com id of the notification."""
         return [x.comId for x in self]
 
     @property
-    def objectText(self) -> List[str]:
+    def objectText(self) -> list[str]:
         """Returns a list of the object text of the notification."""
         return [x.objectText for x in self]
 
     @property
-    def contextValue(self) -> List[Optional[str]]:
+    def contextValue(self) -> list[Optional[str]]:
         """Returns a list of the context value of the notification."""
         return [x.contextValue for x in self]
 
     @property
-    def contextComId(self) -> List[Optional[str]]:
+    def contextComId(self) -> list[Optional[str]]:
         """Returns a list of the context ndc id of the notification."""
         return [x.contextComId for x in self]
 
     @property
-    def objectType(self) -> List[int]:
+    def objectType(self) -> list[int]:
         """Returns a list of the object type of the notification."""
         return [x.objectType for x in self]
 
     @property
-    def parentType(self) -> List[int]:
+    def parentType(self) -> list[int]:
         """Returns a list of the parent type of the notification."""
         return [x.parentType for x in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data

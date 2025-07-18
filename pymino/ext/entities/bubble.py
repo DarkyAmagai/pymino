@@ -1,11 +1,11 @@
 from collections.abc import Iterator
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 __all__ = ("Bubble", "BubbleList")
 
 
 class Bubble:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -19,7 +19,7 @@ class Bubble:
         return self.data.get("createdTime", "")
 
     @property
-    def item_basic_info(self) -> Dict[str, Any]:
+    def item_basic_info(self) -> dict[str, Any]:
         """Returns the basic info of the bubble."""
         return self.data.get("itemBasicInfo") or {}
 
@@ -34,7 +34,7 @@ class Bubble:
         return self.item_basic_info.get("name", "")
 
     @property
-    def item_restriction_info(self) -> Dict[str, Any]:
+    def item_restriction_info(self) -> dict[str, Any]:
         """Returns the restriction info of the bubble."""
         return self.data.get("itemRestrictionInfo") or {}
 
@@ -74,7 +74,7 @@ class Bubble:
         return self.item_restriction_info.get("discountStatus", 0)
 
     @property
-    def ref_object(self) -> Dict[str, Any]:
+    def ref_object(self) -> dict[str, Any]:
         """Returns the ref object of the bubble."""
         return self.data.get("refObject") or {}
 
@@ -84,7 +84,7 @@ class Bubble:
         return self.ref_object.get("isGloballyAvailable", False)
 
     @property
-    def available_community_ids(self) -> List[int]:
+    def available_community_ids(self) -> list[int]:
         """Return the available community ids of the bubble."""
         return self.ref_object.get("availableNdcIds") or []
 
@@ -139,7 +139,7 @@ class Bubble:
         return self.ref_object.get("deletable", False)
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """Returns the config of the bubble."""
         return self.ref_object.get("config") or {}
 
@@ -164,7 +164,7 @@ class Bubble:
         return self.ref_object.get("coverImage")
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         """Returns the extensions of the bubble."""
         return self.ref_object.get("extensions") or {}
 
@@ -190,184 +190,184 @@ class Bubble:
 
 
 class BubbleList:
-    def __init__(self, data: Union[List[Dict[str, Any]], Dict[str, Any]]) -> None:
+    def __init__(self, data: Union[list[dict[str, Any]], dict[str, Any]]) -> None:
         if isinstance(data, dict):
             data = list(data.get("storeItemList") or [])
         self.data = data or []
 
-    def __iter__(self) -> "Iterator[Bubble]":
+    def __iter__(self) -> Iterator[Bubble]:
         return (Bubble(bubble) for bubble in self.data)
 
     @property
-    def ref_object_id(self) -> List[str]:
+    def ref_object_id(self) -> list[str]:
         """Returns the ref object id of the bubble list."""
         return [bubble.ref_object_id for bubble in self]
 
     @property
-    def created_time(self) -> List[str]:
+    def created_time(self) -> list[str]:
         """Returns the created time of the bubble list."""
         return [bubble.created_time for bubble in self]
 
     @property
-    def item_basic_info(self) -> List[Dict[str, Any]]:
+    def item_basic_info(self) -> list[dict[str, Any]]:
         """Returns the item basic info of the bubble list."""
         return [bubble.item_basic_info for bubble in self]
 
     @property
-    def icon(self) -> List[str]:
+    def icon(self) -> list[str]:
         """Returns the icon of the bubble list."""
         return [bubble.icon for bubble in self]
 
     @property
-    def name(self) -> List[str]:
+    def name(self) -> list[str]:
         """Returns the name of the bubble list."""
         return [bubble.name for bubble in self]
 
     @property
-    def item_restriction_info(self) -> List[Dict[str, Any]]:
+    def item_restriction_info(self) -> list[dict[str, Any]]:
         """Returns the item restriction info of the bubble list."""
         return [bubble.item_restriction_info for bubble in self]
 
     @property
-    def owner_uid(self) -> List[Optional[str]]:
+    def owner_uid(self) -> list[Optional[str]]:
         """Returns the owner uid of the bubble list."""
         return [bubble.owner_uid for bubble in self]
 
     @property
-    def owner_type(self) -> List[int]:
+    def owner_type(self) -> list[int]:
         """Returns the owner type of the bubble list."""
         return [bubble.owner_type for bubble in self]
 
     @property
-    def restrict_type(self) -> List[int]:
+    def restrict_type(self) -> list[int]:
         """Returns the restrict type of the bubble list."""
         return [bubble.restrict_type for bubble in self]
 
     @property
-    def restrict_value(self) -> List[Optional[int]]:
+    def restrict_value(self) -> list[Optional[int]]:
         """Returns the restrict value of the bubble list."""
         return [bubble.restrict_value for bubble in self]
 
     @property
-    def available_duration(self) -> List[Optional[str]]:
+    def available_duration(self) -> list[Optional[str]]:
         """Returns the available duration of the bubble list."""
         return [bubble.available_duration for bubble in self]
 
     @property
-    def discount_value(self) -> List[Optional[int]]:
+    def discount_value(self) -> list[Optional[int]]:
         """Returns the discount value of the bubble list."""
         return [bubble.discount_value for bubble in self]
 
     @property
-    def discount_status(self) -> List[int]:
+    def discount_status(self) -> list[int]:
         """Returns the discount status of the bubble list."""
         return [bubble.discount_status for bubble in self]
 
     @property
-    def ref_object(self) -> List[Dict[str, Any]]:
+    def ref_object(self) -> list[dict[str, Any]]:
         """Returns the ref object of the bubble list."""
         return [bubble.ref_object for bubble in self]
 
     @property
-    def is_global(self) -> List[bool]:
+    def is_global(self) -> list[bool]:
         """Returns the is global of the bubble list."""
         return [bubble.is_global for bubble in self]
 
     @property
-    def available_community_ids(self) -> List[List[int]]:
+    def available_community_ids(self) -> list[list[int]]:
         """Returns the available community ids of the bubble list."""
         return [bubble.available_community_ids for bubble in self]
 
     @property
-    def bubble_type(self) -> List[int]:
+    def bubble_type(self) -> list[int]:
         """Returns the bubble type of the bubble list."""
         return [bubble.bubble_type for bubble in self]
 
     @property
-    def bubble_id(self) -> List[str]:
+    def bubble_id(self) -> list[str]:
         """Returns the bubble id of the bubble list."""
         return [bubble.bubble_id for bubble in self]
 
     @property
-    def background_image(self) -> List[Optional[str]]:
+    def background_image(self) -> list[Optional[str]]:
         """Returns the background image of the bubble list."""
         return [bubble.background_image for bubble in self]
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         """Returns the status of the bubble list."""
         return [bubble.status for bubble in self]
 
     @property
-    def is_new(self) -> List[bool]:
+    def is_new(self) -> list[bool]:
         """Returns the is new of the bubble list."""
         return [bubble.is_new for bubble in self]
 
     @property
-    def banner_image(self) -> List[Optional[str]]:
+    def banner_image(self) -> list[Optional[str]]:
         """Returns the banner image of the bubble list."""
         return [bubble.banner_image for bubble in self]
 
     @property
-    def resource_url(self) -> List[str]:
+    def resource_url(self) -> list[str]:
         """Returns the resource url of the bubble list."""
         return [bubble.resource_url for bubble in self]
 
     @property
-    def ownership_status(self) -> List[int]:
+    def ownership_status(self) -> list[int]:
         """Returns the ownership status of the bubble list."""
         return [bubble.ownership_status for bubble in self]
 
     @property
-    def deletable(self) -> List[bool]:
+    def deletable(self) -> list[bool]:
         """Returns the deletable of the bubble list."""
         return [bubble.deletable for bubble in self]
 
     @property
-    def config(self) -> List[Dict[str, Any]]:
+    def config(self) -> list[dict[str, Any]]:
         """Returns the config of the bubble list."""
         return [bubble.config for bubble in self]
 
     @property
-    def version(self) -> List[int]:
+    def version(self) -> list[int]:
         """Returns the version of the bubble list."""
         return [bubble.version for bubble in self]
 
     @property
-    def modified_time(self) -> List[Optional[str]]:
+    def modified_time(self) -> list[Optional[str]]:
         """Returns the modified time of the bubble list."""
         return [bubble.modified_time for bubble in self]
 
     @property
-    def is_activated(self) -> List[bool]:
+    def is_activated(self) -> list[bool]:
         """Returns the is activated of the bubble list."""
         return [bubble.is_activated for bubble in self]
 
     @property
-    def cover_image(self) -> List[Optional[str]]:
+    def cover_image(self) -> list[Optional[str]]:
         """Returns the cover image of the bubble list."""
         return [bubble.cover_image for bubble in self]
 
     @property
-    def extensions(self) -> List[Dict[str, Any]]:
+    def extensions(self) -> list[dict[str, Any]]:
         """Returns the extensions of the bubble list."""
         return [bubble.extensions for bubble in self]
 
     @property
-    def template_id(self) -> List[int]:
+    def template_id(self) -> list[int]:
         """Returns the template id of the bubble list."""
         return [bubble.template_id for bubble in self]
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         """Returns the uid of the bubble list."""
         return [bubble.uid for bubble in self]
 
     @property
-    def md5(self) -> List[Optional[str]]:
+    def md5(self) -> list[Optional[str]]:
         """Returns the md5 of the bubble list."""
         return [bubble.md5 for bubble in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         """Returns the json of the bubble list."""
         return self.data

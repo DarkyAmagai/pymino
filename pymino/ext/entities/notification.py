@@ -1,17 +1,17 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 __all__ = ("Notification",)
 
 
 class Notification:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("o") or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("o") or {}
 
     def __bool___(self) -> bool:
         return bool(self.id)
 
     @property
-    def payload(self) -> Dict[str, Any]:
+    def payload(self) -> dict[str, Any]:
         """Returns the payload of the notification."""
         return self.data.get("payload") or {}
 
@@ -36,7 +36,7 @@ class Notification:
         return self.payload.get("tid", "")
 
     @property
-    def aps(self) -> Dict[str, Any]:
+    def aps(self) -> dict[str, Any]:
         """Returns the APS of the notification."""
         return self.payload.get("aps") or {}
 
@@ -60,6 +60,6 @@ class Notification:
         """Returns the ID of the notification."""
         return self.payload.get("id", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON data of the notification."""
         return self.data

@@ -18,7 +18,7 @@ class AuthCheckable(Protocol):
     @property
     def is_authenticated(self) -> bool: ...
 
-def authenticated(func: "Callable[Concatenate[A, P], R]") -> "Callable[Concatenate[A, P], R]":
+def authenticated(func: Callable[Concatenate[A, P], R]) -> Callable[Concatenate[A, P], R]:
     """A decorator that checks if the client is authenticated.
 
     :param func: The function to decorate.

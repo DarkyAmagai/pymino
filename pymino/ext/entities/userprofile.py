@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union, cast
+from typing import Any, Literal, Optional, Union, cast
 
 __all__ = (
     "AvatarFrame",
@@ -18,7 +18,7 @@ __all__ = (
 class AvatarFrame:
     """Class representing a avatar frame"""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -68,7 +68,7 @@ class AvatarFrame:
 class InfluencerInfo:
     """Class representing a influencer info."""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -96,7 +96,7 @@ class InfluencerInfo:
 
 
 class CustomTitle:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -112,7 +112,7 @@ class CustomTitle:
 
 
 class UserExtensions:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -123,19 +123,19 @@ class UserExtensions:
         return self.data.get("privilegeOfCommentOnUserProfile") or 1
 
     @property
-    def style(self) -> Dict[str, Any]:
+    def style(self) -> dict[str, Any]:
         return self.data.get("style", {})
 
     @property
-    def title_names(self) -> List[str]:
+    def title_names(self) -> list[str]:
         return [title["title"] for title in self.titles]
 
     @property
-    def title_colors(self) -> List[str]:
+    def title_colors(self) -> list[str]:
         return [title["color"] for title in self.titles]
 
     @property
-    def titles(self) -> List[Dict[str, Any]]:
+    def titles(self) -> list[dict[str, Any]]:
         return self.data.get("customTitles") or []
 
     @property
@@ -156,7 +156,7 @@ class UserExtensions:
 class MoodSticker:
     """Mood sticker the user has set."""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -203,7 +203,7 @@ class MoodSticker:
         return self.data.get("mediumIcon", "")
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         """The extensions of the mood sticker."""
         return self.data.get("extensions") or {}
 
@@ -231,8 +231,8 @@ class MoodSticker:
 class UserProfile:
     """Class representing a user profile."""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("userProfile", data) or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("userProfile", data) or {}
 
     def __bool__(self) -> bool:
         return bool(self.uid)
@@ -303,7 +303,7 @@ class UserProfile:
         return self.data.get("avatarFrameId")
 
     @property
-    def fan_club_list(self) -> List[Dict[str, Any]]:
+    def fan_club_list(self) -> list[dict[str, Any]]:
         """The user's fan club list."""
         return self.data.get("fanClubList", [])
 
@@ -338,7 +338,7 @@ class UserProfile:
         return self.nickname
 
     @property
-    def media_list(self) -> List[Tuple[int, str, Optional[str], Optional[str]]]:
+    def media_list(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
         """The user's media list."""
         return [
             (
@@ -347,7 +347,7 @@ class UserProfile:
                 m[2] if len(m) > 2 else None,
                 m[3] if len(m) > 3 else None,
             )
-            for m in cast(List[Any], self.data.get("mediaList") or [])
+            for m in cast(list[Any], self.data.get("mediaList") or [])
         ]
 
     @property
@@ -455,7 +455,7 @@ class UserProfile:
         """The amount of blogs the user has."""
         return self.data.get("blogsCount", 0)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """The json response from the api."""
         return self.data
 
@@ -463,9 +463,9 @@ class UserProfile:
 class OnlineMembers:
     """The online members of a community."""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data.get("o", data)
-        self._user: Dict[str, Any] = self.data.get("userProfileList")[0]
+        self._user: dict[str, Any] = self.data.get("userProfileList")[0]
 
     def __bool__(self) -> bool:
         return bool(self.users_online)
@@ -570,183 +570,183 @@ class OnlineMembers:
         """If the user's nickname is verified."""
         return self._user.get("isNicknameVerified", False)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Api response in json format."""
         return self.data
 
 
 class UserProfileList:
-    def __init__(self, data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> None:
-        self.data: List[Dict[str, Any]] = (
+    def __init__(self, data: Union[dict[str, Any], list[dict[str, Any]]]) -> None:
+        self.data: list[dict[str, Any]] = (
             (data.get("userProfileList") or []) if isinstance(data, dict) else data
         )
 
     def __bool__(self) -> bool:
         return bool(self.data)
 
-    def __iter__(self) -> "Iterator[UserProfile]":
+    def __iter__(self) -> Iterator[UserProfile]:
         return (UserProfile(data) for data in self.data)
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         return [x.status for x in self]
 
     @property
-    def mood_sticker(self) -> List[MoodSticker]:
+    def mood_sticker(self) -> list[MoodSticker]:
         return [x.mood_sticker for x in self]
 
     @property
-    def wiki_count(self) -> List[int]:
+    def wiki_count(self) -> list[int]:
         return [x.wiki_count for x in self]
 
     @property
-    def consecutive_check_in_days(self) -> List[int]:
+    def consecutive_check_in_days(self) -> list[int]:
         return [x.consecutive_check_in_days for x in self]
 
     @property
-    def uid(self) -> List[str]:
+    def uid(self) -> list[str]:
         return [x.uid for x in self]
 
     @property
-    def userId(self) -> List[str]:
+    def userId(self) -> list[str]:
         return self.uid
 
     @property
-    def modified_time(self) -> List[Optional[str]]:
+    def modified_time(self) -> list[Optional[str]]:
         return [x.modified_time for x in self]
 
     @property
-    def following_status(self) -> List[int]:
+    def following_status(self) -> list[int]:
         return [x.following_status for x in self]
 
     @property
-    def online_status(self) -> List[int]:
+    def online_status(self) -> list[int]:
         return [x.online_status for x in self]
 
     @property
-    def account_membership_status(self) -> List[int]:
+    def account_membership_status(self) -> list[int]:
         return [x.account_membership_status for x in self]
 
     @property
-    def is_global(self) -> List[bool]:
+    def is_global(self) -> list[bool]:
         return [x.is_global for x in self]
 
     @property
-    def avatar_frame_id(self) -> List[Optional[str]]:
+    def avatar_frame_id(self) -> list[Optional[str]]:
         return [x.avatar_frame_id for x in self]
 
     @property
-    def fan_club_list(self) -> List[List[Dict[str, Any]]]:
+    def fan_club_list(self) -> list[list[dict[str, Any]]]:
         return [x.fan_club_list for x in self]
 
     @property
-    def reputation(self) -> List[int]:
+    def reputation(self) -> list[int]:
         return [x.reputation for x in self]
 
     @property
-    def posts_count(self) -> List[int]:
+    def posts_count(self) -> list[int]:
         return [x.posts_count for x in self]
 
     @property
-    def avatar_frame(self) -> List[AvatarFrame]:
+    def avatar_frame(self) -> list[AvatarFrame]:
         return [x.avatar_frame for x in self]
 
     @property
-    def follower_count(self) -> List[int]:
+    def follower_count(self) -> list[int]:
         return [x.follower_count for x in self]
 
     @property
-    def nickname(self) -> List[str]:
+    def nickname(self) -> list[str]:
         return [x.nickname for x in self]
 
     @property
-    def username(self) -> List[str]:
+    def username(self) -> list[str]:
         return self.nickname
 
     @property
-    def media_list(self) -> List[List[Tuple[int, str, Optional[str], Optional[str]]]]:
+    def media_list(self) -> list[list[tuple[int, str, Optional[str], Optional[str]]]]:
         return [x.media_list for x in self]
 
     @property
-    def icon(self) -> List[Optional[str]]:
+    def icon(self) -> list[Optional[str]]:
         return [x.icon for x in self]
 
     @property
-    def avatar(self) -> List[Optional[str]]:
+    def avatar(self) -> list[Optional[str]]:
         return self.icon
 
     @property
-    def is_nickname_verified(self) -> List[bool]:
+    def is_nickname_verified(self) -> list[bool]:
         return [x.is_nickname_verified for x in self]
 
     @property
-    def mood(self) -> List[Optional[str]]:
+    def mood(self) -> list[Optional[str]]:
         return [x.mood for x in self]
 
     @property
-    def level(self) -> List[int]:
+    def level(self) -> list[int]:
         return [x.level for x in self]
 
     @property
-    def pushEnabled(self) -> List[bool]:
+    def pushEnabled(self) -> list[bool]:
         return [x.push_enabled for x in self]
 
     @property
-    def membership_status(self) -> List[int]:
+    def membership_status(self) -> list[int]:
         return [x.membership_status for x in self]
 
     @property
-    def influencer_info(self) -> List[InfluencerInfo]:
+    def influencer_info(self) -> list[InfluencerInfo]:
         return [x.influencer_info for x in self]
 
     @property
-    def content(self) -> List[Optional[str]]:
+    def content(self) -> list[Optional[str]]:
         return [x.content for x in self]
 
     @property
-    def following_count(self) -> List[int]:
+    def following_count(self) -> list[int]:
         return [x.following_count for x in self]
 
     @property
-    def role(self) -> List[int]:
+    def role(self) -> list[int]:
         return [x.role for x in self]
 
     @property
-    def comments_count(self) -> List[int]:
+    def comments_count(self) -> list[int]:
         return [x.comments_count for x in self]
 
     @property
-    def ndcId(self) -> List[Optional[int]]:
+    def ndcId(self) -> list[Optional[int]]:
         return [x.ndcId for x in self]
 
     @property
-    def comId(self) -> List[Optional[int]]:
+    def comId(self) -> list[Optional[int]]:
         return self.ndcId
 
     @property
-    def created_time(self) -> List[str]:
+    def created_time(self) -> list[str]:
         return [x.created_time for x in self]
 
     @property
-    def extensions(self) -> List[UserExtensions]:
+    def extensions(self) -> list[UserExtensions]:
         return [x.extensions for x in self]
 
     @property
-    def visit_privacy(self) -> List[int]:
+    def visit_privacy(self) -> list[int]:
         return [x.visit_privacy for x in self]
 
     @property
-    def stories_count(self) -> List[int]:
+    def stories_count(self) -> list[int]:
         return [x.stories_count for x in self]
 
     @property
-    def blogs_count(self) -> List[int]:
+    def blogs_count(self) -> list[int]:
         return [x.blogs_count for x in self]
 
 
 class Pagging:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: Dict[str, Any] = data.get("paging", data) or {}
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("paging", data) or {}
 
     def __bool__(self) -> bool:
         return bool(self.data)
@@ -759,12 +759,12 @@ class Pagging:
     def next_page_token(self) -> Optional[str]:
         return self.data.get("nextPageToken")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class FollowerList:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -778,5 +778,5 @@ class FollowerList:
     def members(self) -> UserProfileList:
         return UserProfileList(self.data.get("userProfileList") or [])
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         return self.data

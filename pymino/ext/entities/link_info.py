@@ -1,14 +1,14 @@
-from typing import Any, Dict
+from typing import Any
 
 __all__ = ("LinkInfo",)
 
 
 class LinkInfo:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
-    def linkInfoV2(self) -> Dict[str, Any]:
+    def linkInfoV2(self) -> dict[str, Any]:
         """Returns the linkInfoV2 of the API response."""
         return self.data.get("linkInfoV2") or {}
 
@@ -18,7 +18,7 @@ class LinkInfo:
         return self.data.get("path") or self.linkInfoV2.get("path", "")
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         """Returns the extensions of the API response."""
         return self.data.get("extensions") or self.linkInfoV2.get("extensions") or {}
 
@@ -87,7 +87,7 @@ class LinkInfo:
             or 0
         )
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the JSON data of the API response."""
         return self.data
 

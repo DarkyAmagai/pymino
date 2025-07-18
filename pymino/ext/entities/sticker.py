@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 __all__ = (
     "CommunitySticker",
@@ -13,7 +13,7 @@ __all__ = (
 
 
 class StickerAuthor:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -89,13 +89,13 @@ class StickerAuthor:
         """Returns the author's nickname."""
         return self.data.get("nickname", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the author's data as a dictionary."""
         return self.data
 
 
 class OriginalCommunity:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -126,13 +126,13 @@ class OriginalCommunity:
         """Returns the community's ndc id."""
         return self.data.get("ndcId", 0)
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the community's json."""
         return self.data
 
 
 class StickerExtensions:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -153,13 +153,13 @@ class StickerExtensions:
         """Returns the sticker's original community."""
         return OriginalCommunity(self.data.get("originalCommunity") or {})
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the sticker's extensions as a dictionary."""
         return self.data
 
 
 class Sticker:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     def __bool__(self) -> bool:
@@ -181,7 +181,7 @@ class Sticker:
         return self.data.get("createdTime", "")
 
     @property
-    def item_basic_info(self) -> Dict[str, Any]:
+    def item_basic_info(self) -> dict[str, Any]:
         """Returns the sticker's basic info."""
         return self.data.get("itemBasicInfo") or {}
 
@@ -196,7 +196,7 @@ class Sticker:
         return self.item_basic_info.get("name", "")
 
     @property
-    def item_restriction_info(self) -> Dict[str, Any]:
+    def item_restriction_info(self) -> dict[str, Any]:
         """Returns the sticker's restriction info."""
         return self.data.get("itemRestrictionInfo") or {}
 
@@ -236,7 +236,7 @@ class Sticker:
         return self.item_restriction_info.get("availableDuration")
 
     @property
-    def ref_object(self) -> Dict[str, Any]:
+    def ref_object(self) -> dict[str, Any]:
         """Returns the sticker's reference object."""
         return self.data.get("refObject") or {}
 
@@ -261,12 +261,12 @@ class Sticker:
         return self.ref_object.get("usedCount", 0)
 
     @property
-    def extensions(self) -> Dict[str, Any]:
+    def extensions(self) -> dict[str, Any]:
         """Returns the sticker's extensions."""
         return self.ref_object.get("extensions") or {}
 
     @property
-    def available_community_ids(self) -> List[int]:
+    def available_community_ids(self) -> list[int]:
         """Returns the sticker's available community IDs."""
         return self.ref_object.get("availableNdcIds") or []
 
@@ -291,7 +291,7 @@ class Sticker:
         return self.ref_object.get("stickersCount", 0)
 
     @property
-    def restriction_info(self) -> Dict[str, Any]:
+    def restriction_info(self) -> dict[str, Any]:
         """Returns the sticker's restriction info."""
         return self.ref_object.get("restrictionInfo") or {}
 
@@ -335,152 +335,152 @@ class Sticker:
         """Returns the sticker's banner URL."""
         return self.ref_object.get("bannerUrl", "")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the sticker's data in JSON format."""
         return self.data
 
 
 class StickerList:
-    def __init__(self, data: Union[List[Dict[str, Any]], Dict[str, Any]]):
+    def __init__(self, data: Union[list[dict[str, Any]], dict[str, Any]]):
         if isinstance(data, dict):
             data = list(data.get("storeItemList") or [])
         self.data = data
 
-    def __iter__(self) -> "Iterator[Sticker]":
+    def __iter__(self) -> Iterator[Sticker]:
         return (Sticker(sticker) for sticker in self.data)
 
     @property
-    def ref_object_type(self) -> List[int]:
+    def ref_object_type(self) -> list[int]:
         """Returns the sticker list's ref object type."""
         return [sticker.ref_object_type for sticker in self]
 
     @property
-    def ref_object_id(self) -> List[str]:
+    def ref_object_id(self) -> list[str]:
         """Returns the sticker list's ref object ID."""
         return [sticker.ref_object_id for sticker in self]
 
     @property
-    def created_time(self) -> List[str]:
+    def created_time(self) -> list[str]:
         """Returns the sticker list's creation time."""
         return [sticker.created_time for sticker in self]
 
     @property
-    def item_basic_info(self) -> List[Dict[str, Any]]:
+    def item_basic_info(self) -> list[dict[str, Any]]:
         """Returns the sticker list's basic info."""
         return [sticker.item_basic_info for sticker in self]
 
     @property
-    def icon(self) -> List[str]:
+    def icon(self) -> list[str]:
         """Returns the sticker list's icon."""
         return [sticker.icon for sticker in self]
 
     @property
-    def name(self) -> List[str]:
+    def name(self) -> list[str]:
         """Returns the sticker list's name."""
         return [sticker.name for sticker in self]
 
     @property
-    def item_restriction_info(self) -> List[Dict[str, Any]]:
+    def item_restriction_info(self) -> list[dict[str, Any]]:
         """Returns the sticker list's restriction info."""
         return [sticker.item_restriction_info for sticker in self]
 
     @property
-    def discount_value(self) -> List[Optional[int]]:
+    def discount_value(self) -> list[Optional[int]]:
         """Returns the sticker list's discount value."""
         return [sticker.discount_value for sticker in self]
 
     @property
-    def discount_status(self) -> List[int]:
+    def discount_status(self) -> list[int]:
         """Returns the sticker list's discount status."""
         return [sticker.discount_status for sticker in self]
 
     @property
-    def owner_uid(self) -> List[Optional[str]]:
+    def owner_uid(self) -> list[Optional[str]]:
         """Returns the sticker list's owner UID."""
         return [sticker.owner_uid for sticker in self]
 
     @property
-    def owner_type(self) -> List[int]:
+    def owner_type(self) -> list[int]:
         """Returns the sticker list's owner type."""
         return [sticker.owner_type for sticker in self]
 
     @property
-    def restrict_type(self) -> List[int]:
+    def restrict_type(self) -> list[int]:
         """Returns the sticker list's restrict type."""
         return [sticker.restrict_type for sticker in self]
 
     @property
-    def restrict_value(self) -> List[Optional[int]]:
+    def restrict_value(self) -> list[Optional[int]]:
         """Returns the sticker list's restrict value."""
         return [sticker.restrict_value for sticker in self]
 
     @property
-    def available_duration(self) -> List[Optional[int]]:
+    def available_duration(self) -> list[Optional[int]]:
         """Returns the sticker list's available duration."""
         return [sticker.available_duration for sticker in self]
 
     @property
-    def ownership_status(self) -> List[Optional[int]]:
+    def ownership_status(self) -> list[Optional[int]]:
         """Returns the sticker list's ownership status."""
         return [sticker.ownership_status for sticker in self]
 
     @property
-    def is_owned(self) -> List[bool]:
+    def is_owned(self) -> list[bool]:
         """Returns the sticker list's ownership status."""
         return [sticker.is_owned for sticker in self]
 
     @property
-    def is_new(self) -> List[bool]:
+    def is_new(self) -> list[bool]:
         """Returns the sticker list's new status."""
         return [sticker.is_new for sticker in self]
 
     @property
-    def is_activated(self) -> List[bool]:
+    def is_activated(self) -> list[bool]:
         """Returns the sticker list's activation status."""
         return [sticker.is_activated for sticker in self]
 
     @property
-    def collection_id(self) -> List[Optional[str]]:
+    def collection_id(self) -> list[Optional[str]]:
         """Returns the sticker list's collection ID."""
         return [sticker.collection_id for sticker in self]
 
     @property
-    def collection_type(self) -> List[int]:
+    def collection_type(self) -> list[int]:
         """Returns the sticker list's collection type."""
         return [sticker.collection_type for sticker in self]
 
     @property
-    def uid(self) -> List[Optional[str]]:
+    def uid(self) -> list[Optional[str]]:
         """Returns the sticker list's UID."""
         return [sticker.uid for sticker in self]
 
     @property
-    def small_icon(self) -> List[str]:
+    def small_icon(self) -> list[str]:
         """Returns the sticker list's small icon."""
         return [sticker.small_icon for sticker in self]
 
     @property
-    def description(self) -> List[Optional[str]]:
+    def description(self) -> list[Optional[str]]:
         """Returns the sticker list's description."""
         return [sticker.description for sticker in self]
 
     @property
-    def is_globally_available(self) -> List[bool]:
+    def is_globally_available(self) -> list[bool]:
         """Returns the sticker list's global availability."""
         return [sticker.is_globally_available for sticker in self]
 
     @property
-    def banner_url(self) -> List[str]:
+    def banner_url(self) -> list[str]:
         """Returns the sticker list's banner URL."""
         return [sticker.banner_url for sticker in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         """Returns the sticker list's JSON data."""
         return self.data
 
 
 class CommunitySticker:
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
 
     @property
@@ -519,7 +519,7 @@ class CommunitySticker:
         return self.data.get("usedCount", False)
 
     @property
-    def available_community_ids(self) -> List[int]:
+    def available_community_ids(self) -> list[int]:
         """Returns a list of available community ids."""
         return self.data.get("availableNdcIds") or []
 
@@ -549,7 +549,7 @@ class CommunitySticker:
         return StickerAuthor(self.data.get("author") or {})
 
     @property
-    def ownership_info(self) -> Dict[str, Any]:
+    def ownership_info(self) -> dict[str, Any]:
         """Returns the sticker's ownership info."""
         return self.data.get("ownershipInfo") or {}
 
@@ -579,7 +579,7 @@ class CommunitySticker:
         return self.data.get("isGloballyAvailable", False)
 
     @property
-    def restriction_info(self) -> Dict[str, Any]:
+    def restriction_info(self) -> dict[str, Any]:
         """Returns the sticker's restriction info."""
         return self.data.get("restrictionInfo") or {}
 
@@ -618,148 +618,148 @@ class CommunitySticker:
         """Returns the sticker's discount value."""
         return self.restriction_info.get("discountValue")
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """Returns the sticker's data as a dict."""
         return self.data
 
 
 class CommunityStickerList:
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self.data: List[Dict[str, Any]] = data.get("stickerCollectionList") or []
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("stickerCollectionList") or []
 
-    def __iter__(self) -> "Iterator[CommunitySticker]":
+    def __iter__(self) -> Iterator[CommunitySticker]:
         return (CommunitySticker(sticker) for sticker in self.data)
 
     @property
-    def status(self) -> List[int]:
+    def status(self) -> list[int]:
         """Returns the sticker's status."""
         return [sticker.status for sticker in self]
 
     @property
-    def is_activated(self) -> List[bool]:
+    def is_activated(self) -> list[bool]:
         """Returns True if the sticker is activated, False otherwise."""
         return [sticker.is_activated for sticker in self]
 
     @property
-    def collection_type(self) -> List[int]:
+    def collection_type(self) -> list[int]:
         """Returns the sticker's collection type."""
         return [sticker.collection_type for sticker in self]
 
     @property
-    def is_new(self) -> List[bool]:
+    def is_new(self) -> list[bool]:
         """Returns True if the sticker is new, False otherwise."""
         return [sticker.is_new for sticker in self]
 
     @property
-    def banner_url(self) -> List[str]:
+    def banner_url(self) -> list[str]:
         """Returns the sticker's banner url."""
         return [sticker.banner_url for sticker in self]
 
     @property
-    def is_owned(self) -> List[bool]:
+    def is_owned(self) -> list[bool]:
         """Returns True if the sticker is owned, False otherwise."""
         return [sticker.is_owned for sticker in self]
 
     @property
-    def used_count(self) -> List[int]:
+    def used_count(self) -> list[int]:
         """Returns the sticker's used count."""
         return [sticker.used_count for sticker in self]
 
     @property
-    def available_community_ids(self) -> List[List[int]]:
+    def available_community_ids(self) -> list[list[int]]:
         """Returns a list of available community ids."""
         return [sticker.available_community_ids for sticker in self]
 
     @property
-    def icon(self) -> List[str]:
+    def icon(self) -> list[str]:
         """Returns the sticker's icon url."""
         return [sticker.icon for sticker in self]
 
     @property
-    def name(self) -> List[str]:
+    def name(self) -> list[str]:
         """Returns the sticker's name."""
         return [sticker.name for sticker in self]
 
     @property
-    def collection_id(self) -> List[str]:
+    def collection_id(self) -> list[str]:
         """Returns the sticker's collection id."""
         return [sticker.collection_id for sticker in self]
 
     @property
-    def description(self) -> List[Optional[str]]:
+    def description(self) -> list[Optional[str]]:
         """Returns the sticker's description."""
         return [sticker.description for sticker in self]
 
     @property
-    def ownership_info(self) -> List[Dict[str, Any]]:
+    def ownership_info(self) -> list[dict[str, Any]]:
         """Returns the sticker's ownership info."""
         return [sticker.ownership_info for sticker in self]
 
     @property
-    def is_auto_renew(self) -> List[bool]:
+    def is_auto_renew(self) -> list[bool]:
         """Returns True if the sticker is auto renew, False otherwise."""
         return [sticker.is_auto_renew for sticker in self]
 
     @property
-    def expired_time(self) -> List[Optional[str]]:
+    def expired_time(self) -> list[Optional[str]]:
         """Returns the sticker's expired time."""
         return [sticker.expired_time for sticker in self]
 
     @property
-    def extensions(self) -> List[StickerExtensions]:
+    def extensions(self) -> list[StickerExtensions]:
         """Returns the sticker's extensions."""
         return [sticker.extensions for sticker in self]
 
     @property
-    def created_time(self) -> List[str]:
+    def created_time(self) -> list[str]:
         """Returns the sticker's created time."""
         return [sticker.created_time for sticker in self]
 
     @property
-    def is_globally_available(self) -> List[bool]:
+    def is_globally_available(self) -> list[bool]:
         """Returns True if the sticker is globally available, False otherwise."""
         return [sticker.is_globally_available for sticker in self]
 
     @property
-    def restriction_info(self) -> List[Dict[str, Any]]:
+    def restriction_info(self) -> list[dict[str, Any]]:
         """Returns the sticker's restriction info."""
         return [sticker.restriction_info for sticker in self]
 
     @property
-    def discount_status(self) -> List[int]:
+    def discount_status(self) -> list[int]:
         """Returns the sticker's discount status."""
         return [sticker.discount_status for sticker in self]
 
     @property
-    def owner_uid(self) -> List[Optional[str]]:
+    def owner_uid(self) -> list[Optional[str]]:
         """Returns the sticker's owner uid."""
         return [sticker.owner_uid for sticker in self]
 
     @property
-    def owner_type(self) -> List[int]:
+    def owner_type(self) -> list[int]:
         """Returns the sticker's owner type."""
         return [sticker.owner_type for sticker in self]
 
     @property
-    def restrict_type(self) -> List[int]:
+    def restrict_type(self) -> list[int]:
         """Returns the sticker's restrict type."""
         return [sticker.restrict_type for sticker in self]
 
     @property
-    def restrict_value(self) -> List[int]:
+    def restrict_value(self) -> list[int]:
         """Returns the sticker's restrict value."""
         return [sticker.restrict_value for sticker in self]
 
     @property
-    def available_duration(self) -> List[Optional[str]]:
+    def available_duration(self) -> list[Optional[str]]:
         """Returns the sticker's available duration."""
         return [sticker.available_duration for sticker in self]
 
     @property
-    def discount_value(self) -> List[Optional[int]]:
+    def discount_value(self) -> list[Optional[int]]:
         """Returns the sticker's discount value."""
         return [sticker.discount_value for sticker in self]
 
-    def json(self) -> List[Dict[str, Any]]:
+    def json(self) -> list[dict[str, Any]]:
         """Returns the sticker's data as a dict."""
         return self.data

@@ -10,10 +10,7 @@ import time
 from collections.abc import Callable, Iterator, Sequence
 from typing import (
     Any,
-    Dict,
-    List,
     Optional,
-    Tuple,
     TypeVar,
     Union,
     cast,
@@ -33,21 +30,21 @@ __all__ = (
 
 P = ParamSpec("P")
 R = TypeVar("R")
-CallableT = TypeVar("CallableT", bound="Callable[..., Any]")
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
 CommandCallbackT = TypeVar("CommandCallbackT", bound=utilities.CommandCallback)
 TaskT = TypeVar("TaskT", bound="Task")
 
 Task = Union[
-    "Callable[[], Any]",
-    "Callable[[community.Community], Any]",
+    Callable[[], Any],
+    Callable[[community.Community], Any],
 ]
 
 logger = logging.getLogger("pymino")
 
 
 def with_typing(
-    func: "Callable[Concatenate[Context, P], R]",
-) -> "Callable[Concatenate[Context, P], R]":
+    func: Callable[Concatenate["Context", P], R],
+) -> Callable[Concatenate["Context", P], R]:
     @functools.wraps(func)
     def wrapper(self: "Context", *args: P.args, **kwargs: P.kwargs) -> R:
         with self.typing():
@@ -191,13 +188,13 @@ class Context:
 
     __typing__ = staticmethod(with_typing)
 
-    def __purge__(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def __purge__(self, data: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in data.items() if v is not None}
 
-    def __prepare_message__(self, **kwargs: Any) -> Dict[str, Any]:
+    def __prepare_message__(self, **kwargs: Any) -> dict[str, Any]:
         return self.__purge__(self.__parse_kwargs__(**kwargs))
 
-    def __parse_kwargs__(self, **kwargs: Any) -> Dict[str, Any]:
+    def __parse_kwargs__(self, **kwargs: Any) -> dict[str, Any]:
         return {
             "content": kwargs.get("content"),
             "type": kwargs.get("type"),
@@ -209,7 +206,7 @@ class Context:
             "uid": self.userId,
         }
 
-    def __message__(self, **kwargs: Any) -> Dict[str, Any]:
+    def __message__(self, **kwargs: Any) -> dict[str, Any]:
         return entities.PrepareMessage(**kwargs).json()
 
     def __send_message__(self, **kwargs: Any) -> "entities.CMessage":
@@ -222,8 +219,8 @@ class Context:
         )
 
     @contextlib.contextmanager
-    def typing(self) -> "Iterator[None]":
-        payload: Dict[str, Any] = {
+    def typing(self) -> Iterator[None]:
+        payload: dict[str, Any] = {
             "actions": ["Typing"],
             "target": f"ndc://x{self.comId}/chat-thread/{self.chatId}",
             "ndcId": self.comId,
@@ -326,7 +323,7 @@ class Context:
         self,
         content: str,
         delete_after: Optional[float] = None,
-        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        mentioned: Optional[Union[Sequence[str], str]] = None,
     ) -> "entities.CMessage":
         """This sends a message.
 
@@ -363,7 +360,7 @@ class Context:
         self,
         content: str,
         delete_after: Optional[float] = None,
-        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        mentioned: Optional[Union[Sequence[str], str]] = None,
     ) -> "entities.CMessage":
         """This replies to the message.
 
@@ -398,7 +395,7 @@ class Context:
 
         return message
 
-    def prepare_mentions(self, mentioned: "Sequence[str]") -> List[str]:
+    def prepare_mentions(self, mentioned: Sequence[str]) -> list[str]:
         """This prepares the mentions for the message.
 
         `**Parameters**``
@@ -428,7 +425,7 @@ class Context:
         image: "entities.Media",
         message: str = "[c]",
         link: str = "ndc://user-me",
-        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        mentioned: Optional[Union[Sequence[str], str]] = None,
     ) -> "entities.CMessage":
         """This sends a link snippet.
 
@@ -477,7 +474,7 @@ class Context:
         content: str,
         image: str,
         link: str = "ndc://user-me",
-        mentioned: Optional[Union["Sequence[str]", str]] = None,
+        mentioned: Optional[Union[Sequence[str], str]] = None,
     ) -> "entities.CMessage":
         """This sends an embed.
 
@@ -678,12 +675,12 @@ class EventHandler(abc.ABC):
     def command_prefix(self) -> str: ...
 
     def __init__(self) -> None:
-        self._events: Dict[str, Callable[..., Any]] = {}
+        self._events: dict[str, Callable[..., Any]] = {}
         self._commands = utilities.Commands()
-        self._tasks: List[Tuple[Task, float]] = []
+        self._tasks: list[tuple[Task, float]] = []
         self._cooldown_message: Optional[str] = None
 
-    def register_event(self, event_name: str) -> "Callable[[CallableT], CallableT]":
+    def register_event(self, event_name: str) -> Callable[[CallableT], CallableT]:
         def decorator(event_handler: CallableT) -> CallableT:
             self._events[event_name] = event_handler
             return event_handler
@@ -710,7 +707,7 @@ class EventHandler(abc.ABC):
             finally:
                 time.sleep(interval)
 
-    def task(self, interval: float = 10.0) -> "Callable[[TaskT], TaskT]":
+    def task(self, interval: float = 10.0) -> Callable[[TaskT], TaskT]:
         """
         This creates a task.
 
@@ -742,7 +739,7 @@ class EventHandler(abc.ABC):
         context: Context,
         func: utilities.CommandCallback,
         message: Optional[str] = None,
-    ) -> List[Any]:
+    ) -> list[Any]:
         potential_parameters = {
             "ctx": context,
             "member": entities.Member(context.author.json()),
@@ -766,10 +763,10 @@ class EventHandler(abc.ABC):
         name: Optional[str] = None,
         description: Optional[str] = None,
         usage: Optional[str] = None,
-        aliases: Optional["Sequence[str]"] = None,
+        aliases: Optional[Sequence[str]] = None,
         cooldown: float = 0.0,
         **kwargs: Any,
-    ) -> "Callable[[CommandCallbackT], CommandCallbackT]":
+    ) -> Callable[[CommandCallbackT], CommandCallbackT]:
         """This creates a command.
 
         `**Command Parameters**``
@@ -938,221 +935,221 @@ class EventHandler(abc.ABC):
                 cache.pop(key)
             cache.add(key, content, expire=90)
 
-    def on_error(self) -> "Callable[[CallableT], CallableT]":
+    def on_error(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an error occurs."""
         return self.register_event("error")
 
-    def on_ready(self) -> "Callable[[CallableT], CallableT]":
+    def on_ready(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when the bot is ready to start handling events."""
         return self.register_event("ready")
 
-    def on_text_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_text_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a text message is received in the chat."""
         return self.register_event("text_message")
 
-    def _console_on_text_message(self) -> "Callable[[CallableT], CallableT]":
+    def _console_on_text_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a text message is received in the console."""
         return self.register_event("_console_text_message")
 
-    def on_image_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_image_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an image message is received in the chat."""
         return self.register_event("image_message")
 
-    def on_youtube_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_youtube_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a YouTube message is received in the chat."""
         return self.register_event("youtube_message")
 
-    def on_strike_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_strike_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a strike message is received in the chat."""
         return self.register_event("strike_message")
 
-    def on_voice_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_voice_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a voice message is received in the chat."""
         return self.register_event("voice_message")
 
-    def on_sticker_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_sticker_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a sticker message is received in the chat."""
         return self.register_event("sticker_message")
 
-    def on_vc_not_answered(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_not_answered(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a voice chat request is not answered."""
         return self.register_event("vc_not_answered")
 
-    def on_vc_not_cancelled(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_not_cancelled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a voice chat request is not cancelled."""
         return self.register_event("vc_not_cancelled")
 
-    def on_vc_not_declined(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_not_declined(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a voice chat request is not declined."""
         return self.register_event("vc_not_declined")
 
-    def on_video_chat_not_answered(self) -> "Callable[[CallableT], CallableT]":
+    def on_video_chat_not_answered(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a video chat request is not answered."""
         return self.register_event("video_chat_not_answered")
 
-    def on_video_chat_not_cancelled(self) -> "Callable[[CallableT], CallableT]":
+    def on_video_chat_not_cancelled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a video chat request is not cancelled."""
         return self.register_event("video_chat_not_cancelled")
 
-    def on_video_chat_not_declined(self) -> "Callable[[CallableT], CallableT]":
+    def on_video_chat_not_declined(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a video chat request is not declined."""
         return self.register_event("video_chat_not_declined")
 
-    def on_avatar_chat_not_answered(self) -> "Callable[[CallableT], CallableT]":
+    def on_avatar_chat_not_answered(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an avatar chat request is not answered."""
         return self.register_event("avatar_chat_not_answered")
 
-    def on_avatar_chat_not_cancelled(self) -> "Callable[[CallableT], CallableT]":
+    def on_avatar_chat_not_cancelled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an avatar chat request is not cancelled."""
         return self.register_event("avatar_chat_not_cancelled")
 
-    def on_avatar_chat_not_declined(self) -> "Callable[[CallableT], CallableT]":
+    def on_avatar_chat_not_declined(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an avatar chat request is not declined."""
         return self.register_event("avatar_chat_not_declined")
 
-    def on_delete_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_delete_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a message is deleted in the chat."""
         return self.register_event("delete_message")
 
-    def on_member_join(self) -> "Callable[[CallableT], CallableT]":
+    def on_member_join(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a member joins the chat."""
         return self.register_event("member_join")
 
-    def on_member_leave(self) -> "Callable[[CallableT], CallableT]":
+    def on_member_leave(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a member leaves the chat."""
         return self.register_event("member_leave")
 
-    def on_chat_invite(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_invite(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an invite is sent to the chat."""
         return self.register_event("chat_invite")
 
-    def on_chat_background_changed(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_background_changed(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when the chat background is changed."""
         return self.register_event("chat_background_changed")
 
-    def on_chat_title_changed(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_title_changed(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when the chat title is changed."""
         return self.register_event("chat_title_changed")
 
-    def on_chat_icon_changed(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_icon_changed(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when the chat icon is changed."""
         return self.register_event("chat_icon_changed")
 
-    def on_vc_start(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_start(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a voice chat starts."""
         return self.register_event("vc_start")
 
-    def on_video_chat_start(self) -> "Callable[[CallableT], CallableT]":
+    def on_video_chat_start(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a video chat starts."""
         return self.register_event("video_chat_start")
 
-    def on_avatar_chat_start(self) -> "Callable[[CallableT], CallableT]":
+    def on_avatar_chat_start(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an avatar chat starts."""
         return self.register_event("avatar_chat_start")
 
-    def on_vc_end(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_end(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a voice chat ends."""
         return self.register_event("vc_end")
 
-    def on_video_chat_end(self) -> "Callable[[CallableT], CallableT]":
+    def on_video_chat_end(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a video chat ends."""
         return self.register_event("video_chat_end")
 
-    def on_avatar_chat_end(self) -> "Callable[[CallableT], CallableT]":
+    def on_avatar_chat_end(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an avatar chat ends."""
         return self.register_event("avatar_chat_end")
 
-    def on_chat_content_changed(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_content_changed(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when the chat content is changed."""
         return self.register_event("chat_content_changed")
 
-    def on_screen_room_start(self) -> "Callable[[CallableT], CallableT]":
+    def on_screen_room_start(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a screen room starts."""
         return self.register_event("screen_room_start")
 
-    def on_screen_room_end(self) -> "Callable[[CallableT], CallableT]":
+    def on_screen_room_end(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a screen room ends."""
         return self.register_event("screen_room_end")
 
-    def on_chat_host_transfered(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_host_transfered(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when the chat host is transferred."""
         return self.register_event("chat_host_transfered")
 
-    def on_text_message_force_removed(self) -> "Callable[[CallableT], CallableT]":
+    def on_text_message_force_removed(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a text message is forcefully removed."""
         return self.register_event("text_message_force_removed")
 
-    def on_chat_removed_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_removed_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a chat message is removed."""
         return self.register_event("chat_removed_message")
 
-    def on_mod_deleted_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_mod_deleted_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a moderator deletes a message."""
         return self.register_event("mod_deleted_message")
 
-    def on_chat_tip(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_tip(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a tip is received in the chat."""
         return self.register_event("chat_tip")
 
-    def on_chat_pin_announcement(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_pin_announcement(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an announcement is pinned in the chat."""
         return self.register_event("chat_pin_announcement")
 
-    def on_vc_permission_open_to_everyone(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_permission_open_to_everyone(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when voice chat permissions are set to open to everyone."""
         return self.register_event("vc_permission_open_to_everyone")
 
     def on_vc_permission_invited_and_requested(
         self,
-    ) -> "Callable[[CallableT], CallableT]":
+    ) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when voice chat permissions are set to invited and requested."""
         return self.register_event("vc_permission_invited_and_requested")
 
-    def on_vc_permission_invite_only(self) -> "Callable[[CallableT], CallableT]":
+    def on_vc_permission_invite_only(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when voice chat permissions are set to invite only."""
         return self.register_event("vc_permission_invite_only")
 
-    def on_chat_view_only_enabled(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_view_only_enabled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when chat view only mode is enabled."""
         return self.register_event("chat_view_only_enabled")
 
-    def on_chat_view_only_disabled(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_view_only_disabled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when chat view only mode is disabled."""
         return self.register_event("chat_view_only_disabled")
 
-    def on_chat_unpin_announcement(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_unpin_announcement(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an announcement is unpinned in the chat."""
         return self.register_event("chat_unpin_announcement")
 
-    def on_chat_tipping_enabled(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_tipping_enabled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when chat tipping is enabled."""
         return self.register_event("chat_tipping_enabled")
 
-    def on_chat_tipping_disabled(self) -> "Callable[[CallableT], CallableT]":
+    def on_chat_tipping_disabled(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when chat tipping is disabled."""
         return self.register_event("chat_tipping_disabled")
 
-    def on_timestamp_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_timestamp_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a timestamp message is received in the chat."""
         return self.register_event("timestamp_message")
 
-    def on_welcome_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_welcome_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a welcome message is received in the chat."""
         return self.register_event("welcome_message")
 
-    def on_share_exurl_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_share_exurl_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a shared external URL message is received in the chat."""
         return self.register_event("share_exurl_message")
 
-    def on_invite_message(self) -> "Callable[[CallableT], CallableT]":
+    def on_invite_message(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when an invite message is received in the chat."""
         return self.register_event("invite_message")
 
-    def on_user_online(self) -> "Callable[[CallableT], CallableT]":
+    def on_user_online(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when a user comes online."""
         return self.register_event("user_online")
 
-    def on_member_set_you_host(self) -> "Callable[[CallableT], CallableT]":
+    def on_member_set_you_host(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when you are set as the host of the chat.
 
         **Example:**
@@ -1169,7 +1166,7 @@ class EventHandler(abc.ABC):
         """
         return self.register_event("member_set_you_host")
 
-    def on_member_set_you_cohost(self) -> "Callable[[CallableT], CallableT]":
+    def on_member_set_you_cohost(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when you are set as a cohost of the chat.
 
         **Example:**
@@ -1186,7 +1183,7 @@ class EventHandler(abc.ABC):
         """
         return self.register_event("member_set_you_cohost")
 
-    def on_member_remove_your_cohost(self) -> "Callable[[CallableT], CallableT]":
+    def on_member_remove_your_cohost(self) -> Callable[[CallableT], CallableT]:
         """This is an event that is called when you are removed as a cohost of the chat.
 
         **Example:**
@@ -1214,7 +1211,7 @@ class EventHandler(abc.ABC):
         callback = self._events.get(event)
         if not callback:
             return
-        args: List[Any] = []
+        args: list[Any] = []
         if context:
             args.extend(self._set_parameters(context, callback))
         else:
