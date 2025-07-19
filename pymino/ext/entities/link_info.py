@@ -1,104 +1,96 @@
-from typing import Union
+from typing import Any
 
-"""
+__all__ = ("LinkInfo",)
+
+
 class LinkInfo:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data               = data
-        self.linkInfoV2         = {}
-        self.path               = None
-        self.extensions         = {}
-        self.objectId           = None
-        self.shareURLShortCode  = None
-        self.targetCode         = None
-        self.ndcId              = None
-        self.comId              = None
-        self.fullPath           = None
-        self.shortCode          = None
-        self.objectType         = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data = data
 
-        if isinstance(data, dict):
-            self.linkInfoV2:        dict = self.data.get("linkInfoV2", self.linkInfoV2)
-            self.path:              Union[str, None] = self.data.get("path", self.path)             or self.linkInfoV2.get("path", self.path)
-            self.extensions:        dict = self.data.get("extensions", self.extensions)             or self.linkInfoV2.get("extensions", self.extensions)
-            self.objectId:          Union[str, None] = self.data.get("objectId", self.objectId)     or self.extensions.get("linkInfo", {}).get("objectId", self.objectId)
-            self.shareURLShortCode: Union[str, None] = self.data.get("shareURLShortCode", self.shareURLShortCode) or self.extensions.get("linkInfo", {}).get("shareURLShortCode", self.shareURLShortCode)
-            self.targetCode:        Union[str, None] = self.data.get("targetCode", self.targetCode) or self.extensions.get("linkInfo", {}).get("targetCode", self.targetCode)
-            self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId)           or self.extensions.get("linkInfo", {}).get("ndcId", self.ndcId)
-            self.comId:             Union[int, None] = self.ndcId
-            self.fullPath:          Union[str, None] = self.data.get("fullPath", self.fullPath)     or self.extensions.get("linkInfo", {}).get("fullPath", self.fullPath)
-            self.shortCode:         Union[str, None] = self.data.get("shortCode", self.shortCode)   or self.extensions.get("linkInfo", {}).get("shortCode", self.shortCode)
-            self.objectType:        Union[str, None] = self.data.get("objectType", self.objectType) or self.extensions.get("linkInfo", {}).get("objectType", self.objectType)
-
-    def json(self) -> Union[dict, str]:
-        return self.data
-"""
-class LinkInfo:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data
-        except AttributeError:
-            self.data = None
-
-    
     @property
-    def linkInfoV2(self) -> Union[str, None]:
+    def linkInfoV2(self) -> dict[str, Any]:
         """Returns the linkInfoV2 of the API response."""
-        return self.data.get("linkInfoV2")
-    
+        return self.data.get("linkInfoV2") or {}
+
     @property
-    def path(self) -> Union[int, None]:
+    def path(self) -> str:
         """Returns the path of the API response."""
-        return self.data.get("path") or self.linkInfoV2.get("path")
-    
+        return self.data.get("path") or self.linkInfoV2.get("path", "")
+
     @property
-    def extensions(self) -> Union[dict, None]:
+    def extensions(self) -> dict[str, Any]:
         """Returns the extensions of the API response."""
-        return self.data.get("extensions") or self.linkInfoV2.get("extensions")
-    
+        return self.data.get("extensions") or self.linkInfoV2.get("extensions") or {}
+
     @property
-    def objectId(self) -> Union[str, None]:
+    def objectId(self) -> str:
         """Returns the objectId of the API response."""
-        return self.data.get("objectId") or self.extensions.get("linkInfo", {}).get("objectId")
-    
+        return self.data.get("objectId") or self.extensions.get("linkInfo", {}).get(
+            "objectId", ""
+        )
+
     @property
-    def shareURLShortCode(self) -> Union[str, None]:
+    def shareURLShortCode(self) -> str:
         """Returns the shareURLShortCode of the API response."""
-        return self.data.get("shareURLShortCode") or self.extensions.get("linkInfo", {}).get("shareURLShortCode")
-    
+        return (
+            self.data.get("shareURLShortCode")
+            or self.extensions.get("linkInfo", {}).get("shareURLShortCode")
+            or ""
+        )
+
     @property
-    def targetCode(self) -> Union[str, None]:
-        """Returns the targetCode of the API response."""
-        return self.data.get("targetCode") or self.extensions.get("linkInfo", {}).get("targetCode")
-    
+    def targetCode(self) -> int:
+        return (
+            self.data.get("targetCode")
+            or self.extensions.get("linkInfo", {}).get("targetCode")
+            or 1
+        )
+
     @property
-    def ndcId(self) -> Union[int, None]:
+    def ndcId(self) -> int:
         """Returns the ndcId of the API response."""
-        return self.data.get("ndcId") or self.extensions.get("linkInfo", {}).get("ndcId")
-    
+        return (
+            self.data.get("ndcId")
+            or self.extensions.get("linkInfo", {}).get("ndcId")
+            or 0
+        )
+
     @property
-    def comId(self) -> Union[int, None]:
+    def comId(self) -> int:
         """Returns the comId of the API response."""
         return self.ndcId
-    
+
     @property
-    def fullPath(self) -> Union[str, None]:
+    def fullPath(self) -> str:
         """Returns the fullPath of the API response."""
-        return self.data.get("fullPath") or self.extensions.get("linkInfo", {}).get("fullPath")
-    
+        return (
+            self.data.get("fullPath")
+            or self.extensions.get("linkInfo", {}).get("fullPath")
+            or ""
+        )
+
     @property
-    def shortCode(self) -> Union[str, None]:
+    def shortCode(self) -> str:
         """Returns the shortCode of the API response."""
-        return self.data.get("shortCode") or self.extensions.get("linkInfo", {}).get("shortCode")
-    
+        return (
+            self.data.get("shortCode")
+            or self.extensions.get("linkInfo", {}).get("shortCode")
+            or ""
+        )
+
     @property
-    def objectType(self) -> Union[str, None]:
+    def objectType(self) -> int:
         """Returns the objectType of the API response."""
-        return self.data.get("objectType") or self.extensions.get("linkInfo", {}).get("objectType")
-    
-    def json(self) -> Union[dict, str]:
+        return (
+            self.data.get("objectType")
+            or self.extensions.get("linkInfo", {}).get("objectType")
+            or 0
+        )
+
+    def json(self) -> dict[str, Any]:
         """Returns the JSON data of the API response."""
         return self.data
-    
+
     def __repr__(self) -> str:
         """Returns the representation of the Link Info response."""
         return f"<LinkInfo data={self.data}>"

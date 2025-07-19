@@ -1,58 +1,59 @@
-from hmac import new
-from hashlib import sha1
-from base64 import b64encode
-from secrets import token_hex
+import hmac
+import hashlib
+import base64
+import secrets
 from typing import Union
+
 import requests
 
-version = "G7P4XQ"
+__all__ = ("Generator",)
+
 
 class Generator:
     def __init__(
         self,
-        prefix:        Union[str, int],
-        device_key:    str,
+        prefix: str,
+        device_key: str,
         signature_key: str,
-        KEY: str
-        ) -> None:
-        self.PREFIX = bytes.fromhex(str(prefix))
-        self.DEVICE_KEY = bytes.fromhex(device_key)
-        self.SIGNATURE_KEY = bytes.fromhex(signature_key)
-        self.KEY = KEY
+        key: str,
+    ) -> None:
+        self.prefix = bytes.fromhex(prefix)
+        self.device_key = bytes.fromhex(device_key)
+        self.signature_key = bytes.fromhex(signature_key)
+        self.key = key
 
     def device_id(self) -> str:
         """
-        `generate_device_id` Generates a device ID based on a specific string.
+        Generates a device ID based on a specific string.
 
         `**Returns**`
         - `str` - Returns a device ID as a string.
         """
-        encoded_data = sha1(str(token_hex(20)).encode('utf-8')).hexdigest()
+        data = (
+            self.prefix + hashlib.sha1(secrets.token_hex(20).encode("utf-8")).digest()
+        )
+        digest = hmac.new(
+            self.device_key,
+            data,
+            hashlib.sha1,
+        ).hexdigest()
+        return f"{data.hex()}{digest}".upper()
 
-        digest = new(
-            self.DEVICE_KEY,
-            self.PREFIX + bytes.fromhex(encoded_data),
-            sha1).hexdigest()
-
-        return f"{bytes.hex(self.PREFIX)}{encoded_data}{digest}".upper()
-
-    def signature(self, data: str) -> str:
+    def signature(self, data: Union[bytes, str]) -> str:
         """
-        `signature` Generates a signature based on a specific string.
-        
+        Generates a signature based on a specific string.
+
         `**Parameters**`
         - `data` - Data to generate a signature from
         `**Returns**`
         - `str` - Returns a signature as a string.
         """
+        if not isinstance(data, bytes):
+            data = data.encode("utf-8")
+        signature = [self.prefix[0]]
+        signature.extend(hmac.new(self.signature_key, data, hashlib.sha1).digest())
+        return base64.b64encode(bytes(signature)).decode("utf-8")
 
-        signature = [self.PREFIX[0]]  
-        signature.extend(new(
-            self.SIGNATURE_KEY,
-            str(data).encode("utf-8"), sha1).digest())
-
-        return b64encode(bytes(signature)).decode("utf-8")
-    
     def update_device(self, device: str) -> str:
         """
         Update a device ID to new prefix.
@@ -62,24 +63,33 @@ class Generator:
         :return: The updated device ID as a string.
         :rtype: str
         """
-        encoded_data = sha1(str(bytes.fromhex(device[2:42])).encode('utf-8')).hexdigest()
+        data = (
+            self.prefix
+            + hashlib.sha1(
+                str(
+                    bytes.fromhex(device[2:42]),
+                ).encode("utf-8")
+            ).digest()
+        )
+        digest = hmac.new(
+            self.device_key,
+            data,
+            hashlib.sha1,
+        ).hexdigest()
+        return f"{data.hex()}{digest}".upper()
 
-        digest = new(
-            self.DEVICE_KEY,
-            self.PREFIX + bytes.fromhex(encoded_data),
-            sha1).hexdigest()
+    def ndc_message_signature(self, data: Union[str, bytes], userId: str) -> str:
+        if not isinstance(data, bytes):
+            data = data.encode("utf-8")
 
-        return f"{bytes.hex(self.PREFIX)}{encoded_data}{digest}".upper()
-    
-    def NdcMessageSignature(self, data: str, auid: str) -> Union[str, None]:
         response = requests.post(
             url="https://app.pymino.site/api/v1/pymino",
             params={
-                "user_id": auid,
-                "key": self.KEY,
-                "version": version
+                "user_id": userId,
+                "key": self.key,
+                "version": "G7P4XQ",
             },
-            data=str(data).encode("utf-8")
+            data=data,
         )
         response.raise_for_status()
-        return response.text, response.status_code
+        return response.text

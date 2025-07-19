@@ -1,339 +1,342 @@
-from typing import List, Union
+from typing import Any, Optional
+
+__all__ = (
+    "Applicant",
+    "ApplicantList",
+    "CommunityMembershipRequest",
+    "CommunityMembershipRequestList",
+    "CommunityStats",
+    "InvitationLog",
+    "InvitationLogList",
+)
 
 
 class CommunityStats:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data.get("communityStats", data)
-        except AttributeError:
-            self.data = None    
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("communityStats", data) or {}
 
     @property
-    def daily_active_members(self) -> Union[int, None]:
+    def daily_active_members(self) -> int:
         """Returns the daily active members of the community."""
-        return self.data.get("dailyActiveMembers")
-    
+        return self.data.get("dailyActiveMembers", 0)
+
     @property
-    def monthly_active_members(self) -> Union[int, None]:
+    def monthly_active_members(self) -> int:
         """Returns the monthly active members of the community."""
-        return self.data.get("monthlyActiveMembers")
-    
+        return self.data.get("monthlyActiveMembers", 0)
+
     @property
-    def total_time_spent(self) -> Union[int, None]:
+    def total_time_spent(self) -> int:
         """Returns the total time spent in the community."""
-        return self.data.get("totalTimeSpent")
-    
+        return self.data.get("totalTimeSpent", 0)
+
     @property
-    def total_posts_created(self) -> Union[int, None]:
+    def total_posts_created(self) -> int:
         """Returns the total posts created in the community."""
-        return self.data.get("totalPostsCreated")
-    
+        return self.data.get("totalPostsCreated", 0)
+
     @property
-    def new_members_today(self) -> Union[int, None]:
+    def new_members_today(self) -> int:
         """Returns the new members today in the community."""
-        return self.data.get("newMembersToday")
-    
+        return self.data.get("newMembersToday", 0)
+
     @property
-    def total_members(self) -> Union[int, None]:
+    def total_members(self) -> int:
         """Returns the total members in the community."""
-        return self.data.get("totalMembers")
-    
+        return self.data.get("totalMembers", 0)
+
 
 class Applicant:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data.get("applicant", data)
-        except AttributeError:
-            self.data = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("applicant", data) or {}
 
     @property
-    def status(self) -> Union[int, None]:
+    def status(self) -> int:
         """Returns the status of the applicant."""
-        return self.data.get("status")
-    
+        return self.data.get("status", 0)
+
     @property
-    def uid(self) -> Union[str, None]:
+    def uid(self) -> str:
         """Returns the uid of the applicant."""
-        return self.data.get("uid")
-    
+        return self.data.get("uid", "")
+
     @property
-    def is_global(self) -> Union[bool, None]:
+    def is_global(self) -> bool:
         """Returns whether the applicant is global."""
-        return self.data.get("isGlobal")
-    
+        return self.data.get("isGlobal", False)
+
     @property
-    def role(self) -> Union[int, None]:
+    def role(self) -> int:
         """Returns the role of the applicant."""
-        return self.data.get("role")
-    
+        return self.data.get("role", 0)
+
     @property
-    def is_staff(self) -> Union[bool, None]:
+    def is_staff(self) -> bool:
         """Returns whether the applicant is staff."""
-        return self.data.get("isStaff")
-    
+        return self.data.get("isStaff", False)
+
     @property
-    def nickname(self) -> Union[str, None]:
+    def nickname(self) -> Optional[str]:
         """Returns the nickname of the applicant."""
         return self.data.get("nickname")
-    
+
     @property
-    def icon(self) -> Union[str, None]:
+    def icon(self) -> Optional[str]:
         """Returns the icon of the applicant."""
         return self.data.get("icon")
 
 
 class ApplicantList:
-    def __init__(self, data: list) -> None:
-        try:
-            self.data = data
-        except AttributeError:
-            self.data = None
+    def __init__(self, data: list[dict[str, Any]]) -> None:
+        self.data = data
 
     @property
-    def status(self) -> Union[int, None]:
+    def status(self) -> list[int]:
         """Returns the status of the applicant."""
-        return [applicant.get("status") for applicant in self.data]
-    
+        return [applicant.get("status", 0) for applicant in self.data]
+
     @property
-    def uid(self) -> Union[str, None]:
+    def uid(self) -> list[str]:
         """Returns the uid of the applicant."""
-        return [applicant.get("uid") for applicant in self.data]
-    
+        return [applicant.get("uid", "") for applicant in self.data]
+
     @property
-    def is_global(self) -> Union[bool, None]:
+    def is_global(self) -> list[bool]:
         """Returns whether the applicant is global."""
-        return [applicant.get("isGlobal") for applicant in self.data]
-    
+        return [applicant.get("isGlobal", False) for applicant in self.data]
+
     @property
-    def role(self) -> Union[int, None]:
+    def role(self) -> list[int]:
         """Returns the role of the applicant."""
-        return [applicant.get("role") for applicant in self.data]
-    
+        return [applicant.get("role", 0) for applicant in self.data]
+
     @property
-    def is_staff(self) -> Union[bool, None]:
+    def is_staff(self) -> list[bool]:
         """Returns whether the applicant is staff."""
-        return [applicant.get("isStaff") for applicant in self.data]
-    
+        return [applicant.get("isStaff", False) for applicant in self.data]
+
     @property
-    def nickname(self) -> Union[str, None]:
+    def nickname(self) -> list[Optional[str]]:
         """Returns the nickname of the applicant."""
         return [applicant.get("nickname") for applicant in self.data]
-    
+
     @property
-    def icon(self) -> Union[str, None]:
+    def icon(self) -> list[Optional[str]]:
         """Returns the icon of the applicant."""
         return [applicant.get("icon") for applicant in self.data]
 
 
 class CommunityMembershipRequest:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data
-        except AttributeError:
-            self.data = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data = data
 
     @property
-    def status(self) -> Union[int, None]:
+    def status(self) -> int:
         """Returns the status of the community membership request."""
-        return self.data.get("status")
-    
+        return self.data.get("status", 0)
+
     @property
-    def request_id(self) -> Union[str, None]:
+    def request_id(self) -> str:
         """Returns the request id of the community membership request."""
-        return self.data.get("requestId")
-    
+        return self.data.get("requestId", "")
+
     @property
-    def modified_time(self) -> Union[str, None]:
+    def modified_time(self) -> Optional[str]:
         """Returns the modified time of the community membership request."""
         return self.data.get("modifiedTime")
-    
+
     @property
-    def ndc_id(self) -> Union[int, None]:
+    def ndcId(self) -> int:
         """Returns the ndc id of the community membership request."""
-        return self.data.get("ndcId")
-    
+        return self.data.get("ndcId", 0)
+
     @property
-    def created_time(self) -> Union[str, None]:
+    def comId(self) -> int:
+        """Returns the ndc id of the community membership request list."""
+        return self.ndcId
+
+    @property
+    def created_time(self) -> str:
         """Returns the created time of the community membership request."""
-        return self.data.get("createdTime")
-    
+        return self.data.get("createdTime", "")
+
     @property
-    def message(self) -> Union[str, None]:
+    def message(self) -> Optional[str]:
         """Returns the message of the community membership request."""
         return self.data.get("message")
-    
+
     @property
-    def applicant(self) -> Union[Applicant, None]:
+    def applicant(self) -> Applicant:
         """Returns the applicant of the community membership request."""
-        return Applicant(self.data.get("applicant"))
-    
+        return Applicant(self.data.get("applicant") or {})
+
     @property
-    def uid(self) -> Union[str, None]:
+    def uid(self) -> str:
         """Returns the uid of the community membership request."""
-        return self.data.get("uid")
+        return self.data.get("uid", "")
 
 
 class CommunityMembershipRequestList:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data = data.get("communityMembershipRequestList", data)
-        except AttributeError:
-            self.data = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = (
+            data.get("communityMembershipRequestList") or []
+        )
 
     @property
-    def parser(self) -> CommunityMembershipRequest:
+    def parser(self) -> list[CommunityMembershipRequest]:
         """Returns the parser of the community membership request list."""
-        return CommunityMembershipRequest(self.data)
-    
+        return [CommunityMembershipRequest(data) for data in self.data]
+
     @property
-    def status(self) -> List[Union[int, None]]:
+    def status(self) -> list[int]:
         """Returns the status of the community membership request list."""
-        return [x.get("status") for x in self.data]
-    
+        return [x.get("status", 0) for x in self.data]
+
     @property
-    def request_id(self) -> List[Union[str, None]]:
+    def request_id(self) -> list[str]:
         """Returns the request id of the community membership request list."""
-        return [x.get("requestId") for x in self.data]
-    
+        return [x.get("requestId", "") for x in self.data]
+
     @property
-    def modified_time(self) -> List[Union[str, None]]:
+    def modified_time(self) -> list[Optional[str]]:
         """Returns the modified time of the community membership request list."""
         return [x.get("modifiedTime") for x in self.data]
-    
+
     @property
-    def comId(self) -> List[Union[int, None]]:
+    def ndcId(self) -> list[int]:
         """Returns the ndc id of the community membership request list."""
-        return [x.get("ndcId") for x in self.data]
-    
+        return [x.get("ndcId", 0) for x in self.data]
+
     @property
-    def created_time(self) -> List[Union[str, None]]:
+    def comId(self) -> list[int]:
+        """Returns the ndc id of the community membership request list."""
+        return self.ndcId
+
+    @property
+    def created_time(self) -> list[str]:
         """Returns the created time of the community membership request list."""
-        return [x.get("createdTime") for x in self.data]
-    
+        return [x.get("createdTime", "") for x in self.data]
+
     @property
-    def message(self) -> List[Union[str, None]]:
+    def message(self) -> list[Optional[str]]:
         """Returns the message of the community membership request list."""
         return [x.get("message") for x in self.data]
-    
+
     @property
     def applicant(self) -> ApplicantList:
         """Returns the applicant of the community membership request list."""
-        return ApplicantList([x.get("applicant") for x in self.data])
-    
+        return ApplicantList([x.get("applicant") or {} for x in self.data])
+
     @property
-    def uid(self) -> List[Union[str, None]]:
+    def uid(self) -> list[str]:
         """Returns the uid of the community membership request list."""
-        return [x.get("uid") for x in self.data]
-    
+        return [x.get("uid", "") for x in self.data]
+
     @property
-    def userId(self) -> List[Union[str, None]]:
+    def userId(self) -> list[str]:
         """Returns the user id of the community membership request list."""
         return self.uid
 
+
 class InvitationLog:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data: dict = data
-        except AttributeError:
-            self.data = {}
-    
-    @property
-    def created_time(self) -> Union[str, None]:
-        """Returns the created time of the invitation log."""
-        return self.data.get("createdTime")
-    
-    @property
-    def invitationId(self) -> Union[str, None]:
-        """Returns the invitation id of the invitation log."""
-        return self.data.get("invitationId")
-    
-    @property
-    def isNicknameVerified(self) -> Union[bool, None]:
-        """Returns whether the nickname is verified of the invitation log."""
-        return self.data.get("userProfile", {}).get("isNicknameVerified")
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data = data
 
     @property
-    def uid(self) -> Union[str, None]:
-        """Returns the uid of the invitation log."""
-        return self.data.get("userProfile", {}).get("uid")
-    
+    def created_time(self) -> str:
+        """Returns the created time of the invitation log."""
+        return self.data.get("createdTime", "")
+
     @property
-    def userId(self) -> Union[str, None]:
+    def invitationId(self) -> str:
+        """Returns the invitation id of the invitation log."""
+        return self.data.get("invitationId", "")
+
+    @property
+    def isNicknameVerified(self) -> bool:
+        """Returns whether the nickname is verified of the invitation log."""
+        return self.data.get("userProfile", {}).get("isNicknameVerified", False)
+
+    @property
+    def uid(self) -> str:
+        """Returns the uid of the invitation log."""
+        return self.data.get("userProfile", {}).get("uid", "")
+
+    @property
+    def userId(self) -> str:
         """Returns the user id of the invitation log."""
         return self.uid
-    
-    @property
-    def level(self) -> Union[int, None]:
-        """Returns the level of the invitation log."""
-        return self.data.get("userProfile", {}).get("level")
-    
-    @property
-    def followingStatus(self) -> Union[int, None]:
-        """Returns the following status of the invitation log."""
-        return self.data.get("userProfile", {}).get("followingStatus")
 
     @property
-    def accountMembershipStatus(self) -> Union[int, None]:
+    def level(self) -> int:
+        """Returns the level of the invitation log."""
+        return self.data.get("userProfile", {}).get("level", 0)
+
+    @property
+    def followingStatus(self) -> int:
+        """Returns the following status of the invitation log."""
+        return self.data.get("userProfile", {}).get("followingStatus", 0)
+
+    @property
+    def accountMembershipStatus(self) -> int:
         """Returns the account membership status of the invitation log."""
-        return self.data.get("userProfile", {}).get("accountMembershipStatus")
-    
+        return self.data.get("userProfile", {}).get("accountMembershipStatus", 0)
+
     @property
-    def isGlobal(self) -> Union[bool, None]:
+    def isGlobal(self) -> bool:
         """Returns whether the invitation log is global."""
-        return self.data.get("userProfile", {}).get("isGlobal")
-    
+        return self.data.get("userProfile", {}).get("isGlobal", False)
+
     @property
-    def membershipStatus(self) -> Union[int, None]:
+    def membershipStatus(self) -> int:
         """Returns the membership status of the invitation log."""
-        return self.data.get("userProfile", {}).get("membershipStatus")
-    
+        return self.data.get("userProfile", {}).get("membershipStatus", 0)
+
     @property
-    def reputation(self) -> Union[int, None]:
+    def reputation(self) -> int:
         """Returns the reputation of the invitation log."""
-        return self.data.get("userProfile", {}).get("reputation")
-    
+        return self.data.get("userProfile", {}).get("reputation", 0)
+
     @property
-    def role(self) -> Union[int, None]:
+    def role(self) -> int:
         """Returns the role of the invitation log."""
-        return self.data.get("userProfile", {}).get("role")
-    
+        return self.data.get("userProfile", {}).get("role", 0)
+
     @property
-    def ndcId(self) -> Union[int, None]:
+    def ndcId(self) -> int:
         """Returns the ndc id of the invitation log."""
-        return self.data.get("ndcId")
-    
+        return self.data.get("ndcId", 0)
+
     @property
-    def comId(self) -> Union[int, None]:
-        """Returns the com id of the invitation log."""
+    def comId(self) -> int:
+        """Returns the community id of the invitation log."""
         return self.ndcId
-    
+
     @property
-    def membersCount(self) -> Union[int, None]:
+    def membersCount(self) -> int:
         """Returns the members count of the invitation log."""
-        return self.data.get("userProfile").get("membersCount")
-    
+        return self.data.get("userProfile", {}).get("membersCount", 0)
+
     @property
-    def nickname(self) -> Union[str, None]:
+    def nickname(self) -> str:
         """Returns the nickname of the invitation log."""
-        return self.data.get("userProfile", {}).get("nickname")
-    
+        return self.data.get("userProfile", {}).get("nickname", "")
+
     @property
-    def username(self) -> Union[str, None]:
+    def username(self) -> str:
         """Returns the username of the invitation log."""
         return self.nickname
-    
+
     @property
-    def icon(self) -> Union[str, None]:
+    def icon(self) -> Optional[str]:
         """Returns the icon of the invitation log."""
         return self.data.get("userProfile", {}).get("icon")
-    
+
+
 class InvitationLogList:
-    def __init__(self, data: dict) -> None:
-        try:
-            self.data: dict = data.get("invitationLogList", data)
-        except AttributeError:
-            self.data = None
-        parser: List[InvitationLog] = [InvitationLog(x) for x in self.data]
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("invitationLogList") or []
+        parser: list[InvitationLog] = [InvitationLog(x) for x in self.data]
         self.created_time = [x.created_time for x in parser]
         self.invitationId = [x.invitationId for x in parser]
         self.isNicknameVerified = [x.isNicknameVerified for x in parser]

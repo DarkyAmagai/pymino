@@ -1,49 +1,28 @@
-from os import path
-from time import time
-from logging.handlers import RotatingFileHandler
-from logging import Logger, getLogger, Formatter, DEBUG
-from typing import Any, Callable, Optional, TypeVar, Union
-import requests
+import logging
+import os
+import time
+from collections.abc import Iterator
+from typing import Any, Optional, cast
 
-from .ext.entities import *
-from .ext.global_client import Global
-from .ext.utilities.generate import Generator
-from .ext import RequestHandler, Account, Community
+import diskcache
 
-F = TypeVar("F", bound=Callable[..., Any])
+from pymino.ext import account, entities, community, global_client, socket, utilities
 
-__all__ = (
-    "Client",
+__all__ = ("Client",)
+
+logger = logging.getLogger("pymino")
+local_cache = diskcache.Cache(
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), "cache")
 )
 
 
-class Client(Global):
+class Client(socket.WSClient, global_client.Global):
     """
     Bot class that interacts with aminoapps API.
 
     This class extends `Global` classes, allowing the client to access all global client features.
 
-    Special Attributes:
-    __slots__ : tuple
-        A tuple containing a fixed set of attributes to optimize memory usage.
-
     Attributes:
-    _debug : bool
-        Whether or not debug mode is enabled.
-    _userId : str
-        The ID of the user associated with the bot.
-    _sid : str
-        The session ID of the client.
-    _cached : bool
-        Whether the login credentials are cached.
-    _is_authenticated : bool
-        Whether or not the client is authenticated.
-    cache : Cache
-        An instance of the Cache class for caching data.
-    logger : Logger
-        An instance of the Logger class for logging.
-    is_logging : bool
-        Whether or not logging is enabled.
     community_id : Union[str, int]
         The ID of the community associated with the bot.
     generate : Generator
@@ -59,35 +38,37 @@ class Client(Global):
     profile : UserProfile
         An instance of the UserProfile class representing the bot's user profile.
     """
+
     __slots__ = (
-        '_debug',
-        '_userId',
-        '_sid',
-        '_secret',
-        '_cached',
-        '_is_authenticated',
-        'cache',
-        'logger',
-        'is_logging'
-        'community_id',
-        'generate',
-        'device_id',
-        'request',
-        'account',
-        'community',
-        'profile'
+        "__service_key__",
+        "__hash_prefix__",
+        "__device_key__",
+        "__signature_key__",
+        "_cached",
+        "_community_id",
+        "_debug",
+        "_generate",
+        "_request",
+        "_sid",
+        "_secret",
+        "_userId",
+        "account",
+        "device_id",
+        "profile",
     )
+
     def __init__(
         self,
-        community_id: Optional[Union[str, int]] = None,
-        hash_prefix: Union[str, int] = 52,
+        community_id: Optional[int] = None,
+        hash_prefix: str = "52",
         device_key: str = "AE49550458D8E7C51D566916B04888BFB8B3CA7D",
-        signature_key: str  = "EAB4F1B9E3340CD1631EDE3B587CC3EBEDF1AFA9",
-        service_key: str = None,
-        **kwargs
-        ) -> None:
+        signature_key: str = "EAB4F1B9E3340CD1631EDE3B587CC3EBEDF1AFA9",
+        service_key: Optional[str] = None,
+        device_id: Optional[str] = None,
+        proxy: Optional[str] = None,
+    ) -> None:
         """
-        `Client` - This is the main client.
+        This is the main client.
 
         `**Parameters**``
         - `**kwargs` - any other parameters to use for the client.
@@ -96,7 +77,7 @@ class Client(Global):
         - `hash_prefix` - The hash prefix to use for the bot. `Defaults` to `19`.
         - `device_key` - The device key to use for the bot.
         - `signature_key` - The signature key to use for the bot.
-        
+
         ----------------------------
         Why use `Client` over `Bot`?
 
@@ -111,7 +92,7 @@ class Client(Global):
 
         `**NON-AUTH EXAMPLE**`
         ```python
-        # This method does not require authentication, so it will work without logging in.    
+        # This method does not require authentication, so it will work without logging in.
 
         from pymino import Client
 
@@ -127,7 +108,7 @@ class Client(Global):
 
         How do I login with `Client`?
             - You can login with `Client` by using the `login` method.
-            
+
         `**Login Example**`
 
         ```python
@@ -188,49 +169,38 @@ class Client(Global):
         )
         ```
         """
-        self.__local_cache__:       Cache = Cache(f"{path.dirname(path.realpath(__file__))}/cache")
-        self.__device_key__:        str = self.__local_cache__.get("device_key", device_key)
-        self.__signature_key__:     str = self.__local_cache__.get("signature_key", signature_key)
-        self.__key__:       str = self.__local_cache__.get("KEY", service_key)
-        if not all([self.__device_key__, self.__signature_key__]):
-            raise MissingDeviceKeyOrSignatureKey
-        if not self.__key__:
-            raise MissingServiceKey
-        self._debug:            bool = check_debugger()
-        self._is_authenticated: bool = False
-        self._userId:           str = None
-        self._sid:              str = None
-        self._secret:           str = None
-        self._cached:           bool = False
-        self.cache:             Cache = Cache("cache")
-        self.logger:            Logger = self._create_logger() if kwargs.get("debug_log") else None
-        self.is_logging:        bool = bool(self.logger)
-        self.community_id:      Optional[str] = community_id or kwargs.get("comId")
-        self.generate:          Generator = Generator(
-                                prefix=hash_prefix,
-                                device_key=self.__device_key__,
-                                signature_key=self.__signature_key__,
-                                KEY=self.__key__
-                                )
-        self.device_id:         Optional[str] = kwargs.get("device_id") or self.generate.device_id()
-        self.request:           RequestHandler = RequestHandler(
-                                self,
-                                proxy=kwargs.get("proxy"),
-                                generator=self.generate,
-                                KEY=self.__key__
-                                )
-        self.account:           Account = Account(
-                                session=self.request
-                                )
-        self.community:         Community = Community(
-                                bot=self,
-                                session=self.request,
-                                community_id=self.community_id
-                                )
-        
+        with local_cache:
+            hash_prefix = local_cache.get("hash_prefix", hash_prefix)
+            device_key = local_cache.get("device_key", device_key)
+            signature_key = local_cache.get("signature_key", signature_key)
+            service_key = local_cache.get("service_key", service_key)
+        if service_key and hash_prefix and device_key and signature_key:
+            self.__service_key__ = service_key
+            self.__hash_prefix__ = hash_prefix
+            self.__device_key__ = device_key
+            self.__signature_key__ = signature_key
+        else:
+            raise entities.MissingDeviceKeyOrSignatureKey
+        self.debug = entities.check_debugger()
+        self.userId = None
+        self.sid = None
+        self.secret = None
+        self._cached: bool = False
+        self.community_id = community_id
+        self.generate = utilities.Generator(
+            prefix=self.__hash_prefix__,
+            device_key=self.__device_key__,
+            signature_key=self.__signature_key__,
+            key=self.__service_key__,
+        )
+        self.device_id = device_id or self.generate.device_id()
+        self.proxy = proxy
+        self.request = utilities.RequestHandler(self, self.generate)
+        self.account = account.Account(session=self.request)
+        self.profile = entities.UserProfile({})
         super().__init__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Returns a string representation of the Client object.
 
@@ -239,7 +209,7 @@ class Client(Global):
         """
         return f"Client(community_id={self.community_id}, device_id={self.device_id})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns a user-friendly string representation of the Client object.
 
@@ -248,7 +218,7 @@ class Client(Global):
         """
         return f"Client(community_id={self.community_id}, device_id={self.device_id})"
 
-    def __iter__(self) -> iter:
+    def __iter__(self) -> Iterator[str]:
         """
         Allows iteration over the Client object.
 
@@ -256,6 +226,60 @@ class Client(Global):
         :rtype: iter
         """
         return iter(self.__slots__)
+
+    @property
+    def command_prefix(self) -> str:
+        return self._command_prefix
+
+    @command_prefix.setter
+    def command_prefix(self, value: str) -> None:
+        self._command_prefix = value
+
+    @property
+    def intents(self) -> bool:
+        return self._intents
+
+    @intents.setter
+    def intents(self, value: bool) -> None:
+        self._intents = value
+
+    @property
+    def community(self) -> community.Community:
+        if not self.userId:
+            raise entities.NotLoggedIn()
+        return community.Community(self)
+
+    @property
+    def community_id(self) -> Optional[int]:
+        return self._community_id
+
+    @community_id.setter
+    def community_id(self, value: Optional[int]) -> None:
+        self._community_id = value
+
+    @property
+    def proxy(self) -> Optional[str]:
+        return self._proxy
+
+    @proxy.setter
+    def proxy(self, value: Optional[str]) -> None:
+        self._proxy = value
+
+    @property
+    def generate(self) -> utilities.Generator:
+        return self._generate
+
+    @generate.setter
+    def generate(self, value: utilities.Generator) -> None:
+        self._generate = value
+
+    @property
+    def request(self) -> utilities.RequestHandler:
+        return self._request
+
+    @request.setter
+    def request(self, value: utilities.RequestHandler) -> None:
+        self._request = value
 
     @property
     def debug(self) -> bool:
@@ -300,31 +324,11 @@ class Client(Global):
 
         This property returns whether or not the client is authenticated. The client is authenticated after logging in to
         Amino and receiving a valid session ID.
-
-        **Note:** This property only returns the authentication state and cannot be used to set the authentication state. To
-        set the authentication state, use the `self._is_authenticated` attribute directly.
         """
-        return self._is_authenticated
-
-    @is_authenticated.setter
-    def is_authenticated(self, value: bool) -> None:
-        """
-        Sets the authentication state of the client.
-
-        :param value: True to authenticate the client, False to deauthenticate it.
-        :type value: bool
-        :return: None
-
-        This setter sets the authentication state of the client. The client is authenticated after logging in to Amino and
-        receiving a valid session ID.
-
-        **Note:** This setter only sets the authentication state and cannot be used to retrieve the authentication state. To
-        retrieve the authentication state, use the `self.is_authenticated` property.
-        """
-        self._is_authenticated = value
+        return bool(self.sid and self.userId)
 
     @property
-    def userId(self) -> str:
+    def userId(self) -> Optional[str]:
         """
         The ID of the user associated with the client.
 
@@ -340,7 +344,7 @@ class Client(Global):
         return self._userId
 
     @userId.setter
-    def userId(self, value: str) -> None:
+    def userId(self, value: Optional[str]) -> None:
         """
         Sets the ID of the user associated with the client.
 
@@ -357,7 +361,7 @@ class Client(Global):
         self._userId = value
 
     @property
-    def sid(self) -> str:
+    def sid(self) -> Optional[str]:
         """
         The session ID of the client.
 
@@ -373,7 +377,7 @@ class Client(Global):
         return self._sid
 
     @sid.setter
-    def sid(self, value: str) -> None:
+    def sid(self, value: Optional[str]) -> None:
         """
         Sets the session ID of the client.
 
@@ -390,7 +394,7 @@ class Client(Global):
         self._sid = value
 
     @property
-    def secret(self) -> str:
+    def secret(self) -> Optional[str]:
         """
         The secret of the client.
 
@@ -404,9 +408,9 @@ class Client(Global):
         `self._secret` attribute directly.
         """
         return self._secret
-    
+
     @secret.setter
-    def secret(self, value: str) -> None:
+    def secret(self, value: Optional[str]) -> None:
         """
         Sets the secret of the client.
 
@@ -422,74 +426,11 @@ class Client(Global):
         """
         self._secret = value
 
-    def _log(self, message: str) -> None:
-        """
-        Logs a message to debug.log
-
-        :param message: The message to log.
-        :type message: str
-        :return: None
-
-        """
-        if self.is_logging:
-            try:
-                self.logger.debug(message)
-            except Exception:
-                self.is_logging = False
-
-    def _create_logger(self) -> Logger:
-        """
-        Creates a logger object.
-        
-        :return: A logger object.
-        :rtype: Logger
-        
-        This method creates a logger object. The logger object is used to log debug information to debug.log.
-        """
-        logger = getLogger("pymino")
-        logger.setLevel(DEBUG)
-
-        max_log_size = 10 * 1024 * 1024
-
-        file_handler = RotatingFileHandler("debug.log", maxBytes=max_log_size, backupCount=0, encoding="utf-8")
-        file_handler.setLevel(DEBUG)
-
-        formatter = Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        file_handler.setFormatter(formatter)
-
-        logger.addHandler(file_handler)
-
-        return logger
-    
-    def authenticated(func: F) -> F:
-        """
-        A decorator that ensures the user is authenticated before running the decorated function.
-
-        :param func: The function to be decorated.
-        :type func: Callable
-        :raises LoginRequired: If the user is not authenticated.
-        :return: The result of calling the decorated function.
-        :rtype: Any
-
-        **Example usage:**
-
-        >>> client = Client()
-        >>> client.login(email="example@example.com", password="password")
-
-        >>> @authenticated
-        >>> def my_function(self):
-        >>>     # Function code
-        """
-        def wrapper(*args, **kwargs) -> Any:
-            try:
-                if not args[0].is_authenticated:
-                    raise LoginRequired
-                return func(*args, **kwargs)
-            except AttributeError:
-                raise LoginRequired
-        return wrapper
-
-    def fetch_community_id(self, community_link: str, set_community_id: Optional[bool] = True) -> int:
+    def fetch_community_id(
+        self,
+        community_link: str,
+        set_community_id: Optional[bool] = True,
+    ) -> int:
         """
         Fetches the community ID associated with the provided community link.
 
@@ -512,25 +453,24 @@ class Client(Global):
         **Note:** The community ID is required for making API calls related to a specific community, such as posting or
         retrieving posts. It is recommended to use this function if you do not already know the community ID.
         """
-        KEY = str((community_link, "comId"))
-        if not self.cache.get(KEY):
-            self.cache.set(KEY, CCommunity(self.request.handler(
-                method="GET", url=f"/g/s/link-resolution?q={community_link}")
-                ).comId)
-            
-        community_id = self.cache.get(KEY)
-
-        if set_community_id:
-            self.set_community_id(community_id)
+        key = str((community_link, "comId"))
+        with entities.cache as cache:
+            community_id = cache.get(key)
+            if not community_id:
+                object_info = self.fetch_object_info(community_link)
+                community_id = object_info.comId
+                cache.set(key, community_id)
+            if set_community_id:
+                self.set_community_id(community_id)
 
         return community_id
 
-    def set_community_id(self, community_id: Union[str, int]) -> int:
+    def set_community_id(self, community_id: int) -> int:
         """
         Sets the community ID on the client instance and the Community object.
 
         :param community_id: The community ID to set.
-        :type community_id: Union[str, int]
+        :type community_id: int
         :return: The community ID that was set.
         :rtype: int
 
@@ -545,18 +485,16 @@ class Client(Global):
         retrieving posts. It is recommended to use the `fetch_community_id` function if you do not already know the
         community ID.
         """
-        try:
-            if community_id is not None and not isinstance(community_id, int):
-                community_id = int(community_id)
-        except VerifyCommunityIdIsCorrect as e:
-            raise VerifyCommunityIdIsCorrect from e
-
         self.community_id = community_id
-        self.community.community_id = community_id
-
         return community_id
 
-    def authenticate(self, email: str=None, password: str=None, secret: str=None, device_id: str=None) -> dict:
+    def authenticate(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        secret: Optional[str] = None,
+        device_id: Optional[str] = None,
+    ) -> dict[str, Any]:
         """
         Authenticates the bot with the provided email and password.
 
@@ -572,36 +510,37 @@ class Client(Global):
         """
         if device_id:
             self.device_id = device_id
-        
-        self.request.device = self.device_id
-
-        data = {
-            "secret": secret or f"0 {password}",
-            "clientType": 100,
-            "systemPushEnabled": 0,
-            "timestamp": int(time() * 1000),
-            "locale": "en_US",
-            "action": "normal",
-            "bundleID": "com.narvii.master",
-            "timezone": -480,
-            "deviceID": self.device_id,
-            "email": email,
-            "v": 2,
-            "clientCallbackURL": "narviiapp://default"
-        }
-
-        response = self.make_request(
-                method="POST",
-                url = "/g/s/auth/login",
-                data=data
-                )            
-
-        if not response.get('sid'):
-            raise exceptions.AccountLoginRatelimited()
+        response = self.request.handler(
+            "POST",
+            "/g/s/auth/login",
+            data={
+                "secret": secret or f"0 {password}",
+                "clientType": 100,
+                "systemPushEnabled": 0,
+                "timestamp": int(time.time() * 1000),
+                "locale": "en_US",
+                "action": "normal",
+                "bundleID": "com.narvii.master",
+                "timezone": -480,
+                "deviceID": self.device_id,
+                "email": email,
+                "v": 2,
+                "clientCallbackURL": "narviiapp://default",
+            },
+        )
+        if not response.get("sid"):
+            raise entities.AccountLoginRatelimited()
 
         return response
 
-    def _login_handler(self, email: str=None, password: str=None, secret: str=None, device_id: str=None, use_cache: bool=True) -> dict:
+    def _login_handler(
+        self,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        secret: Optional[str] = None,
+        device_id: Optional[str] = None,
+        use_cache: bool = True,
+    ) -> dict[str, Any]:
         """
         Authenticates the user with the provided email and password.
 
@@ -617,7 +556,7 @@ class Client(Global):
         :type use_cache: bool
         :return: A dictionary containing the login response from the server.
         :rtype: dict
-        
+
         The function first checks if cached login credentials are available for the provided email. If so, it uses the cached
         session ID and device ID to fetch the account details from the server. If the server returns an exception, it falls
         back to authenticating with the provided email and password, and the device ID from the cache.
@@ -629,58 +568,54 @@ class Client(Global):
 
         **Note:** This function should not be called directly. Instead, use the `login` function to authenticate the user.
         """
-        if use_cache and cache_exists(email=email):
-            cached = fetch_cache(email=email)
-            
-            self.device_id = cached[1]
-            self.request.device = cached[1]
-            self.sid: str = cached[0]
-            self.request.sid = cached[0]
-            self.userId: str = parse_auid(cached[0])
-
+        if use_cache:
+            if email:
+                cached = entities.fetch_cache(email=email)
+                if cached:
+                    self.sid = cached[0]
+                    device_id = cached[1]
+                if self.sid:
+                    self.userId = entities.parse_auid(self.sid)
             try:
-                response: dict = self.fetch_account()
+                response = self.fetch_account()
             except Exception:
-                response: dict = self.authenticate(
+                response = self.authenticate(
                     email=email,
                     password=password,
-                    device_id=cached[1]
-                    )
-
+                    secret=secret,
+                    device_id=device_id,
+                )
         else:
             self.sid = None
             self._cached = True
-            response: dict = self.authenticate(
+            response = self.authenticate(
                 email=email,
                 password=password,
                 secret=secret,
-                device_id=device_id
-                )
-        
+                device_id=device_id,
+            )
         self.request.email = email
-        self.request.password = password            
+        self.request.password = password
 
         return response
 
-    def call_amino_certificate(self):
-        response = requests.get(
+    def call_amino_certificate(self) -> None:
+        response = self.request.http_handler.get(
             "https://app.pymino.site/amino_certificate",
             params={
-                "key": self.__key__,
-                "user_id": self.userId
-            }
+                "key": self.__service_key__,
+                "user_id": self.userId,
+            },
         )
-        if response.status_code == 200:
-            response = self.make_request(
-                "POST",
-                "/g/s/security/public_key",
-                response.json()
-            )
-            is_ok = lambda r: r.get("api:statuscode") == 0
-            if not is_ok(response):
-                raise Exception(str(response))
-        else:
+        if response.status_code != 200:
             raise Exception(response.text)
+        response = self.request.handler(
+            "POST",
+            "/g/s/security/public_key",
+            data=response.json(),
+        )
+        if response.get("api:statuscode") != 0:
+            raise Exception(str(response))
 
     def login(
         self,
@@ -689,8 +624,8 @@ class Client(Global):
         secret: Optional[str] = None,
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
-        use_cache: bool = True
-        ) -> dict:
+        use_cache: bool = True,
+    ) -> dict[str, Any]:
         """
         Logs in to the client using the provided credentials.
 
@@ -716,14 +651,12 @@ class Client(Global):
         >>> client = Client()
         >>> client.login(email="example@example.com", password="password")
         """
-
-        if not any([email, password, sid, secret]):
-            raise MissingEmailPasswordOrSid
+        if not ((email and password) or sid or secret):
+            raise entities.MissingEmailPasswordOrSid
 
         if sid:
             self.sid = sid
-            self.request.sid = sid
-            self.userId = parse_auid(sid)
+            self.userId = entities.parse_auid(sid)
             response = self.fetch_account()
         else:
             response = self._login_handler(
@@ -731,11 +664,11 @@ class Client(Global):
                 password=password,
                 secret=secret,
                 device_id=device_id,
-                use_cache=use_cache
-                )
+                use_cache=use_cache,
+            )
 
         if not response:
-            raise LoginFailed
+            raise entities.LoginFailed
 
         return self._run(response)
 
@@ -743,12 +676,13 @@ class Client(Global):
         self,
         email: Optional[str] = None,
         password: Optional[str] = None,
+        secret: Optional[str] = None,
         sid: Optional[str] = None,
         device_id: Optional[str] = None,
-        use_cache: bool = True
-    ) -> None:
+        use_cache: bool = True,
+    ) -> dict[str, Any]:
         """
-        Logs in to the client and starts running it. 
+        Logs in to the client and starts running it.
 
         If authentication is successful, the bot will be logged in and the client will be ready to use.
 
@@ -772,9 +706,16 @@ class Client(Global):
         >>> client = Client()
         >>> client.run(email="example@example.com", password="password")
         """
-        return self.login(email=email, password=password, sid=sid, device_id=device_id, use_cache=use_cache)
+        return self.login(
+            email=email,
+            password=password,
+            secret=secret,
+            sid=sid,
+            device_id=device_id,
+            use_cache=use_cache,
+        )
 
-    def _run(self, response: dict) -> dict:
+    def _run(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Processes the response from a successful login attempt and sets up the authenticated client.
 
@@ -796,36 +737,39 @@ class Client(Global):
         >>> response = client.authenticate(email="example@example.com", password="password")
         >>> client._run(response)
         """
-        if response.get("api:statuscode") != 0: input(response), exit()
-
-        if not hasattr(self, "profile"): 
-            self.profile: UserProfile = UserProfile(response) 
-
+        if response.get("api:statuscode") != 0:
+            input(response)
+            exit()
+        if not self.profile:
+            self.profile = entities.UserProfile(response)
         if not self.sid:
-            self.sid: str = response.get("sid")
+            self.sid = cast(str, response.get("sid"))
 
-        self.userId: str = self.profile.userId
-        self.community.userId: str = self.userId
-        self.request.sid: str = self.sid
-        self.request.userId: str = self.userId
-        self._secret: str = response.get("secret")
-        
-        if hasattr(self.request, "email") and self._cached:
-            cache_login(email=self.request.email, device=self.device_id, sid=self.sid)
+        self.userId = self.profile.userId
+        self.secret = response.get("secret")
+        if self.request.email and self._cached:
+            entities.cache_login(
+                email=self.request.email, device=self.device_id, sid=self.sid
+            )
 
         if not self.is_authenticated:
             self._is_authenticated = True
-            self._log(f"Logged in as {self.profile.username} ({self.profile.userId})")
+            logger.debug(
+                f"Logged in as {self.profile.username} ({self.profile.userId})"
+            )
         else:
-            self._log(f"Reconnected as {self.profile.username} ({self.profile.userId})")
+            logger.debug(
+                f"Reconnected as {self.profile.username} ({self.profile.userId})"
+            )
 
-        self.cache.set(key=f"{self.userId}-account", value=response, expire=43200)
+        with entities.cache as cache:
+            cache.set(f"{self.userId}-account", response, expire=43200)
 
         self.__set_keys__()
         self.call_amino_certificate()
         return response
-    
-    def __set_keys__(self):
+
+    def __set_keys__(self) -> None:
         """
         Sets the device key and signature key on the client instance.
 
@@ -835,11 +779,13 @@ class Client(Global):
         This method is called internally by the `login` and `run` methods after a successful login attempt.
         It sets the device key and signature key on the client instance.
         """
-        def check_keys(key: str, value: str) -> None:
-            self.__local_cache__.set(key=key, value=value) if self.__local_cache__.get(key) != value else None
-            
-        for key, value in {"device_key": self.__device_key__, "signature_key": self.__signature_key__}.items():
-            check_keys(key, value)
+        with local_cache:
+            for key, value in (
+                ("device_key", self.__device_key__),
+                ("signature_key", self.__signature_key__),
+            ):
+                if local_cache.get(key) != value:
+                    local_cache.set(key=key, value=value)
 
     def reset_keys(self) -> None:
         """
@@ -850,12 +796,13 @@ class Client(Global):
 
         This method resets the device key and signature key on the client instance.
         """
-        for key in ["device_key", "signature_key"]:
-            self.__local_cache__.delete(key)
-        raise MissingDeviceKeyOrSignatureKey
+        with local_cache:
+            for key in ["device_key", "signature_key"]:
+                local_cache.delete(key)
+        raise entities.MissingDeviceKeyOrSignatureKey
 
-    @authenticated
-    def disconnect_google(self, password: str) -> dict:
+    @utilities.authenticated
+    def disconnect_google(self, password: str) -> dict[str, Any]:
         """
         Disconnects the user's Google account from their account on Amino.
 
@@ -873,17 +820,17 @@ class Client(Global):
         the user wants to use a different Google account or does not want to use Google to sign in anymore.
         """
         return self.request.handler(
-            method="POST",
-            url="/g/s/auth/disconnect",
+            "POST",
+            "/g/s/auth/disconnect",
             data={
                 "deviceID": self.device_id,
                 "secret": f"0 {password}",
                 "type": 30,
-                "timestamp": int(time() * 1000),
-                }
-            )
+                "timestamp": int(time.time() * 1000),
+            },
+        )
 
-    @authenticated
+    @utilities.authenticated
     def logout(self) -> None:
         """
         Logs out the user by clearing the session ID and user ID on the client instance.
@@ -903,12 +850,11 @@ class Client(Global):
         **Note:** After calling this function, the client will no longer be authenticated and will need to log in again to
         make authenticated API calls.
         """
-        for key in ["sid", "userId", "community.userId", "request.sid", "request.userId", "is_authenticated"]:
-            setattr(self, key, None)
-        return None
+        self.sid = None
+        self.userId = None
 
-    @authenticated
-    def delete_request(self, email: str, password: str) -> ApiResponse:
+    @utilities.authenticated
+    def delete_request(self, email: str, password: str) -> entities.ApiResponse:
         """
         Sends a request to delete the authenticated user's account.
 
@@ -925,8 +871,8 @@ class Client(Global):
         """
         return self.account.delete_request(email=email, password=password)
 
-    @authenticated
-    def delete_request_cancel(self, email: str, password: str) -> ApiResponse:
+    @utilities.authenticated
+    def delete_request_cancel(self, email: str, password: str) -> entities.ApiResponse:
         """
         Cancels a previously requested account deletion for the authenticated user.
 
@@ -943,7 +889,7 @@ class Client(Global):
         """
         return self.account.delete_request_cancel(email=email, password=password)
 
-    def check_device(self, device_id: str) -> ApiResponse:
+    def check_device(self, device_id: str) -> entities.ApiResponse:
         """
         Checks if the given device ID is valid.
 
@@ -962,7 +908,8 @@ class Client(Global):
         """
         return self.account.check_device(deviceId=device_id)
 
-    def fetch_account(self) -> dict:
+    @utilities.authenticated
+    def fetch_account(self) -> dict[str, Any]:
         """
         Fetches the account information for the authenticated user.
 
@@ -980,44 +927,22 @@ class Client(Global):
 
         The method returns a dictionary containing the user's account information.
         """
-        if cached_info := self.cache.get(f"{self.userId}-account"):
-            return cached_info
-
-        profile = self.make_request(
-            method="GET",
-            url=f"/g/s/user-profile/{self.userId}"
+        with entities.cache as cache:
+            cached_info = cache.get(f"{self.userId}-account")
+            if cached_info:
+                return cached_info
+            profile = self.request.handler(
+                "GET",
+                f"/g/s/user-profile/{self.userId}",
             )
-        self.profile = UserProfile(profile)
-        account = self.make_request(
-            method="GET",
-            url="/g/s/account"
-            )
-
-        account.update(profile)
-        self.cache.set(key=f"{self.userId}-account", value=account, expire=43200)
-
+            self.profile = entities.UserProfile(profile)
+            account = self.request.handler("GET", "/g/s/account")
+            account.update(profile)
+            cache.set(key=f"{self.userId}-account", value=account, expire=21600)
         return account
 
-    @authenticated
-    def upload_image(self, image: str) -> str:
-        """
-        Uploads an image to amino servers.
-
-        :param image: The base64-encoded image data.
-        :type image: str
-        :return: The URL of the uploaded image.
-        :rtype: str
-
-        This method uploads an image to amino servers. The image data is passed as a string argument. The method calls the
-        `upload_image` method of the `account` object with the `image` parameter set to the given image data. The result is
-        a `mediaValue` object that contains the URL of the uploaded image.
-
-        The method returns the URL of the uploaded image.
-        """
-        return self.account.upload_image(image=image)
-
-    @authenticated
-    def fetch_profile(self) -> UserProfile:
+    @utilities.authenticated
+    def fetch_profile(self) -> entities.UserProfile:
         """
         Fetches the user profile of the authenticated user.
 
@@ -1030,10 +955,10 @@ class Client(Global):
 
         The method returns the `UserProfile` object.
         """
-        return self.account.fetch_profile(self.userId)
+        return self.account.fetch_profile(cast(str, self.userId))
 
-    @authenticated
-    def set_amino_id(self, amino_id: str, **kwargs) -> ApiResponse:
+    @utilities.authenticated
+    def set_amino_id(self, amino_id: str) -> entities.ApiResponse:
         """
         Sets the Amino ID of the authenticated user.
 
@@ -1052,14 +977,10 @@ class Client(Global):
         The method returns the `ApiResponse` object obtained from calling the `set_amino_id` method of the `account` object.
         The response will return a `0` status code if the Amino ID is set successfully.
         """
-        if "aminoId" in kwargs:
-            self.log("aminoId is deprecated, use amino_id instead", "warning")
-            amino_id = kwargs.get("aminoId")
+        return self.account.set_amino_id(amino_id)
 
-        return self.account.set_amino_id(amino_id=amino_id)
-
-    @authenticated
-    def fetch_wallet(self) -> Wallet:
+    @utilities.authenticated
+    def fetch_wallet(self) -> entities.Wallet:
         """
         Fetches the wallet information for the authenticated user.
 
@@ -1074,7 +995,11 @@ class Client(Global):
         """
         return self.account.fetch_wallet()
 
-    def request_security_validation(self, email: str, reset_password: bool = False, **kwargs) -> ApiResponse:
+    def request_security_validation(
+        self,
+        email: str,
+        reset_password: bool = False,
+    ) -> entities.ApiResponse:
         """
         Requests security validation for the provided email address.
 
@@ -1096,13 +1021,12 @@ class Client(Global):
 
         The method returns an `ApiResponse` object containing the server's response to the security validation request.
         """
-        if "resetPassword" in kwargs:
-            self.log("resetPassword is deprecated, use reset_password instead", "warning")
-            reset_password = kwargs.get("resetPassword")
+        return self.account.request_security_validation(
+            email=email,
+            reset_password=reset_password,
+        )
 
-        return self.account.request_security_validation(email=email, reset_password=reset_password)
-
-    def activate_email(self, email: str, code: str) -> ApiResponse:
+    def activate_email(self, email: str, code: str) -> entities.ApiResponse:
         """
         Activates the user's email using the provided verification code.
 
@@ -1119,8 +1043,14 @@ class Client(Global):
         """
         return self.account.activate_email(email=email, code=code)
 
-    @authenticated
-    def reset_password(self, email: str, new_password: str, code: str, **kwargs) -> ResetPassword:
+    @utilities.authenticated
+    def reset_password(
+        self,
+        email: str,
+        new_password: str,
+        code: str,
+        device_id: Optional[str] = None,
+    ) -> entities.ResetPassword:
         """
         Resets the user's password using the provided email, verification code, and new password.
 
@@ -1137,8 +1067,9 @@ class Client(Global):
         verification code, and new password parameters are used to authenticate the request. The method returns a `ResetPassword`
         object containing the user's session ID and user ID.
         """
-        if "newPassword" in kwargs:
-            self.log("newPassword is deprecated, use new_password instead", "warning")
-            new_password = kwargs.get("newPassword")
-
-        return self.account.reset_password(email=email, new_password=new_password, code=code)
+        return self.account.reset_password(
+            email=email,
+            new_password=new_password,
+            code=code,
+            device_id=device_id or self.device_id,
+        )

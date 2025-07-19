@@ -1,15 +1,10 @@
-from colorama import Fore, Style
+import colorama
 
-class Menu:
-    def __init__(self, console):
-        """
-        The Menu class handles the main menu of the application.
+from pymino.ext import console
 
-        :param console: An instance of the Console class for inter-component communication.
-        :type console: Console
-        """
-        self.console = console
-        self.menu_logo = """
+__all__ = ("Menu",)
+
+MENU_LOGO = """
 ██████╗ ██╗   ██╗███╗   ███╗██╗███╗   ██╗ ██████╗ 
 ██╔══██╗╚██╗ ██╔╝████╗ ████║██║████╗  ██║██╔═══██╗
 ██████╔╝ ╚████╔╝ ██╔████╔██║██║██╔██╗ ██║██║   ██║
@@ -17,15 +12,18 @@ class Menu:
 ██║        ██║   ██║ ╚═╝ ██║██║██║ ╚████║╚██████╔╝
 ╚═╝        ╚═╝   ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝ 
 """
-        self.menu_logo = Fore.MAGENTA + self.menu_logo + Style.RESET_ALL
-        self.author = "CONSOLE v0.1                    by @forevercynical"
-        self.author = Fore.LIGHTYELLOW_EX + self.author + Style.RESET_ALL
+
+
+class Menu:
+    def __init__(self, console: console.Console) -> None:
+        self.console = console
+        self.menu_logo = colorama.Fore.MAGENTA + MENU_LOGO + colorama.Style.RESET_ALL
+        self.author = (
+            colorama.Fore.LIGHTYELLOW_EX + "CONSOLE v0.1                    by @forevercynical" + colorama.Style.RESET_ALL)
         self.menu_logo += self.author
 
-    def display(self):
-        """
-        Displays the main menu options to the user and processes their input.
-        """
+    def display(self) -> None:
+        """Displays the main menu options to the user and processes their input."""
         self.console.clear()
         self.console.print(self.menu_logo)
         self.console.print(self.welcome_screen())
@@ -45,14 +43,15 @@ class Menu:
         }
         if choice in menu:
             self.console.clear()
-            menu[choice]()
+            try:
+                menu[choice]()
+            except Exception as exc:
+                self.console.on_error(repr(exc))
         else:
             self.console.print("Invalid option. Please try again.")
-            self.display()
 
-    def welcome_screen(self):
-        """
-        Returns a string containing the welcome message for the user.
+    def welcome_screen(self) -> str:
+        """Returns a string containing the welcome message for the user.
 
         :return: A string containing the welcome message for the user.
         :rtype: str

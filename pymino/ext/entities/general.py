@@ -1,477 +1,906 @@
-from re import findall
-from typing import Union, List
+import re
+from collections.abc import Iterator
+from typing import Any, Literal, Optional, cast
 
-from .exceptions import InvalidLink
-from .api_response import ApiResponse
-from .userprofile import UserProfile, UserProfileList
+from pymino.ext.entities import api_response, userprofile
+
+__all__ = (
+    'Authenticate',
+    'CBlog',
+    'CBlogList',
+    'CChatMembers',
+    'CCommunity',
+    'CCommunityList',
+    'CWiki',
+    'CWikiList',
+    'CheckIn',
+    'CommunityInvitation',
+    'Coupon',
+    'FeaturedBlog',
+    'FeaturedBlogs',
+    'FetchNotification',
+    'GlobalNotificationList',
+    'InvitationId',
+    'Notification',
+    'NotificationList',
+    'QuizRanking',
+    'QuizRankingList',
+    'ResetPassword',
+    'Themepack',
+    'Wallet',
+)
 
 
 class CommunityInvitation:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data                = data
-        self.communityInvitation = {}
-        self.status              = None
-        self.duration            = None
-        self.invitationId        = None
-        self.link                = None
-        self.modifiedTime        = None
-        self.ndcId               = None
-        self.createdTime         = None
-        self.inviteCode          = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data
+        self.communityInvitation: dict[str, Any] = self.data.get("communityInvitation", data)
 
-        if isinstance(data, dict):
-            self.communityInvitation:   dict = self.data.get("communityInvitation", self.communityInvitation)
-            self.status:                Union[int, None] = self.communityInvitation.get("status", self.status)
-            self.duration:              Union[str, None] = self.communityInvitation.get("duration", self.duration)
-            self.invitationId:          Union[str, None] = self.communityInvitation.get("invitationId", self.invitationId)
-            self.link:                  Union[str, None] = self.communityInvitation.get("link", self.link)
-            self.modifiedTime:          Union[str, None] = self.communityInvitation.get("modifiedTime", self.modifiedTime)
-            self.ndcId:                 Union[int, None] = self.communityInvitation.get("ndcId", self.ndcId)
-            self.createdTime:           Union[str, None] = self.communityInvitation.get("createdTime", self.createdTime)
-            self.inviteCode:            Union[str, None] = self.communityInvitation.get("inviteCode", self.inviteCode)
+    def __bool__(self) -> bool:
+        return bool(self.invitationId)
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def status(self) -> int:
+        return self.communityInvitation.get("status", 0)
+
+    @property
+    def duration(self) -> Optional[str]:
+        return self.communityInvitation.get("duration")
+
+    @property
+    def invitationId(self) -> str:
+        return self.communityInvitation.get("invitationId", '')
+
+    @property
+    def link(self) -> str:
+        return self.communityInvitation.get("link", '')
+
+    @property
+    def modifiedTime(self) -> Optional[str]:
+        return self.communityInvitation.get("modifiedTime")
+
+    @property
+    def ndcId(self) -> int:
+        return self.communityInvitation.get("ndcId", 0)
+
+    @property
+    def createdTime(self) -> str:
+        return self.communityInvitation.get("createdTime", '')
+
+    @property
+    def inviteCode(self) -> str:
+        return self.communityInvitation.get("inviteCode", '')
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class CheckIn:
-    def __init__(self, data: Union[dict, str]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
-        self.checkInHistory = {}
-        self.consecutiveCheckInDays = None
-        self.hasCheckInToday = None
-        self.hasAnyCheckIn = None
-        self.history = {}
-        self.userProfile = {}
 
-        if isinstance(data, dict):
-            self.checkInHistory:          dict = self.data.get("checkInHistory", self.checkInHistory)
-            self.consecutiveCheckInDays:  Union[int, None] = self.checkInHistory.get("consecutiveCheckInDays", self.consecutiveCheckInDays)
-            self.hasCheckInToday:         Union[bool, None] = self.checkInHistory.get("hasCheckInToday", self.hasCheckInToday)
-            self.hasAnyCheckIn:           Union[bool, None] = self.checkInHistory.get("hasAnyCheckIn", self.hasAnyCheckIn)
-            self.history:                 dict = self.checkInHistory.get("history", self.history)
-            try:
-                self.userProfile:         Union[dict, None] = self.data.get("userProfile", self.userProfile)
-            except Exception:
-                self.userProfile:         Union[dict, None] = None
+    def __bool__(self) -> bool:
+        return bool(self.data)
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def checkInHistory(self) -> dict[str, Any]:
+        return self.data.get("checkInHistory") or {}
+
+    @property
+    def consecutiveCheckInDays(self) -> int:
+        return self.checkInHistory.get("consecutiveCheckInDays") or 0
+
+    @property
+    def hasCheckInToday(self) -> bool:
+        return self.checkInHistory.get("hasCheckInToday", False)
+
+    @property
+    def hasAnyCheckIn(self) -> bool:
+        return self.checkInHistory.get("hasAnyCheckIn", False)
+
+    @property
+    def history(self) -> dict[str, Any]:
+        return self.checkInHistory.get("history") or {}
+
+    @property
+    def userProfile(self) -> dict[str, Any]:
+        return self.data.get("userProfile") or {}
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class InvitationId:
-    def __init__(self, data: Union[dict, str]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
-        self.status = None
-        self.duration = None
-        self.invitationId = None
-        self.link = None
-        self.modifiedTime = None
-        self.ndcId = None
-        self.createdTime = None
-        self.inviteCode = None
 
-        if isinstance(data, dict):
-            self.status:        Union[int, None] = self.data.get("status", self.status)
-            self.duration:      Union[int, None] = self.data.get("duration", self.duration)
-            self.invitationId:  Union[str, None] = self.data.get("invitationId", self.invitationId)
-            self.link:          Union[str, None] = self.data.get("link", self.link)
-            self.modifiedTime:  Union[str, None] = self.data.get("modifiedTime", self.modifiedTime)
-            self.ndcId:         Union[int, None] = self.data.get("ndcId", self.ndcId)
-            self.createdTime:   Union[str, None] = self.data.get("createdTime", self.createdTime)
-            self.inviteCode:    Union[str, None] = self.data.get("inviteCode", self.inviteCode)
+    @property
+    def status(self) -> int:
+        return self.data.get("status", 0)
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def duration(self) -> Optional[str]:
+        return self.data.get("duration")
+
+    @property
+    def invitationId(self) -> str:
+        return self.data.get("invitationId", '')
+
+    @property
+    def link(self) -> str:
+        return self.data.get("link", '')
+
+    @property
+    def modifiedTime(self) -> Optional[str]:
+        return self.data.get("modifiedTime")
+
+    @property
+    def ndcId(self) -> int:
+        return self.data.get("ndcId") or 0
+
+    @property
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", '')
+
+    @property
+    def inviteCode(self) -> str:
+        return self.data.get("inviteCode", '')
+
+    def json(self) -> dict[str, Any]:
         return self.data
-    
+
+
 class CCommunity:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data               = data
-        self.keywords           = []
-        self.activeInfo         = {}
-        self.themePack          = {}
-        self.status             = None
-        self.probationStatus    = None
-        self.updatedTime        = None
-        self.primaryLanguage    = None
-        self.modifiedTime       = None
-        self.membersCount       = None
-        self.tagline            = None
-        self.name               = None
-        self.endpoint           = None
-        self.communityHeadList  = []
-        self.listedStatus       = None
-        self.extensions         = []
-        self.mediaList          = []
-        self.userAddedTopicList = []
-        self.communityHeat      = None
-        self.templateId         = None
-        self.searchable         = None
-        self.createdTime        = None
-        self.invitation         = None
-        self.ndcId              = None
-        self.comId              = None
-        self.icon               = None
-        self.joinType           = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("community", data)
 
-        if isinstance(data, dict):
-            self.data:                  dict = data.get("community", self.data)
-            self.keywords:              list = self.data.get("keywords", self.keywords)
-            self.activeInfo:            dict = self.data.get("activeInfo", self.activeInfo)
-            self.themePack:             dict = self.data.get("themePack", self.themePack)
-            self.status:                Union[int, None] = self.data.get("status", self.status)
-            self.probationStatus:       Union[int, None] = self.data.get("probationStatus", self.probationStatus)
-            self.updatedTime:           Union[str, None] = self.data.get("updatedTime", self.updatedTime)
-            self.primaryLanguage:       Union[str, None] = self.data.get("primaryLanguage", self.primaryLanguage)
-            self.modifiedTime:          Union[str, None] = self.data.get("modifiedTime", self.modifiedTime)
-            self.membersCount:          Union[int, None] = self.data.get("membersCount", self.membersCount)
-            self.tagline:               Union[str, None] = self.data.get("tagline", self.tagline)
-            self.name:                  Union[str, None] = self.data.get("name", self.name)
-            self.endpoint:              Union[str, None] = self.data.get("endpoint", self.endpoint)
-            self.communityHeadList:     Union[list, None] = self.data.get("communityHeadList", self.communityHeadList)
-            self.listedStatus:          Union[int, None] = self.data.get("listedStatus", self.listedStatus)
-            self.extensions:            Union[list, None] = self.data.get("extensions", self.extensions)
-            self.mediaList:             Union[list, None] = self.data.get("mediaList", self.mediaList)
-            self.userAddedTopicList:    Union[list, None] = self.data.get("userAddedTopicList", self.userAddedTopicList)
-            self.communityHeat:         Union[int, None] = self.data.get("communityHeat", self.communityHeat)
-            self.templateId:            Union[int, None] = self.data.get("templateId", self.templateId)
-            self.searchable:            Union[bool, None] = self.data.get("searchable", self.searchable)
-            self.createdTime:           Union[str, None] = self.data.get("createdTime", self.createdTime)
-            self.joinType:              Union[int, None] = self.data.get("joinType", self.joinType)
-            self.invitation:            InvitationId = InvitationId(self.data.get("invitation", self.invitation))
-            
-            try:
-                self.ndcId:             Union[int, None] = self.data.get("ndcId", self.ndcId) or int(findall(r"\d+", self.data.get("linkInfoV2").get("path"))[0]) 
-            except IndexError as error:
-                raise InvalidLink from error
-            
-            self.comId:                 Union[int, None] = self.ndcId
-            self.icon:                  Union[str, None] = self.data.get("icon", self.icon)
-        
-    def json(self) -> Union[dict, str]:
+    @property
+    def keywords(self) -> str:
+        return self.data.get("keywords") or ''
+
+    @property
+    def activeInfo(self) -> dict[str, Any]:
+        return self.data.get("activeInfo") or {}
+
+    @property
+    def themePack(self) -> dict[str, Any]:
+        return self.data.get("themePack") or {}
+
+    @property
+    def status(self) -> int:
+        return self.data.get("status", 0)
+
+    @property
+    def probationStatus(self) -> int:
+        return self.data.get("probationStatus", 0)
+
+    @property
+    def updatedTime(self) -> Optional[str]:
+        return self.data.get("updatedTime")
+
+    @property
+    def primaryLanguage(self) -> str:
+        return self.data.get("primaryLanguage", "en")
+
+    @property
+    def modifiedTime(self) -> Optional[str]:
+        return self.data.get("modifiedTime")
+
+    @property
+    def membersCount(self) -> int:
+        return self.data.get("membersCount", 0)
+
+    @property
+    def tagline(self) -> str:
+        return self.data.get("tagline", "")
+
+    @property
+    def name(self) -> str:
+        return self.data.get("name", "")
+
+    @property
+    def endpoint(self) -> str:
+        return self.data.get("endpoint", "")
+
+    @property
+    def communityHeadList(self) -> list[dict[str, Any]]:
+        return self.data.get("communityHeadList") or []
+
+    @property
+    def listedStatus(self) -> int:
+        return self.data.get("listedStatus", 0)
+
+    @property
+    def extensions(self) -> dict[str, Any]:
+        return self.data.get("extensions") or {}
+
+    @property
+    def mediaList(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
+        return [(
+            m[0],
+            m[1],
+            m[2] if len(m) > 2 else None,
+            m[3] if len(m) > 3 else None
+        ) for m in cast(list[Any], self.data.get("mediaList") or [])]
+
+    @property
+    def userAddedTopicList(self) -> list[dict[str, Any]]:
+        return self.data.get("userAddedTopicList") or []
+
+    @property
+    def communityHeat(self) -> float:
+        return self.data.get("communityHeat") or 0.0
+
+    @property
+    def templateId(self) -> int:
+        return self.data.get("templateId", 0)
+
+    @property
+    def searchable(self) -> bool:
+        return self.data.get("searchable", False)
+
+    @property
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", '')
+
+    @property
+    def joinType(self) -> Literal[1, 2, 3]:
+        return self.data.get("joinType") or 1
+
+    @property
+    def invitation(self) -> InvitationId:
+        return InvitationId(self.data.get("invitation") or {})
+
+    @property
+    def ndcId(self) -> int:
+        return self.data.get("ndcId") or int(re.findall(r"\d+", self.data.get("linkInfoV2", {}).get("path"))[0]) 
+
+    @property
+    def comId(self) -> int:
+        return self.ndcId
+
+    @property
+    def icon(self) -> str:
+        return self.data.get("icon", "")
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class CCommunityList:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data:                                  dict = data.get("communityList", data)
-        parser:                                     list = [CCommunity(x) for x in self.data]
-        self.keywords:                              list = [x.keywords for x in parser]
-        self.activeInfo:                            list = [x.activeInfo for x in parser]
-        self.themePack:                             list = [x.themePack for x in parser]
-        self.status:                                list = [x.status for x in parser]
-        self.probationStatus:                       list = [x.probationStatus for x in parser]
-        self.updatedTime:                           list = [x.updatedTime for x in parser]
-        self.primaryLanguage:                       list = [x.primaryLanguage for x in parser]
-        self.modifiedTime:                          list = [x.modifiedTime for x in parser]
-        self.membersCount:                          list = [x.membersCount for x in parser]
-        self.tagline:                               list = [x.tagline for x in parser]
-        self.name:                                  list = [x.name for x in parser]
-        self.endpoint:                              list = [x.endpoint for x in parser]
-        self.communityHeadList:                     list = [x.communityHeadList for x in parser]
-        self.listedStatus:                          list = [x.listedStatus for x in parser]
-        self.extensions:                            list = [x.extensions for x in parser]
-        self.mediaList:                             list = [x.mediaList for x in parser]
-        self.userAddedTopicList:                    list = [x.userAddedTopicList for x in parser]
-        self.communityHeat:                         list = [x.communityHeat for x in parser]
-        self.templateId:                            list = [x.templateId for x in parser]
-        self.searchable:                            list = [x.searchable for x in parser]
-        self.createdTime:                           list = [x.createdTime for x in parser]
-        self.ndcId:                                 list = [x.ndcId for x in parser]
-        self.comId:                                 list = [x.comId for x in parser]
-        self.icon:                                  list = [x.icon for x in parser]
-        self.joinType:                               list = [x.joinType for x in parser]
-    
-    def json(self) -> Union[dict, str]:
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("communityList") or []
+
+    def __iter__(self) -> Iterator[CCommunity]:
+        return (CCommunity(data) for data in self.data)
+
+    @property
+    def keywords(self) -> list[str]:
+        return [x.keywords for x in self]
+
+    @property
+    def activeInfo(self) -> list[dict[str, Any]]:
+        return [x.activeInfo for x in self]
+
+    @property
+    def themePack(self) -> list[dict[str, Any]]:
+        return [x.themePack for x in self]
+
+    @property
+    def status(self) -> list[int]:
+        return [x.status for x in self]
+
+    @property
+    def probationStatus(self) -> list[int]:
+        return [x.probationStatus for x in self]
+
+    @property
+    def updatedTime(self) -> list[Optional[str]]:
+        return [x.updatedTime for x in self]
+
+    @property
+    def primaryLanguage(self) -> list[str]:
+        return [x.primaryLanguage for x in self]
+
+    @property
+    def modifiedTime(self) -> list[Optional[str]]:
+        return [x.modifiedTime for x in self]
+
+    @property
+    def membersCount(self) -> list[int]:
+        return [x.membersCount for x in self]
+
+    @property
+    def tagline(self) -> list[str]:
+        return [x.tagline for x in self]
+
+    @property
+    def name(self) -> list[str]:
+        return [x.name for x in self]
+
+    @property
+    def endpoint(self) -> list[str]:
+        return [x.endpoint for x in self]
+
+    @property
+    def communityHeadList(self) -> list[list[dict[str, Any]]]:
+        return [x.communityHeadList for x in self]
+
+    @property
+    def listedStatus(self) -> list[int]:
+        return [x.listedStatus for x in self]
+
+    @property
+    def extensions(self) -> list[dict[str, Any]]:
+        return [x.extensions for x in self]
+
+    @property
+    def mediaList(self) -> list[list[tuple[int, str, Optional[str], Optional[str]]]]:
+        return [x.mediaList for x in self]
+
+    @property
+    def userAddedTopicList(self) -> list[list[dict[str, Any]]]:
+        return [x.userAddedTopicList for x in self]
+
+    @property
+    def communityHeat(self) -> list[float]:
+        return [x.communityHeat for x in self]
+
+    @property
+    def templateId(self) -> list[int]:
+        return [x.templateId for x in self]
+
+    @property
+    def searchable(self) -> list[bool]:
+        return [x.searchable for x in self]
+
+    @property
+    def createdTime(self) -> list[str]:
+        return [x.createdTime for x in self]
+
+    @property
+    def ndcId(self) -> list[int]:
+        return [x.ndcId for x in self]
+
+    @property
+    def comId(self) -> list[int]:
+        return [x.comId for x in self]
+
+    @property
+    def icon(self) -> list[str]:
+        return [x.icon for x in self]
+
+    @property
+    def joinType(self) -> list[Literal[1, 2, 3]]:
+        return [x.joinType for x in self]
+
+    def json(self) -> list[dict[str, Any]]:
         return self.data
+
 
 class CBlog:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data                   = data
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("blog", data)
 
-        if isinstance(data, dict):
-            self.data:                  dict = data.get("blog", data)
-            self.globalVotesCount:      int = self.data.get("globalVotesCount")
-            self.globalVotedValue:      int = self.data.get("globalVotedValue")
-            self.votedValue:            int = self.data.get("votedValue")
-            self.keywords:              str = self.data.get("keywords")
-            self.mediaList:             list = self.data.get("mediaList")
-            self.style:                 dict = self.data.get("style")
-            self.totalQuizPlayCount:    int = self.data.get("totalQuizPlayCount")
-            self.title:                 str = self.data.get("title")
-            self.tipInfo:               dict = self.data.get("tipInfo")
-            self.contentRating:         int = self.data.get("contentRating")
-            self.content:               str = self.data.get("content")
-            self.needHidden:            bool = self.data.get("needHidden")
-            self.guestVotesCount:       int = self.data.get("guestVotesCount")
-            self.type:                  int = self.data.get("type")
-            self.status:                int = self.data.get("status")
-            self.globalCommentsCount:   int = self.data.get("globalCommentsCount")
-            self.modifiedTime:          str = self.data.get("modifiedTime")
-            self.widgetDisplayInterval: str = self.data.get("widgetDisplayInterval")
-            self.totalPollVoteCount:    int = self.data.get("totalPollVoteCount")
-            self.blogId:                str = self.data.get("blogId")
-            self.viewCount:             int = self.data.get("viewCount")
-            self.language:              str = self.data.get("language")
+    @property
+    def globalVotesCount(self) -> int:
+        return self.data.get("globalVotesCount") or 0
 
-            try:
-                self.author:            Union[UserProfile, None] = UserProfile(data=self.data.get("author"))
-            except Exception:
-                self.author:            Union[UserProfile, None] = None
+    @property
+    def globalVotedValue(self) -> int:
+        return self.data.get("globalVotedValue") or 0
 
-            self.extensions:            dict = self.data.get("extensions")
-            self.votesCount:            int = self.data.get("votesCount")
-            self.ndcId:                 int = self.data.get("ndcId")
-            self.createdTime:           str = self.data.get("createdTime")
-            self.endTime:               str = self.data.get("endTime")
-            self.commentsCount:         int = self.data.get("commentsCount")
+    @property
+    def votedValue(self) -> int:
+        return self.data.get("votedValue") or 0
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def keywords(self) -> str:
+        return self.data.get("keywords", "")
+
+    @property
+    def mediaList(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
+        return [(
+            m[0],
+            m[1],
+            m[2] if len(m) > 2 else None,
+            m[3] if len(m) > 3 else None
+        ) for m in cast(list[Any], self.data.get("mediaList") or [])]
+
+    @property
+    def style(self) -> dict[str, Any]:
+        return self.data.get("style") or {}
+
+    @property
+    def totalQuizPlayCount(self) -> int:
+        return self.data.get("totalQuizPlayCount", 0)
+
+    @property
+    def title(self) -> str:
+        return self.data.get("title", "")
+
+    @property
+    def tipInfo(self) -> dict[str, Any]:
+        return self.data.get("tipInfo") or {}
+
+    @property
+    def contentRating(self) -> int:
+        return self.data.get("contentRating") or 0
+
+    @property
+    def content(self) -> Optional[str]:
+        return self.data.get("content")
+
+    @property
+    def needHidden(self) -> bool:
+        return self.data.get("needHidden", False)
+
+    @property
+    def guestVotesCount(self) -> int:
+        return self.data.get("guestVotesCount") or 0
+
+    @property
+    def type(self) -> int:
+        return self.data.get("type") or 0
+
+    @property
+    def status(self) -> int:
+        return self.data.get("status", 0)
+
+    @property
+    def globalCommentsCount(self) -> int:
+        return self.data.get("globalCommentsCount") or 0
+
+    @property
+    def modifiedTime(self) -> Optional[str]:
+        return self.data.get("modifiedTime")
+
+    @property
+    def widgetDisplayInterval(self) -> Optional[str]:
+        return self.data.get("widgetDisplayInterval")
+
+    @property
+    def totalPollVoteCount(self) -> int:
+        return self.data.get("totalPollVoteCount") or 0
+
+    @property
+    def blogId(self) -> str:
+        return self.data.get("blogId", "")
+
+    @property
+    def viewCount(self) -> int:
+        return self.data.get("viewCount") or 0
+
+    @property
+    def language(self) -> str:
+        return self.data.get("language", "en")
+
+    @property
+    def author(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.data.get("author") or {})
+
+    @property
+    def extensions(self) -> dict[str, Any]:
+        return self.data.get("extensions") or {}
+
+    @property
+    def votesCount(self) -> int:
+        return self.data.get("votesCount") or 0
+
+    @property
+    def ndcId(self) -> int:
+        return self.data.get("ndcId") or 0
+
+    @property
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", "")
+
+    @property
+    def endTime(self) -> Optional[str]:
+        return self.data.get("endTime")
+
+    @property
+    def commentsCount(self) -> int:
+        return self.data.get("commentsCount") or 0
+
+    def json(self) -> dict[str, Any]:
         return self.data
 
+
 class CWiki:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data                   = data
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("item", data)
 
-        if isinstance(data, dict):
-            self.data:                  dict = data.get("item", data)
-            self.globalVotesCount:      int = self.data.get("globalVotesCount")
-            self.globalVotedValue:      int = self.data.get("globalVotedValue")
-            self.votedValue:            int = self.data.get("votedValue")
-            self.keywords:              str = self.data.get("keywords")
-            self.mediaList:             list = self.data.get("mediaList")
-            self.style:                 dict = self.data.get("style")
-            self.totalQuizPlayCount:    int = self.data.get("totalQuizPlayCount")
-            self.title:                 str = self.data.get("title")
-            self.tipInfo:               dict = self.data.get("tipInfo")
-            self.contentRating:         int = self.data.get("contentRating")
-            self.content:               str = self.data.get("content")
-            self.needHidden:            bool = self.data.get("needHidden")
-            self.guestVotesCount:       int = self.data.get("guestVotesCount")
-            self.type:                  int = self.data.get("type")
-            self.status:                int = self.data.get("status")
-            self.globalCommentsCount:   int = self.data.get("globalCommentsCount")
-            self.modifiedTime:          str = self.data.get("modifiedTime")
-            self.widgetDisplayInterval: str = self.data.get("widgetDisplayInterval")
-            self.totalPollVoteCount:    int = self.data.get("totalPollVoteCount")
-            self.wikiId:                str = self.data.get("itemId")
-            self.viewCount:             int = self.data.get("viewCount")
-            self.language:              str = self.data.get("language")
+    @property
+    def globalVotesCount(self) -> int:
+        return self.data.get("globalVotesCount") or 0
 
-            try:
-                self.author:            Union[UserProfile, None] = UserProfile(data=self.data.get("author"))
-            except Exception:
-                self.author:            Union[UserProfile, None] = None
+    @property
+    def globalVotedValue(self) -> int:
+        return self.data.get("globalVotedValue") or 0
 
-            self.extensions:            dict = self.data.get("extensions")
-            self.votesCount:            int = self.data.get("votesCount")
-            self.ndcId:                 int = self.data.get("ndcId")
-            self.createdTime:           str = self.data.get("createdTime")
-            self.endTime:               str = self.data.get("endTime")
-            self.commentsCount:         int = self.data.get("commentsCount")
+    @property
+    def votedValue(self) -> int:
+        return self.data.get("votedValue") or 0
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def keywords(self) -> str:
+        return self.data.get("keywords", "")
+
+    @property
+    def mediaList(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
+        return [(
+            m[0],
+            m[1],
+            m[2] if len(m) > 2 else None,
+            m[3] if len(m) > 3 else None
+        ) for m in cast(list[Any], self.data.get("mediaList") or [])]
+
+    @property
+    def style(self) -> dict[str, Any]:
+        return self.data.get("style") or {}
+
+    @property
+    def totalQuizPlayCount(self) -> int:
+        return self.data.get("totalQuizPlayCount", 0)
+
+    @property
+    def title(self) -> str:
+        return self.data.get("title", "")
+
+    @property
+    def tipInfo(self) -> dict[str, Any]:
+        return self.data.get("tipInfo") or {}
+
+    @property
+    def contentRating(self) -> int:
+        return self.data.get("contentRating") or 0
+
+    @property
+    def content(self) -> Optional[str]:
+        return self.data.get("content")
+
+    @property
+    def needHidden(self) -> bool:
+        return self.data.get("needHidden", False)
+
+    @property
+    def guestVotesCount(self) -> int:
+        return self.data.get("guestVotesCount") or 0
+
+    @property
+    def type(self) -> int:
+        return self.data.get("type") or 0
+
+    @property
+    def status(self) -> int:
+        return self.data.get("status", 0)
+
+    @property
+    def globalCommentsCount(self) -> int:
+        return self.data.get("globalCommentsCount") or 0
+
+    @property
+    def modifiedTime(self) -> Optional[str]:
+        return self.data.get("modifiedTime")
+
+    @property
+    def widgetDisplayInterval(self) -> Optional[str]:
+        return self.data.get("widgetDisplayInterval")
+
+    @property
+    def totalPollVoteCount(self) -> int:
+        return self.data.get("totalPollVoteCount") or 0
+
+    @property
+    def wikiId(self) -> str:
+        return self.data.get("itemId", "")
+
+    @property
+    def viewCount(self) -> int:
+        return self.data.get("viewCount") or 0
+
+    @property
+    def language(self) -> str:
+        return self.data.get("language", "en")
+
+    @property
+    def author(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.data.get("author") or {})
+
+    @property
+    def extensions(self) -> dict[str, Any]:
+        return self.data.get("extensions") or {}
+
+    @property
+    def votesCount(self) -> int:
+        return self.data.get("votesCount") or 0
+
+    @property
+    def ndcId(self) -> int:
+        return self.data.get("ndcId") or 0
+
+    @property
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", "")
+
+    @property
+    def endTime(self) -> Optional[str]:
+        return self.data.get("endTime")
+
+    @property
+    def commentsCount(self) -> int:
+        return self.data.get("commentsCount") or 0
+
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class CWikiList:
-    def __init__(self, data: Union[dict, str]):
-        self.data:                   dict = data.get("itemList", data)
-        parser:                      List[CWiki] = [CWiki(x) for x in self.data]
-        self.author:                 UserProfileList = UserProfileList([x.author.json() for x in parser])
-        self.globalVotesCount:       list = [x.globalVotesCount for x in parser]
-        self.globalVotedValue:       list = [x.globalVotedValue for x in parser]
-        self.votedValue:             list = [x.votedValue for x in parser]
-        self.keywords:               list = [x.keywords for x in parser]
-        self.mediaList:              list = [x.mediaList for x in parser]
-        self.style:                  list = [x.style for x in parser]
-        self.totalQuizPlayCount:     list = [x.totalQuizPlayCount for x in parser]
-        self.title:                  list = [x.title for x in parser]
-        self.tipInfo:                list = [x.tipInfo for x in parser]
-        self.contentRating:          list = [x.contentRating for x in parser]
-        self.content:                list = [x.content for x in parser]
-        self.needHidden:             list = [x.needHidden for x in parser]
-        self.guestVotesCount:        list = [x.guestVotesCount for x in parser]
-        self.type:                   list = [x.type for x in parser]
-        self.status:                 list = [x.status for x in parser]
-        self.globalCommentsCount:    list = [x.globalCommentsCount for x in parser]
-        self.modifiedTime:           list = [x.modifiedTime for x in parser]
-        self.widgetDisplayInterval:  list = [x.widgetDisplayInterval for x in parser]
-        self.totalPollVoteCount:     list = [x.totalPollVoteCount for x in parser]
-        self.wikiId:                 list = [x.wikiId for x in parser]
-        self.viewCount:              list = [x.viewCount for x in parser]
-        self.language:               list = [x.language for x in parser]
-        self.extensions:             list = [x.extensions for x in parser]
-        self.votesCount:             list = [x.votesCount for x in parser]
-        self.ndcId:                  list = [x.ndcId for x in parser]
-        self.createdTime:            list = [x.createdTime for x in parser]
-        self.endTime:                list = [x.endTime for x in parser]
-        self.commentsCount:          list = [x.commentsCount for x in parser]
+    def __init__(self, data: dict[str, Any]):
+        self.data: list[dict[str, Any]] = data.get("itemList") or []
+        parser = [CWiki(x) for x in self.data]
+        self.author = userprofile.UserProfileList([x.author.json() for x in parser])
+        self.globalVotesCount = [x.globalVotesCount for x in parser]
+        self.globalVotedValue = [x.globalVotedValue for x in parser]
+        self.votedValue = [x.votedValue for x in parser]
+        self.keywords = [x.keywords for x in parser]
+        self.mediaList = [x.mediaList for x in parser]
+        self.style = [x.style for x in parser]
+        self.totalQuizPlayCount = [x.totalQuizPlayCount for x in parser]
+        self.title = [x.title for x in parser]
+        self.tipInfo = [x.tipInfo for x in parser]
+        self.contentRating = [x.contentRating for x in parser]
+        self.content = [x.content for x in parser]
+        self.needHidden = [x.needHidden for x in parser]
+        self.guestVotesCount = [x.guestVotesCount for x in parser]
+        self.type = [x.type for x in parser]
+        self.status = [x.status for x in parser]
+        self.globalCommentsCount = [x.globalCommentsCount for x in parser]
+        self.modifiedTime = [x.modifiedTime for x in parser]
+        self.widgetDisplayInterval = [x.widgetDisplayInterval for x in parser]
+        self.totalPollVoteCount = [x.totalPollVoteCount for x in parser]
+        self.wikiId = [x.wikiId for x in parser]
+        self.viewCount = [x.viewCount for x in parser]
+        self.language = [x.language for x in parser]
+        self.extensions = [x.extensions for x in parser]
+        self.votesCount = [x.votesCount for x in parser]
+        self.ndcId = [x.ndcId for x in parser]
+        self.createdTime = [x.createdTime for x in parser]
+        self.endTime = [x.endTime for x in parser]
+        self.commentsCount = [x.commentsCount for x in parser]
 
-    def json(self) -> Union[dict, str]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
+
 
 class CBlogList:
-    def __init__(self, data: Union[dict, str]):
-        self.data:                   dict = data.get("blogList", data)
-        parser:                      list = [CBlog(x) for x in self.data]
-        self.author:                 UserProfileList = UserProfileList([x.author.json() for x in parser])
-        self.globalVotesCount:       list = [x.globalVotesCount for x in parser]
-        self.globalVotedValue:       list = [x.globalVotedValue for x in parser]
-        self.votedValue:             list = [x.votedValue for x in parser]
-        self.keywords:               list = [x.keywords for x in parser]
-        self.mediaList:              list = [x.mediaList for x in parser]
-        self.style:                  list = [x.style for x in parser]
-        self.totalQuizPlayCount:     list = [x.totalQuizPlayCount for x in parser]
-        self.title:                  list = [x.title for x in parser]
-        self.tipInfo:                list = [x.tipInfo for x in parser]
-        self.contentRating:          list = [x.contentRating for x in parser]
-        self.content:                list = [x.content for x in parser]
-        self.needHidden:             list = [x.needHidden for x in parser]
-        self.guestVotesCount:        list = [x.guestVotesCount for x in parser]
-        self.type:                   list = [x.type for x in parser]
-        self.status:                 list = [x.status for x in parser]
-        self.globalCommentsCount:    list = [x.globalCommentsCount for x in parser]
-        self.modifiedTime:           list = [x.modifiedTime for x in parser]
-        self.widgetDisplayInterval:  list = [x.widgetDisplayInterval for x in parser]
-        self.totalPollVoteCount:     list = [x.totalPollVoteCount for x in parser]
-        self.blogId:                 list = [x.blogId for x in parser]
-        self.refObjectId:            list = [x.data.get("refObjectId", None) for x in parser]
-        self.viewCount:              list = [x.viewCount for x in parser]
-        self.language:               list = [x.language for x in parser]
-        self.extensions:             list = [x.extensions for x in parser]
-        self.votesCount:             list = [x.votesCount for x in parser]
-        self.ndcId:                  list = [x.ndcId for x in parser]
-        self.createdTime:            list = [x.createdTime for x in parser]
-        self.endTime:                list = [x.endTime for x in parser]
-        self.commentsCount:          list = [x.commentsCount for x in parser]
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]]= data.get("blogList") or []
+        parser = [CBlog(x) for x in self.data]
+        self.author = userprofile.UserProfileList([x.author.json() for x in parser])
+        self.globalVotesCount = [x.globalVotesCount for x in parser]
+        self.globalVotedValue = [x.globalVotedValue for x in parser]
+        self.votedValue = [x.votedValue for x in parser]
+        self.keywords = [x.keywords for x in parser]
+        self.mediaList = [x.mediaList for x in parser]
+        self.style = [x.style for x in parser]
+        self.totalQuizPlayCount = [x.totalQuizPlayCount for x in parser]
+        self.title = [x.title for x in parser]
+        self.tipInfo = [x.tipInfo for x in parser]
+        self.contentRating = [x.contentRating for x in parser]
+        self.content = [x.content for x in parser]
+        self.needHidden = [x.needHidden for x in parser]
+        self.guestVotesCount = [x.guestVotesCount for x in parser]
+        self.type = [x.type for x in parser]
+        self.status = [x.status for x in parser]
+        self.globalCommentsCount = [x.globalCommentsCount for x in parser]
+        self.modifiedTime = [x.modifiedTime for x in parser]
+        self.widgetDisplayInterval = [x.widgetDisplayInterval for x in parser]
+        self.totalPollVoteCount = [x.totalPollVoteCount for x in parser]
+        self.blogId = [x.blogId for x in parser]
+        self.viewCount = [x.viewCount for x in parser]
+        self.language = [x.language for x in parser]
+        self.extensions = [x.extensions for x in parser]
+        self.votesCount = [x.votesCount for x in parser]
+        self.ndcId = [x.ndcId for x in parser]
+        self.createdTime = [x.createdTime for x in parser]
+        self.endTime = [x.endTime for x in parser]
+        self.commentsCount = [x.commentsCount for x in parser]
 
-    def json(self) -> Union[dict, str]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
+
 
 class Coupon:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data         = data
-        self.expiredTime  = None
-        self.couponId     = None
-        self.scopeDesc    = None
-        self.status       = None
-        self.modifiedTime = None
-        self.couponValue  = None
-        self.expiredType  = None
-        self.title        = None
-        self.couponType   = None
-        self.createdTime  = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("coupon", data)
 
-        if isinstance(data, dict):
-            self.data:          dict = data.get("coupon", data)
-            self.expiredTime:   Union[str, None] = self.data.get("expiredTime", self.expiredTime)
-            self.couponId:      Union[str, None] = self.data.get("couponId", self.couponId)
-            self.scopeDesc:     Union[str, None] = self.data.get("scopeDesc", self.scopeDesc)
-            self.status:        Union[int, None] = self.data.get("status", self.status)
-            self.modifiedTime:  Union[str, None] = self.data.get("modifiedTime", self.modifiedTime)
-            self.couponValue:   Union[int, None] = self.data.get("couponValue", self.couponValue)
-            self.expiredType:   Union[int, None] = self.data.get("expiredType", self.expiredType)
-            self.title:         Union[str, None] = self.data.get("title", self.title)
-            self.couponType:    Union[int, None] = self.data.get("couponType", self.couponType)
-            self.createdTime:   Union[str, None] = self.data.get("createdTime", self.createdTime)
+    @property
+    def expiredTime(self) -> Optional[str]:
+        return self.data.get("expiredTime")
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def couponId(self) -> str:
+        return self.data.get("couponId", "")
+
+    @property
+    def scopeDesc(self) -> Optional[str]:
+        return self.data.get("scopeDesc")
+
+    @property
+    def status(self) -> int:
+        return self.data.get("status", 0)
+
+    @property
+    def modifiedTime(self) -> Optional[str]:
+        return self.data.get("modifiedTime")
+
+    @property
+    def couponValue(self) -> int:
+        return self.data.get("couponValue", 0)
+
+    @property
+    def expiredType(self) -> int:
+        return self.data.get("expiredType", 0)
+
+    @property
+    def title(self) -> str:
+        return self.data.get("title", "")
+
+    @property
+    def couponType(self) -> int:
+        return self.data.get("couponType", 0)
+
+    @property
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", "")
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class Wallet:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data                    = data
-        self.totalCoinsFloat         = None
-        self.adsEnabled              = None
-        self.adsVideoStats           = {}
-        self.adsFlags                = None
-        self.totalCoins              = None
-        self.businessCoinsEnabled    = None
-        self.totalBusinessCoins      = None
-        self.totalBusinessCoinsFloat = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: dict[str, Any] = data.get("wallet", data)
 
-        if isinstance(data, dict):
-            self.data:                    dict = data.get("wallet", data)
-            self.totalCoinsFloat:         Union[float, None] = self.data.get("totalCoinsFloat", self.totalCoinsFloat)
-            self.adsEnabled:              Union[bool, None] = self.data.get("adsEnabled", self.adsEnabled)
-            self.adsVideoStats:           Union[dict, None] = self.data.get("adsVideoStats", self.adsVideoStats)
-            self.adsFlags:                Union[int, None] = self.data.get("adsFlags", self.adsFlags)
-            self.totalCoins:              Union[int, None] = self.data.get("totalCoins", self.totalCoins)
-            self.businessCoinsEnabled:    Union[bool, None] = self.data.get("businessCoinsEnabled", self.businessCoinsEnabled)
-            self.totalBusinessCoins:      Union[int, None] = self.data.get("totalBusinessCoins", self.totalBusinessCoins)
-            self.totalBusinessCoinsFloat: Union[float, None] = self.data.get("totalBusinessCoinsFloat", self.totalBusinessCoinsFloat)
+    @property
+    def totalCoinsFloat(self) -> float:
+        return self.data.get("totalCoinsFloat") or 0.0
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def adsEnabled(self) -> bool:
+        return self.data.get("adsEnabled", False)
+
+    @property
+    def adsVideoStats(self) -> dict[str, Any]:
+        return self.data.get("adsVideoStats") or {}
+
+    @property
+    def adsFlags(self) -> int:
+        return self.data.get("adsFlags", 0)
+
+    @property
+    def totalCoins(self) -> int:
+        return self.data.get("totalCoins") or 0
+
+    @property
+    def businessCoinsEnabled(self) -> bool:
+        return self.data.get("businessCoinsEnabled", False)
+
+    @property
+    def totalBusinessCoins(self) -> int:
+        return self.data.get("totalBusinessCoins") or 0
+
+    @property
+    def totalBusinessCoinsFloat(self) -> float:
+        return self.data.get("totalBusinessCoinsFloat") or 0.0
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class Themepack:
-    def __init__(self, data: Union[dict, str]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
-        self.themeColor = None
-        self.themePackHash = None
-        self.themePackRevision = None
-        self.themePackUrl = None
 
-        if isinstance(data, dict):
-            self.data:                  dict = data
-            self.themeColor:            Union[str, None] = self.data.get("themeColor", self.themeColor)
-            self.themePackHash:         Union[str, None] = self.data.get("themePackHash", self.themePackHash)
-            self.themePackRevision:     Union[int, None] = self.data.get("themePackRevision", self.themePackRevision)
-            self.themePackUrl:          Union[str, None] = self.data.get("themePackUrl", self.themePackUrl)
+    @property
+    def themeColor(self) -> str:
+        return self.data.get("themeColor", "#ffffff")
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def themePackHash(self) -> str:
+        return self.data.get("themePackHash", "")
+
+    @property
+    def themePackRevision(self) -> int:
+        return self.data.get("themePackRevision", 0)
+
+    @property
+    def themePackUrl(self) -> str:
+        return self.data.get("themePackUrl", "")
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class Notification:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data           = data
-        self.parentText     = None
-        self.objectId       = None
-        self.contextText    = None
-        self.type           = None
-        self.parentId       = None
-        self.operator       = {}
-        self.createdTime    = None
-        self.parentType     = None
-        self.comId          = None
-        self.notificationId = None
-        self.objectText     = None
-        self.contextValue   = None
-        self.contextComId   = None
-        self.objectType     = None
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data = data
 
-        if isinstance(data, dict):
-            self.parentText:        Union[str, None] = self.data.get("parentText", self.parentText)
-            self.objectId:          Union[str, None] = self.data.get("objectId", self.objectId)
-            self.contextText:       Union[str, None] = self.data.get("contextText", self.contextText)
-            self.type:              Union[int, None] = self.data.get("type", self.type)
-            self.parentId:          Union[str, None] = self.data.get("parentId", self.parentId)
+    @property
+    def parentText(self) -> Optional[str]:
+        return self.data.get("parentText")
 
-            try:
-                self.operator:          Union[UserProfile, None] = UserProfile(self.data.get("operator", self.operator))
-            except Exception:
-                self.operator:          Union[UserProfile, None] = None
+    @property
+    def objectId(self) -> str:
+        return self.data.get("objectId", "")
 
-            self.createdTime:       Union[str, None] = self.data.get("createdTime", self.createdTime)
-            self.parentType:        Union[int, None] = self.data.get("parentType", self.parentType)
-            self.comId:             Union[int, None] = self.data.get("ndcId", self.comId)
-            self.notificationId:    Union[str, None] = self.data.get("notificationId", self.notificationId)
-            self.objectText:        Union[str, None] = self.data.get("objectText", self.objectText)
-            self.contextValue:      Union[str, None] = self.data.get("contextValue", self.contextValue)
-            self.contextComId:      Union[int, None] = self.data.get("contextNdcId", self.contextComId)
-            self.objectType:        Union[int, None] = self.data.get("objectType", self.objectType)
+    @property
+    def contextText(self) -> Optional[str]:
+        return self.data.get("contextText")
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def type(self) -> int:
+        return self.data.get("type", 0)
+
+    @property
+    def parentId(self) -> str:
+        return self.data.get("parentId", "")
+
+    @property
+    def operator(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.data.get("operator") or {})
+
+    @property
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", "")
+
+    @property
+    def parentType(self) -> int:
+        return self.data.get("parentType", 0)
+
+    @property
+    def ndcId(self) -> int:
+        return self.data.get("ndcId", 0)
+
+    @property
+    def comId(self) -> int:
+        return self.ndcId
+
+    @property
+    def notificationId(self) -> str:
+        return self.data.get("notificationId", "")
+
+    @property
+    def objectText(self) -> str:
+        return self.data.get("objectText", "")
+
+    @property
+    def contextValue(self) -> Optional[str]:
+        return self.data.get("contextValue")
+
+    @property
+    def contextComId(self) -> Optional[str]:
+        return self.data.get("contextNdcId")
+
+    @property
+    def objectType(self) -> int:
+        return self.data.get("objectType", 0)
+
+    def json(self) -> dict[str, Any]:
         return self.data
-    
+
 class NotificationList:
-    def __init__(self, data: Union[dict, str]) -> None:
-        self.data = data.get("notificationList", data)
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("notificationList") or []
         self.parser = [Notification(x) for x in self.data]
         self.parentText = [x.parentText for x in self.parser]
         self.objectId = [x.objectId for x in self.parser]
         self.contextText = [x.contextText for x in self.parser]
         self.type = [x.type for x in self.parser]
         self.parentId = [x.parentId for x in self.parser]
-        self.operator = UserProfileList([x.operator.json() for x in self.parser])
+        self.operator = userprofile.UserProfileList([x.operator.json() for x in self.parser])
         self.createdTime = [x.createdTime for x in self.parser]
         self.parentType = [x.parentType for x in self.parser]
         self.comId = [x.comId for x in self.parser]
@@ -481,687 +910,447 @@ class NotificationList:
         self.contextComId = [x.contextComId for x in self.parser]
         self.objectType = [x.objectType for x in self.parser]
 
-    def json(self) -> Union[dict, str]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
-    
+
+
 class ResetPassword:
-    def __init__(self, data: Union[dict, str]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
-        self.response = {}
-        self.secret = None
 
-        if isinstance(data, dict):
-            self.response:  ApiResponse = ApiResponse(self.data, self.response)
-            self.secret:    Union[str, None] = self.data.get("secret", self.secret)
+    @property
+    def response(self) -> api_response.ApiResponse:
+        return api_response.ApiResponse(self.data or {})
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def secret(self) -> str:
+        return self.data.get("secret", "")
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class Authenticate:
-    def __init__(self, data: Union[dict, str]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data    = data
-        self.sid     = None
-        self.userId  = None
-        self.profile = {}
-        self.secret  = None
 
-        if isinstance(data, dict):
-            self.sid:      Union[str, None] = self.data.get("sid", self.sid)
-            self.userId:   Union[str, None] = self.data.get("auid", self.userId)
-            self.profile:  UserProfile = UserProfile(self.data.get("userProfile", self.profile))
-            self.secret:   Union[str, None] = self.data.get("secret", self.secret)
+    @property
+    def sid(self) -> str:
+        return self.data.get("sid", "")
 
-    def json(self) -> Union[dict, str]:
+    @property
+    def userId(self) -> str:
+        return self.data.get("auid", "")
+
+    @property
+    def profile(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.data.get("userProfile") or {})
+
+    @property
+    def secret(self) -> Optional[str]:
+        return self.data.get("secret")
+
+    def json(self) -> dict[str, Any]:
         return self.data
 
+
 class CChatMembers:
-    def __init__(self, data: Union[dict, str]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         self.data = data
-        self.members = []
 
-        if isinstance(data, dict):
-            self.members: UserProfileList = UserProfileList(self.data.get("memberList", self.members))
+    @property
+    def members(self) -> userprofile.UserProfileList:
+        return userprofile.UserProfileList(self.data.get("memberList") or [])
 
-    def json(self) -> Union[dict, str]:
+    def json(self) -> dict[str, Any]:
         return self.data
 
 
 class FeaturedBlog:
-    def __init__(self, data: Union[dict, str]):
-        self.data           = data
+    def __init__(self, data: dict[str, Any]):
+        self.data = data
 
-    def return_none(func):
-        def wrapper(*args, **kwargs):
-            return None if args[0].data is None else func(*args, **kwargs)
-        return wrapper
-    
     @property
-    @return_none
-    def ref_object_type(self) -> Union[int, None]:
-        return self.data.get('refObjectType')    
-    
+    def ref_object_type(self) -> int:
+        return self.data.get("refObjectType", 0)
+
     @property
-    @return_none
-    def ref_object_id(self) -> Union[str, None]:
-        return self.data.get('refObjectId')
-    
+    def ref_object_id(self) -> str:
+        return self.data.get("refObjectId", "")
+
     @property
-    @return_none
-    def expired_time(self) -> Union[str, None]:
+    def expired_time(self) -> Optional[str]:
         return self.data.get('expiredTime')
-    
-    @property
-    @return_none
-    def featured_type(self) -> Union[int, None]:
-        return self.data.get('featuredType')
-    
-    @property
-    @return_none
-    def created_time(self) -> Union[str, None]:
-        return self.data.get('createdTime')
-    
-    @property
-    @return_none
-    def ref_object(self) -> Union[dict, None]:
-        return self.data.get('refObject')
-    
-    @property
-    @return_none
-    def global_votes_count(self) -> Union[int, None]:
-        return self.ref_object.get('globalVotesCount')
-    
-    @property
-    @return_none
-    def global_voted_count(self) -> Union[int, None]:
-        return self.ref_object.get('globalVotedCount')
-    
-    @property
-    @return_none
-    def voted_value(self) -> Union[int, None]:
-        return self.ref_object.get('votedValue')
-    
-    @property
-    @return_none
-    def keywords(self) -> Union[str, None]:
-        return self.ref_object.get('keywords')
-    
-    @property
-    @return_none
-    def strategy_info(self) -> Union[str, None]:
-        return self.ref_object.get('strategyInfo')
-    
-    @property
-    @return_none
-    def media_list(self) -> Union[list, None]:
-        return self.ref_object.get('mediaList')
-    
-    @property
-    @return_none
-    def style(self) -> Union[dict, None]:
-        return self.ref_object.get('style')
-    
-    @property
-    @return_none
-    def total_quiz_play_count(self) -> Union[int, None]:
-        return self.ref_object.get('totalQuizPlayCount')
-    
-    @property
-    @return_none
-    def title(self) -> Union[str, None]:
-        return self.ref_object.get('title')
-    
-    @property
-    @return_none
-    def tip_info(self) -> Union[dict, None]:
-        return self.ref_object.get('tipInfo')
-    
-    @property
-    @return_none
-    def content(self) -> Union[str, None]:
-        return self.ref_object.get('content')
-    
-    @property
-    @return_none
-    def content_rating(self) -> Union[str, None]:
-        return self.ref_object.get('contentRating')
-    
-    @property
-    @return_none
-    def need_hidden(self) -> Union[bool, None]:
-        return self.ref_object.get('needHidden')
-    
-    @property
-    @return_none
-    def guest_votes_count(self) -> Union[int, None]:
-        return self.ref_object.get('guestVotesCount')
-    
-    @property
-    @return_none
-    def global_comments_count(self) -> Union[int, None]:
-        return self.ref_object.get('globalCommentsCount')
-    
-    @property
-    @return_none
-    def modified_time(self) -> Union[str, None]:
-        return self.ref_object.get('modifiedTime')
-    
-    @property
-    @return_none
-    def widget_display_interval(self) -> Union[int, None]:
-        return self.ref_object.get('widgetDisplayInterval')
-    
-    @property
-    @return_none
-    def total_poll_vote_count(self) -> Union[int, None]:
-        return self.ref_object.get('totalPollVoteCount')
-    
-    @property
-    @return_none
-    def blogId(self) -> Union[str, None]:
-        return self.ref_object.get('blogId')
-    
-    @property
-    @return_none
-    def view_count(self) -> Union[int, None]:
-        return self.ref_object.get('viewCount')
-    
-    @property
-    @return_none
-    def ref_object_type(self) -> Union[int, None]:
-        return self.ref_object.get('refObjectType')
-    
-    @property
-    @return_none
-    def ref_object_id(self) -> Union[str, None]:
-        return self.ref_object.get('refObjectId')
-    
-    @property
-    @return_none
-    def author(self) -> Union[UserProfile, None]:
-        try:
-            return UserProfile(self.ref_object.get('author'))
-        except Exception:
-            return None
 
-    def json(self) -> Union[dict, None]:
+    @property
+    def featured_type(self) -> int:
+        return self.data.get('featuredType', 0)
+
+    @property
+    def created_time(self) -> str:
+        return self.data.get('createdTime', "")
+
+    @property
+    def ref_object(self) -> dict[str, Any]:
+        return self.data.get('refObject') or {}
+
+    @property
+    def global_votes_count(self) -> int:
+        return self.ref_object.get('globalVotesCount', 0)
+
+    @property
+    def global_voted_count(self) -> int:
+        return self.ref_object.get('globalVotedCount', 0)
+
+    @property
+    def voted_value(self) -> int:
+        return self.ref_object.get('votedValue', 0)
+
+    @property
+    def keywords(self) -> str:
+        return self.ref_object.get('keywords') or ""
+
+    @property
+    def strategy_info(self) -> str:
+        return self.ref_object.get('strategyInfo') or "{}"
+
+    @property
+    def media_list(self) -> list[tuple[int, str, Optional[str], Optional[str]]]:
+        return [(
+            m[0],
+            m[1],
+            m[2] if len(m) > 2 else None,
+            m[3] if len(m) > 3 else None
+        ) for m in cast(list[Any], self.ref_object.get('mediaList') or [])]
+
+    @property
+    def style(self) -> dict[str, Any]:
+        return self.ref_object.get('style') or {}
+
+    @property
+    def total_quiz_play_count(self) -> int:
+        return self.ref_object.get('totalQuizPlayCount') or 0
+
+    @property
+    def title(self) -> str:
+        return self.ref_object.get('title', "")
+
+    @property
+    def tip_info(self) -> dict[str, Any]:
+        return self.ref_object.get('tipInfo') or {}
+
+    @property
+    def content(self) -> Optional[str]:
+        return self.ref_object.get('content')
+
+    @property
+    def content_rating(self) -> int:
+        return self.ref_object.get('contentRating') or 0
+
+    @property
+    def need_hidden(self) -> bool:
+        return self.ref_object.get('needHidden', False)
+
+    @property
+    def guest_votes_count(self) -> int:
+        return self.ref_object.get('guestVotesCount') or 0
+
+    @property
+    def global_comments_count(self) -> int:
+        return self.ref_object.get('globalCommentsCount') or 0
+
+    @property
+    def modified_time(self) -> Optional[str]:
+        return self.ref_object.get('modifiedTime')
+
+    @property
+    def widget_display_interval(self) -> Optional[int]:
+        return self.ref_object.get('widgetDisplayInterval')
+
+    @property
+    def total_poll_vote_count(self) -> int:
+        return self.ref_object.get('totalPollVoteCount') or 0
+
+    @property
+    def blogId(self) -> str:
+        return self.ref_object.get('blogId', "")
+
+    @property
+    def view_count(self) -> int:
+        return self.ref_object.get('viewCount') or 0
+
+    @property
+    def author(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.ref_object.get('author') or {})
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class FeaturedBlogs:
-    def __init__(self, data: dict):
-        self.data:                      dict = data.get("featuredList", data)
-        parser:                         list = [FeaturedBlog(x) for x in self.data]
-        self.ref_object_type:           list = [x.ref_object_type for x in parser]
-        self.ref_object_id:             list = [x.ref_object_id for x in parser]
-        self.expired_time:              list = [x.expired_time for x in parser]
-        self.featured_type:             list = [x.featured_type for x in parser]
-        self.created_time:              list = [x.created_time for x in parser]
-        self.ref_object:                list = [x.ref_object for x in parser]
-        self.global_votes_count:        list = [x.global_votes_count for x in parser]
-        self.global_voted_count:        list = [x.global_voted_count for x in parser]
-        self.voted_value:               list = [x.voted_value for x in parser]
-        self.keywords:                  list = [x.keywords for x in parser]
-        self.strategy_info:             list = [x.strategy_info for x in parser]
-        self.media_list:                list = [x.media_list for x in parser]
-        self.style:                     list = [x.style for x in parser]
-        self.total_quiz_play_count:     list = [x.total_quiz_play_count for x in parser]
-        self.title:                     list = [x.title for x in parser]
-        self.tip_info:                  list = [x.tip_info for x in parser]
-        self.content:                   list = [x.content for x in parser]
-        self.content_rating:            list = [x.content_rating for x in parser]
-        self.need_hidden:               list = [x.need_hidden for x in parser]
-        self.guest_votes_count:         list = [x.guest_votes_count for x in parser]
-        self.global_comments_count:     list = [x.global_comments_count for x in parser]
-        self.modified_time:             list = [x.modified_time for x in parser]
-        self.widget_display_interval:   list = [x.widget_display_interval for x in parser]
-        self.total_poll_vote_count:     list = [x.total_poll_vote_count for x in parser]
-        self.blogId:                    list = [x.blogId for x in parser]
-        self.view_count:                list = [x.view_count for x in parser]
-        self.ref_object_type:           list = [x.ref_object_type for x in parser]
-        self.ref_object_id:             list = [x.ref_object_id for x in parser]
-        self.author:                    UserProfileList = UserProfileList([x.author.json() for x in parser])
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("featuredList") or []
+        parser = [FeaturedBlog(x) for x in self.data]
+        self.ref_object_type = [x.ref_object_type for x in parser]
+        self.ref_object_id = [x.ref_object_id for x in parser]
+        self.expired_time = [x.expired_time for x in parser]
+        self.featured_type = [x.featured_type for x in parser]
+        self.created_time = [x.created_time for x in parser]
+        self.ref_object = [x.ref_object for x in parser]
+        self.global_votes_count = [x.global_votes_count for x in parser]
+        self.global_voted_count = [x.global_voted_count for x in parser]
+        self.voted_value = [x.voted_value for x in parser]
+        self.keywords = [x.keywords for x in parser]
+        self.strategy_info = [x.strategy_info for x in parser]
+        self.media_list = [x.media_list for x in parser]
+        self.style = [x.style for x in parser]
+        self.total_quiz_play_count = [x.total_quiz_play_count for x in parser]
+        self.title = [x.title for x in parser]
+        self.tip_info = [x.tip_info for x in parser]
+        self.content = [x.content for x in parser]
+        self.content_rating = [x.content_rating for x in parser]
+        self.need_hidden = [x.need_hidden for x in parser]
+        self.guest_votes_count = [x.guest_votes_count for x in parser]
+        self.global_comments_count = [x.global_comments_count for x in parser]
+        self.modified_time = [x.modified_time for x in parser]
+        self.widget_display_interval = [x.widget_display_interval for x in parser]
+        self.total_poll_vote_count = [x.total_poll_vote_count for x in parser]
+        self.blogId = [x.blogId for x in parser]
+        self.view_count = [x.view_count for x in parser]
+        self.ref_object_type = [x.ref_object_type for x in parser]
+        self.ref_object_id = [x.ref_object_id for x in parser]
+        self.author = userprofile.UserProfileList([x.author.json() for x in parser])
 
-    def json(self) -> Union[dict, None]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
-    
-class QuizRanking:
-    def __init__(self, data: dict):
-        self.data:  dict = data
 
-    def return_none(func):
-        def wrapper(*args, **kwargs):
-            return None if args[0].data is None else func(*args, **kwargs)
-        return wrapper
-    
+
+class QuizRanking:
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data = data
+
     @property
-    @return_none
-    def highest_mode(self) -> Union[int, None]:
-        """
-        `highest_mode` - Returns the highest mode of the quiz.
-        """
+    def highest_mode(self) -> Optional[int]:
         return self.data.get('highestMode')
-    
+
     @property
-    @return_none
-    def modified_time(self) -> Union[str, None]:
-        """
-        `modified_time` - Returns the last time the quiz was modified.
-        """
+    def modified_time(self) -> Optional[str]:
         return self.data.get('modifiedTime')
-    
+
     @property
-    @return_none
-    def is_finished(self) -> Union[bool, None]:
-        """
-        `is_finished` - Returns whether the quiz is finished or not.
-        """
-        return self.data.get('isFinished')
-    
+    def is_finished(self) -> bool:
+        return self.data.get('isFinished', False)
+
     @property
-    @return_none
-    def hell_is_finished(self) -> Union[bool, None]:
-        """
-        `hell_is_finished` - Returns whether the quiz is finished in hell mode or not.
-        """
-        return self.data.get('hellIsFinished')
-    
+    def hell_is_finished(self) -> bool:
+        return self.data.get('hellIsFinished', False)
+
     @property
-    @return_none
-    def highest_score(self) -> Union[int, None]:
-        """
-        `highest_score` - Returns the highest score of the quiz.
-        """
-        return self.data.get('highestScore')
-    
+    def highest_score(self) -> int:
+        return self.data.get('highestScore', 0)
+
     @property
-    @return_none
-    def beat_rate(self) -> Union[None, None]:
-        """
-        `beat_rate` - Returns the beat rate of the quiz.
-        """
-        return self.data.get('beatRate')
-    
+    def beat_rate(self) -> int:
+        return self.data.get('beatRate', 0)
+
     @property
-    @return_none
-    def last_beat_rate(self) -> Union[None, None]:
-        """
-        `last_beat_rate` - Returns the last beat rate of the quiz.
-        """
+    def last_beat_rate(self) -> Optional[int]:
         return self.data.get('lastBeatRate')
     
     @property
-    @return_none
-    def total_times(self) -> Union[int, None]:
-        """
-        `total_times` - Returns the total times the quiz has been played.
-        """
-        return self.data.get('totalTimes')
-    
+    def total_times(self) -> int:
+        return self.data.get('totalTimes', 0)
+
     @property
-    @return_none
-    def latest_score(self) -> Union[int, None]:
-        """
-        `latest_score` - Returns the latest score of the quiz.
-        """
-        return self.data.get('latestScore')
-    
+    def latest_score(self) -> int:
+        return self.data.get('latestScore') or 0
+
     @property
-    @return_none
-    def author(self) -> UserProfile:
-        """
-        `author` - Returns the author of the quiz.
-        """
-        try:
-            return UserProfile(self.data.get('author'))
-        except Exception:
-            return None
-    
+    def author(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.data.get('author') or {})
+
     @property
-    @return_none
-    def latest_mode(self) -> Union[int, None]:
-        """
-        `latest_mode` - Returns the latest mode of the quiz.
-        """
+    def latest_mode(self) -> Optional[int]:
         return self.data.get('latestMode')
-    
+
     @property
-    @return_none
-    def created_time(self) -> Union[str, None]:
-        """
-        `created_time` - Returns the time the quiz was created.
-        """
-        return self.data.get('createdTime')
-    
-    def json(self) -> Union[dict, None]:
+    def created_time(self) -> str:
+        return self.data.get('createdTime', "")
+
+    def json(self) -> dict[str, Any]:
         return self.data
+
 
 class QuizRankingList:
-    def __init__(self, data: dict):
-        self.data:                          dict = data.get("quizResultRankingList")
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get("quizResultRankingList") or []
+        parser = [QuizRanking(x) for x in self.data]
+        self.highest_mode = [x.highest_mode for x in parser]
+        self.modified_time = [x.modified_time for x in parser]
+        self.is_finished = [x.is_finished for x in parser]
+        self.hell_is_finished = [x.hell_is_finished for x in parser]
+        self.highest_score = [x.highest_score for x in parser]
+        self.beat_rate = [x.beat_rate for x in parser]
+        self.last_beat_rate = [x.last_beat_rate for x in parser]
+        self.total_times = [x.total_times for x in parser]
+        self.latest_score = [x.latest_score for x in parser]
+        self.author = userprofile.UserProfileList([x.author.json() for x in parser])
+        self.latest_mode = [x.latest_mode for x in parser]
+        self.created_time = [x.created_time for x in parser]
 
-    @property
-    def __parser__(self) -> List[QuizRanking]:
-        """
-        `__parser__` - Returns a list of QuizRanking objects.
-        """
-        return [QuizRanking(x) for x in self.data]
-    
-    @property
-    def highest_mode(self) -> list:
-        """
-        `highest_mode` - Returns a list of the highest mode of the quiz.
-        """
-        return [x.highest_mode for x in self.__parser__]
-    
-    @property
-    def modified_time(self) -> list:
-        """
-        `modified_time` - Returns a list of the last time the quiz was modified.
-        """
-        return [x.modified_time for x in self.__parser__]
-    
-    @property
-    def is_finished(self) -> list:
-        """
-        `is_finished` - Returns a list of whether the quiz is finished or not.
-        """
-        return [x.is_finished for x in self.__parser__]
-    
-    @property
-    def hell_is_finished(self) -> list:
-        """
-        `hell_is_finished` - Returns a list of whether the quiz is finished in hell mode or not.
-        """
-        return [x.hell_is_finished for x in self.__parser__]
-    
-    @property
-    def highest_score(self) -> list:
-        """
-        `highest_score` - Returns a list of the highest score of the quiz.
-        """
-        return [x.highest_score for x in self.__parser__]
-    
-    @property
-    def beat_rate(self) -> list:
-        """
-        `beat_rate` - Returns a list of the beat rate of the quiz.
-        """
-        return [x.beat_rate for x in self.__parser__]
-    
-    @property
-    def last_beat_rate(self) -> list:
-        """
-        `last_beat_rate` - Returns a list of the last beat rate of the quiz.
-        """
-        return [x.last_beat_rate for x in self.__parser__]
-    
-    @property
-    def total_times(self) -> list:
-        """
-        `total_times` - Returns a list of the total times the quiz has been played.
-        """
-        return [x.total_times for x in self.__parser__]
-    
-    @property
-    def latest_score(self) -> list:
-        """
-        `latest_score` - Returns a list of the latest score of the quiz.
-        """
-        return [x.latest_score for x in self.__parser__]
-    
-    @property
-    def author(self) -> UserProfileList:
-        """
-        `author` - Returns a list of the author of the quiz.
-        """
-        return UserProfileList([x.author.json() for x in self.__parser__])
-    
-    @property
-    def latest_mode(self) -> list:
-        """
-        `latest_mode` - Returns a list of the latest mode of the quiz.
-        """
-        return [x.latest_mode for x in self.__parser__]
-    
-    @property
-    def created_time(self) -> list:
-        """
-        `created_time` - Returns a list of the time the quiz was created.
-        """
-        return [x.created_time for x in self.__parser__]
-
-    def json(self) -> Union[dict, None]:
+    def json(self) -> list[dict[str, Any]]:
         return self.data
+
 
 class FetchNotification:
-    def __init__(self, data: dict):
-        self.data = data if isinstance(data, dict) else {}
-    
+    def __init__(self, data: dict[str, Any]):
+        self.data = data
+
     @property
-    def parentText(self) -> Union[str, None]:
-        """
-        `parentText` - Returns the parent text of the notification.
-        """
-        return self.data.get('parentText')
-    
+    def parentText(self) -> Optional[str]:
+        return self.data.get("parentText")
+
     @property
-    def objectId(self) -> Union[str, None]:
-        """
-        `objectId` - Returns the object id of the notification.
-        """
-        return self.data.get('objectId')
-    
+    def objectId(self) -> str:
+        return self.data.get("objectId", "")
+
     @property
-    def contextText(self) -> Union[str, None]:
-        """
-        `contextText` - Returns the context text of the notification.
-        """
-        return self.data.get('contextText')
-    
+    def contextText(self) -> Optional[str]:
+        return self.data.get("contextText")
+
     @property
-    def type(self) -> Union[int, None]:
-        """
-        `type` - Returns the type of the notification.
-        """
-        return self.data.get('type')
-    
+    def type(self) -> int:
+        return self.data.get("type", 0)
+
     @property
-    def parentId(self) -> Union[str, None]:
-        """
-        `parentId` - Returns the parent id of the notification.
-        """
-        return self.data.get('parentId')
-    
+    def parentId(self) -> str:
+        return self.data.get("parentId", "")
+
     @property
-    def operator(self) -> Union[UserProfile, None]:
-        """
-        `operator` - Returns the operator of the notification.
-        """
-        try:
-            return UserProfile(self.data.get('operator'))
-        except Exception:
-            return None
-    
+    def operator(self) -> userprofile.UserProfile:
+        return userprofile.UserProfile(self.data.get("operator") or {})
+
     @property
-    def createdTime(self) -> Union[str, None]:
-        """
-        `createdTime` - Returns the time the notification was created.
-        """
-        return self.data.get('createdTime')
-    
+    def createdTime(self) -> str:
+        return self.data.get("createdTime", "")
+
     @property
-    def notificationId(self) -> Union[str, None]:
-        """
-        `notificationId` - Returns the notification id.
-        """
-        return self.data.get('notificationId')
-    
+    def parentType(self) -> int:
+        return self.data.get("parentType", 0)
+
     @property
-    def ndcId(self) -> Union[int, None]:
-        """
-        `ndcId` - Returns the ndc id of the notification.
-        """
-        return self.data.get('ndcId')
-    
+    def ndcId(self) -> int:
+        return self.data.get("ndcId", 0)
+
     @property
-    def comId(self) -> Union[int, None]:
-        """
-        `comId` - Returns the com id of the notification.
-        """
+    def comId(self) -> int:
         return self.ndcId
-    
+
     @property
-    def objectText(self) -> Union[str, None]:
-        """
-        `objectText` - Returns the object text of the notification.
-        """
-        return self.data.get('objectText')
-    
+    def notificationId(self) -> str:
+        return self.data.get("notificationId", "")
+
     @property
-    def contextValue(self) -> Union[str, None]:
-        """
-        `contextValue` - Returns the context value of the notification.
-        """
-        return self.data.get('contextValue')
-    
+    def objectText(self) -> str:
+        return self.data.get("objectText", "")
+
     @property
-    def contextNdcId(self) -> Union[int, None]:
-        """
-        `contextNdcId` - Returns the context ndc id of the notification.
-        """
-        return self.data.get('contextNdcId')
-    
+    def contextValue(self) -> Optional[str]:
+        return self.data.get("contextValue")
+
     @property
-    def objectType(self) -> Union[int, None]:
-        """
-        `objectType` - Returns the object type of the notification.
-        """
-        return self.data.get('objectType')
-    
+    def contextComId(self) -> Optional[str]:
+        return self.data.get("contextNdcId")
+
     @property
-    def parentType(self) -> Union[int, None]:
-        """
-        `parentType` - Returns the parent type of the notification.
-        """
-        return self.data.get('parentType')
-    
-    def json(self) -> Union[dict, None]:
+    def objectType(self) -> int:
+        return self.data.get("objectType", 0)
+
+    def json(self) -> dict[str, Any]:
         return self.data
 
+
 class GlobalNotificationList:
-    def __init__(self, data: dict):
-        self.data = data.get('notificationList', data)
-    
+    def __init__(self, data: dict[str, Any]) -> None:
+        self.data: list[dict[str, Any]] = data.get('notificationList') or []
+
+    def __iter__(self) -> Iterator[FetchNotification]:
+        return (FetchNotification(x) for x in self.data)
+
     @property
-    def __parser__(self) -> List[FetchNotification]:
-        """
-        `__parser__` - Returns a list of FetchNotification objects.
-        """
-        return [FetchNotification(x) for x in self.data]
-    
+    def parentText(self) -> list[Optional[str]]:
+        """Returns a list of the parent text of the notification."""
+        return [x.parentText for x in self]
+
     @property
-    def parentText(self) -> list:
-        """
-        `parentText` - Returns a list of the parent text of the notification.
-        """
-        return [x.parentText for x in self.__parser__]
-    
+    def objectId(self) -> list[str]:
+        """Returns a list of the object id of the notification."""
+        return [x.objectId for x in self]
+
     @property
-    def objectId(self) -> list:
-        """
-        `objectId` - Returns a list of the object id of the notification.
-        """
-        return [x.objectId for x in self.__parser__]
-    
+    def contextText(self) -> list[Optional[str]]:
+        """Returns a list of the context text of the notification."""
+        return [x.contextText for x in self]
+
     @property
-    def contextText(self) -> list:
-        """
-        `contextText` - Returns a list of the context text of the notification.
-        """
-        return [x.contextText for x in self.__parser__]
-    
+    def type(self):
+        """Returns a list of the type of the notification."""
+        return [x.type for x in self]
+
     @property
-    def type(self) -> list:
-        """
-        `type` - Returns a list of the type of the notification.
-        """
-        return [x.type for x in self.__parser__]
-    
+    def parentId(self):
+        """Returns a list of the parent id of the notification."""
+        return [x.parentId for x in self]
+
     @property
-    def parentId(self) -> list:
-        """
-        `parentId` - Returns a list of the parent id of the notification.
-        """
-        return [x.parentId for x in self.__parser__]
-    
+    def operator(self) -> userprofile.UserProfileList:
+        """Returns a list of the operator of the notification."""
+        return userprofile.UserProfileList([x.operator.json() for x in self])
+
     @property
-    def operator(self) -> UserProfileList:
-        """
-        `operator` - Returns a list of the operator of the notification.
-        """
-        return UserProfileList([x.operator.json() for x in self.__parser__])
-    
+    def createdTime(self) -> list[str]:
+        """Returns a list of the time the notification was created."""
+        return [x.createdTime for x in self]
+
     @property
-    def createdTime(self) -> list:
-        """
-        `createdTime` - Returns a list of the time the notification was created.
-        """
-        return [x.createdTime for x in self.__parser__]
-    
+    def notificationId(self) -> list[str]:
+        """Returns a list of the notification id."""
+        return [x.notificationId for x in self]
+
     @property
-    def notificationId(self) -> list:
-        """
-        `notificationId` - Returns a list of the notification id.
-        """
-        return [x.notificationId for x in self.__parser__]
-    
+    def ndcId(self) -> list[int]:
+        """Returns a list of the ndc id of the notification."""
+        return [x.ndcId for x in self]
+
     @property
-    def ndcId(self) -> list:
-        """
-        `ndcId` - Returns a list of the ndc id of the notification.
-        """
-        return [x.ndcId for x in self.__parser__]
-    
+    def comId(self) -> list[int]:
+        """Returns a list of the com id of the notification."""
+        return [x.comId for x in self]
+
     @property
-    def comId(self) -> list:
-        """
-        `comId` - Returns a list of the com id of the notification.
-        """
-        return [x.comId for x in self.__parser__]
-    
+    def objectText(self) -> list[str]:
+        """Returns a list of the object text of the notification."""
+        return [x.objectText for x in self]
+
     @property
-    def objectText(self) -> list:
-        """
-        `objectText` - Returns a list of the object text of the notification.
-        """
-        return [x.objectText for x in self.__parser__]
-    
+    def contextValue(self) -> list[Optional[str]]:
+        """Returns a list of the context value of the notification."""
+        return [x.contextValue for x in self]
+
     @property
-    def contextValue(self) -> list:
-        """
-        `contextValue` - Returns a list of the context value of the notification.
-        """
-        return [x.contextValue for x in self.__parser__]
-    
+    def contextComId(self) -> list[Optional[str]]:
+        """Returns a list of the context ndc id of the notification."""
+        return [x.contextComId for x in self]
+
     @property
-    def contextNdcId(self) -> list:
-        """
-        `contextNdcId` - Returns a list of the context ndc id of the notification.
-        """
-        return [x.contextNdcId for x in self.__parser__]
-    
+    def objectType(self) -> list[int]:
+        """Returns a list of the object type of the notification."""
+        return [x.objectType for x in self]
+
     @property
-    def objectType(self) -> list:
-        """
-        `objectType` - Returns a list of the object type of the notification.
-        """
-        return [x.objectType for x in self.__parser__]
-    
-    @property
-    def parentType(self) -> list:
-        """
-        `parentType` - Returns a list of the parent type of the notification.
-        """
-        return [x.parentType for x in self.__parser__]
-    
-    def json(self) -> Union[dict, None]:
+    def parentType(self) -> list[int]:
+        """Returns a list of the parent type of the notification."""
+        return [x.parentType for x in self]
+
+    def json(self) -> list[dict[str, Any]]:
         return self.data

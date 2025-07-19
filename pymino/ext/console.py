@@ -1,38 +1,40 @@
+import os
 import textwrap
+import time
+from typing import Literal
 
-from os import system
-from time import sleep
-from .utilities.menu import Menu
-from .entities.handlers import is_android, is_repl
-from .utilities.community_console import CommunityConsole
-from .utilities.profile_console import ProfileConsole
-from .utilities.chat_console import ChatConsole
-from colorama import Fore, Style
+import colorama
+
+from pymino.ext import entities, utilities
+from pymino import bot
+
+__all__ = ("Console",)
+
 
 class Console:
-    def __init__(self, bot):
-        """
-        The Console class is responsible for the overall operation of the terminal application.
+    """
+    The Console class is responsible for the overall operation of the terminal application.
 
-        :param bot: An instance of the bot which will interact with the Amino API.
-        :type bot: Bot
-        """
+    :param bot: An instance of the bot which will interact with the Amino API.
+    :type bot: Bot
+    """
+
+    def __init__(self, bot: "bot.Bot") -> None:
         self.bot = bot
         self.indent_size = self.fetch_indent_size()
-        self.menu = Menu(self)
-        self.community_console = CommunityConsole(self)
-        self.profile_console = ProfileConsole(self)
-        self.chat_console = ChatConsole(self)
+        self.menu = utilities.Menu(self)
+        self.community_console = utilities.CommunityConsole(self)
+        self.profile_console = utilities.ProfileConsole(self)
+        self.chat_console = utilities.ChatConsole(self)
 
-    
-    def fetch_indent_size(self):
+    def fetch_indent_size(self) -> Literal[0, 20]:
         """
         Checks if the application is running on an Android device or a REPL environment and sets the appropriate
         indentation size.
         """
-        return 0 if is_android() or is_repl() else 20
+        return 0 if entities.is_android() or entities.is_repl() else 20
 
-    def print(self, text=""):
+    def print(self, text: str = "") -> None:
         """
         Prints a string with a specified indentation.
 
@@ -43,40 +45,38 @@ class Console:
         """
         print(textwrap.indent(text, ' ' * self.indent_size))
 
-    def error_print(self, text=""):
+    def error_print(self, text: str = "") -> None:
         """
         Prints a string with a specified indentation and a red color.
 
         :param text: The string to be printed.
         :type text: str
         """
-        print(Fore.RED + textwrap.indent(text, ' ' * self.indent_size) + Style.RESET_ALL)
+        print(colorama.Fore.RED + textwrap.indent(text, ' ' * self.indent_size) + colorama.Style.RESET_ALL)
 
-    def on_error(self, error):
+    def on_error(self, error: str) -> None:
         """
         Displays an error message to the user and prompts them to press enter to return to the main menu.
         """
         self.error_print(error)
         input(f"{' ' * self.indent_size}Press enter to return to the main menu.")
-        self.fetch_menu()
 
-    def sleep(self, seconds):
+    def sleep(self, seconds: float) -> None:
         """
         Sleeps for a specified number of seconds.
 
         :param seconds: The number of seconds to sleep.
         :type seconds: int
         """
-        sleep(seconds)
+        time.sleep(seconds)
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Clears the console screen irrespective of the platform (Windows/Linux).
         """
-        clear_command = "cls || clear"
-        system(clear_command)
+        os.system("cls || clear")
 
-    def input(self, text):
+    def input(self, text: str) -> str:
         """
         Accepts user input prefixed with a fixed number of spaces for consistent look and feel.
 
@@ -86,8 +86,9 @@ class Console:
         """
         return input(" " * self.indent_size + text)
 
-    def fetch_menu(self):
+    def fetch_menu(self) -> None:
         """
         Displays the main menu of the application to the user and processes their input.
         """
-        self.menu.display()
+        while True:
+            self.menu.display()
