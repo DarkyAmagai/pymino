@@ -25,7 +25,7 @@ if not TYPE_CHECKING:
         latest_version = requests.get(
             "https://api.github.com/repos/DarkyAmagai/pymino/releases?per_page=1",
             timeout=5,
-        ).json()[0]["name"]
+        ).json()[0]["tag_name"]
     except (requests.ConnectionError, requests.Timeout):
         print("Could not fetch version info from PyPI.")
     else:
