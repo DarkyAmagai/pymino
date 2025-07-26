@@ -91,3 +91,5 @@ config.local.*
 
 # pymino files
 *.db
+*.db-shm
+*.db-wal
