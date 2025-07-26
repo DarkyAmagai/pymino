@@ -159,7 +159,7 @@ class WSClient(context.EventHandler):
 
     def _on_websocket_message(self, message: Union[bytes, str]) -> None:
         """Receives websocket messages."""
-        threading.Thread(target=self._handle_websocket_message, args=message).start()
+        threading.Thread(target=self._handle_websocket_message, args=(message,)).start()
 
     def _on_websocket_close(self) -> None:
         """Handles websocket close events."""
