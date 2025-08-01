@@ -5,7 +5,7 @@ import random
 import re
 import time
 import urllib.request
-from typing import BinaryIO, Optional, Union
+from typing import Any, BinaryIO, Optional, Union
 
 import colorama
 import diskcache
@@ -15,6 +15,7 @@ from pymino.ext import entities, socket
 
 __all__ = (
     "Media",
+    "SID",
     "cache",
     "cache_exists",
     "cache_login",
@@ -42,6 +43,72 @@ RUNNING_MSG = (
 cache = diskcache.Cache("cache")
 
 Media = Union[BinaryIO, bytes, str]
+
+
+class SID(str):
+    def __init__(
+        self,
+        sid: str,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None
+    ) -> None:
+        try:
+            decoded_sid = base64.urlsafe_b64decode(
+                sid + '=' * (4 - len(sid) % 4)
+            )
+            decoded_json = ujson.loads(decoded_sid[1:-20].decode())
+        except (TypeError, UnicodeDecodeError, ujson.JSONDecodeError) as exc:
+            raise ValueError('Invalid sid') from exc
+        self.raw = decoded_sid
+        self.json: dict[str, Any] = decoded_json
+
+    @property
+    def key(self) -> str:
+        return self.raw[-20:].hex()
+
+    @property
+    def prefix(self) -> str:
+        return self.raw[:2].hex()
+
+    @property
+    def version(self) -> int:
+        return self.json["0"]
+
+    @property
+    def _(self) -> Optional[Any]:  # What does this represent?
+        return self.json["1"]
+
+    @property
+    def objectId(self) -> str:
+        return self.json["2"]
+
+    @property
+    def objectType(self) -> int:
+        return self.json["3"]
+
+    @property
+    def ip_address(self) -> str:
+        return self.json["4"]
+
+    @property
+    def createdTime(self) -> int:
+        return self.json["5"]
+
+    @property
+    def clientType(self) -> int:
+        return self.json["6"]
+
+    @property
+    def _(self) -> str:  # What does this represent?
+        return self.json["7"]
+
+    @property
+    def expireTime(self) -> int:
+        return self.createdTime + 24 * 60 * 60
+
+    @property
+    def expired(self) -> bool:
+        return time.time() >= self.expireTime
 
 
 def check_debugger() -> bool:
@@ -73,9 +140,7 @@ def notify() -> None:
 
 def parse_auid(sid: str) -> str:
     """Parses the user ID from a session ID."""
-    decoded_sid = base64.urlsafe_b64decode(f"{sid}==")
-    decoded_json = ujson.loads(decoded_sid[1:-20].decode())
-    return decoded_json["2"]
+    return SID(sid).objectId
 
 
 def cache_login(email: str, device: str, sid: str) -> None:

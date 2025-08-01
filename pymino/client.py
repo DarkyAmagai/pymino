@@ -752,15 +752,9 @@ class Client(socket.WSClient, global_client.Global):
                 email=self.request.email, device=self.device_id, sid=self.sid
             )
 
-        if not self.is_authenticated:
-            self._is_authenticated = True
-            logger.debug(
-                f"Logged in as {self.profile.username} ({self.profile.userId})"
-            )
-        else:
-            logger.debug(
-                f"Reconnected as {self.profile.username} ({self.profile.userId})"
-            )
+        logger.debug(
+            f"Reconnected as {self.profile.username} ({self.profile.userId})"
+        )
 
         with entities.cache as cache:
             cache.set(f"{self.userId}-account", response, expire=43200)

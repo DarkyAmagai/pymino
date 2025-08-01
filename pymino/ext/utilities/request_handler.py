@@ -37,6 +37,7 @@ class RequestHandler:
         self.api_url = "http://service.aminoapps.com/api/v1"
         self.http_handler = requests.Session()
         self.response_map = {
+            400: entities.BadRequest,
             403: entities.Forbidden,
             502: entities.BadGateway,
             503: entities.ServiceUnavailable,
@@ -96,7 +97,9 @@ class RequestHandler:
         - `tuple[int, str]` - The status code and response from the request.
 
         """
-        proxies = dict.fromkeys(["http", "https"], self.bot.proxy) if self.bot.proxy else None
+        proxies = (
+            dict.fromkeys(["http", "https"], self.bot.proxy) if self.bot.proxy else None
+        )
         try:
             response = self.http_handler.request(
                 method,
@@ -244,7 +247,13 @@ class RequestHandler:
         - `404` - Returns 404 if the status code is 105 and the email and password is set.
 
         """
-        if response.get("api:statuscode", 200) == 105 and self.email and self.password:
+        if (
+            response.get("api:statuscode", 200) == 105
+            and self.email
+            and self.password
+            and self.bot.sid
+            and entities.SID(self.bot.sid).expired
+        ):
             self.bot.run(self.email, self.password, use_cache=False)
             return None
 

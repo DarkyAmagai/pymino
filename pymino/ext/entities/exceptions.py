@@ -1,4 +1,4 @@
-from typing import Any, NoReturn, cast
+from typing import Any, NoReturn
 
 __all__ = (
     "APIException",
@@ -19,6 +19,7 @@ __all__ = (
     "AminoIDAlreadyChanged",
     "BadGateway",
     "BadImage",
+    "BadRequest",
     "BlockedByOrganizer",
     "CannotSendCoins",
     "CantFollowYourself",
@@ -398,13 +399,13 @@ def APIException(response: dict[str, Any]) -> NoReturn:
         99001: InvalidName,
     }
     status_code = response.get("api:statuscode")
-    message = response.get("api:message")
+    message = response.get("api:message", "-")
     url = response.get("url")
     if isinstance(status_code, int) and status_code in exception_map:
         exception = exception_map[status_code]
         if url is not None:
             message = f"{message} ({url})"
-        raise exception(cast(str, message))
+        raise exception(message)
     raise API_ERROR(response)
 
 
@@ -474,6 +475,13 @@ class NotLoggedIn(PyminoException):
     def __init__(self) -> None:
         super().__init__(
             "You are not logged in. Please login before using this function."
+        )
+
+
+class BadRequest(PyminoException):
+    def __init__(self) -> None:
+        super().__init__(
+            "400 BadRequest. Any missing parameter or wrong value. Please report this error so that it can be resolved as soon as possible."
         )
 
 
