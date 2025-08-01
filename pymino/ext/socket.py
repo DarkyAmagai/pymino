@@ -63,6 +63,10 @@ class WSClient(context.EventHandler):
 
     @property
     @abc.abstractmethod
+    def device_id(self) -> str: ...
+
+    @property
+    @abc.abstractmethod
     def sid(self) -> Optional[str]: ...
 
     def __init__(self) -> None:
@@ -115,13 +119,13 @@ class WSClient(context.EventHandler):
                 self.ws = websocket.WebSocket()
             if not self.connected:
                 logger.debug("Initializing websocket.")
-                ws_data = f"{self.generate.device_id()}|{int(time.time() * 1000)}"
+                ws_data = f"{self.device_id}|{int(time.time() * 1000)}"
                 url = f"{self.fetch_ws_url()}?" + urllib.parse.urlencode(
                     {"signbody": ws_data}
                 )
                 kwargs: dict[str, Any] = {
                     "header": {
-                        "NDCDEVICEID": self.generate.device_id(),
+                        "NDCDEVICEID": self.device_id,
                         "NDCAUTH": f"sid={self.sid}",
                         "NDC-MSG-SIG": self.generate.signature(ws_data),
                     }

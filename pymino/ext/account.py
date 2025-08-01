@@ -51,7 +51,7 @@ class Account:
                 "/g/s/auth/register",
                 data={
                     "secret": f"0 {password}",
-                    "deviceID": self.session.generate.device_id(),
+                    "deviceID": self.session.bot.device_id,
                     "email": email,
                     "clientType": 100,
                     "nickname": username,
@@ -94,7 +94,7 @@ class Account:
                 "/g/s/account/delete-request",
                 data={
                     "secret": f"0 {password}",
-                    "deviceID": self.session.generate.device_id(),
+                    "deviceID": self.session.bot.device_id,
                     "email": email,
                     "timestamp": int(time.time() * 1000),
                 },
@@ -128,7 +128,7 @@ class Account:
                 "/g/s/account/delete-request/cancel",
                 data={
                     "secret": f"0 {password}",
-                    "deviceID": self.session.generate.device_id(),
+                    "deviceID": self.session.bot.device_id,
                     "email": email,
                     "timestamp": int(time.time() * 1000),
                 },
@@ -275,7 +275,7 @@ class Account:
                 data={
                     "identity": email,
                     "type": 1,
-                    "deviceID": self.session.generate.device_id(),
+                    "deviceID": self.session.bot.device_id,
                     "level": 2 if reset_password else None,
                     "purpose": "reset-password" if reset_password else None,
                     "timestamp": int(time.time() * 1000),
@@ -311,7 +311,7 @@ class Account:
                     "type": 1,
                     "identity": email,
                     "data": {"code": code},
-                    "deviceID": self.session.generate.device_id(),
+                    "deviceID": self.session.bot.device_id,
                     "timestamp": int(time.time() * 1000),
                 },
             )

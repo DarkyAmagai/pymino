@@ -60,6 +60,7 @@ class Bot(socket.WSClient, global_client.Global):
         "_community_id",
         "_console_enabled",
         "_debug",
+        "_device_id",
         "_generate",
         "_intents",
         "_is_ready",
@@ -69,7 +70,6 @@ class Bot(socket.WSClient, global_client.Global):
         "_userId",
         "account",
         "cooldown_message",
-        "device_id",
         "online_status",
     )
 
@@ -565,6 +565,31 @@ class Bot(socket.WSClient, global_client.Global):
         the `self.userId` property.
         """
         self._userId = value
+
+    @property
+    def device_id(self) -> str:
+        """
+        The Device ID associated with the client.
+
+        :return: The ID of the device.
+        :rtype: str
+
+        This property returns the ID of the device associated with the client. The device ID is set when the client creation.
+        """
+        return self._device_id
+
+    @device_id.setter
+    def device_id(self, value: str) -> None:
+        """
+        Sets the ID of the device associated with the client.
+
+        :param value: The ID of the device to set.
+        :type value: str
+        :return: None
+
+        This setter sets the ID of the device associated with the client.
+        """
+        self._device_id = value
 
     @property
     def sid(self) -> Optional[str]:

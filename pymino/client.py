@@ -47,13 +47,13 @@ class Client(socket.WSClient, global_client.Global):
         "_cached",
         "_community_id",
         "_debug",
+        "_device_id",
         "_generate",
         "_request",
         "_sid",
         "_secret",
         "_userId",
         "account",
-        "device_id",
         "profile",
     )
 
@@ -291,9 +291,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This property returns whether or not debug mode is enabled. Debug mode can be used to enable additional logging and
         debug information during development.
-
-        **Note:** This property only returns the debug mode state and cannot be used to set the debug mode state. To set the
-        debug mode state, use the `self._debug` attribute directly.
         """
         return self._debug
 
@@ -308,9 +305,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This setter sets the debug mode state. Debug mode can be used to enable additional logging and debug information
         during development.
-
-        **Note:** This setter only sets the debug mode state and cannot be used to retrieve the debug mode state. To retrieve
-        the debug mode state, use the `self.debug` property.
         """
         self._debug = value
 
@@ -337,9 +331,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This property returns the ID of the user associated with the client. The user ID is set when the client logs in to
         Amino, and can be used to make API calls related to the user, such as retrieving the user's profile or posts.
-
-        **Note:** This property only returns the user ID and cannot be used to set the user ID. To set the user ID, use the
-        `self._userId` attribute directly.
         """
         return self._userId
 
@@ -354,11 +345,33 @@ class Client(socket.WSClient, global_client.Global):
 
         This setter sets the ID of the user associated with the client. The user ID is used to make API calls related to the
         user, such as retrieving the user's profile or posts.
-
-        **Note:** This setter only sets the user ID and cannot be used to retrieve the user ID. To retrieve the user ID, use
-        the `self.userId` property.
         """
         self._userId = value
+
+    @property
+    def device_id(self) -> str:
+        """
+        The Device ID associated with the client.
+
+        :return: The ID of the device.
+        :rtype: str
+
+        This property returns the ID of the device associated with the client. The device ID is set when the client creation.
+        """
+        return self._device_id
+
+    @device_id.setter
+    def device_id(self, value: str) -> None:
+        """
+        Sets the ID of the device associated with the client.
+
+        :param value: The ID of the device to set.
+        :type value: str
+        :return: None
+
+        This setter sets the ID of the device associated with the client.
+        """
+        self._device_id = value
 
     @property
     def sid(self) -> Optional[str]:
@@ -370,9 +383,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This property returns the session ID of the client. The session ID is set when the client logs in to Amino, and is
         used to make authenticated API calls, such as posting messages or retrieving user information.
-
-        **Note:** This property only returns the session ID and cannot be used to set the session ID. To set the session ID,
-        use the `self._sid` attribute directly.
         """
         return self._sid
 
@@ -387,9 +397,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This setter sets the session ID of the client. The session ID is used to make authenticated API calls, such as
         posting messages or retrieving user information.
-
-        **Note:** This setter only sets the session ID and cannot be used to retrieve the session ID. To retrieve the session
-        ID, use the `self.sid` property.
         """
         self._sid = value
 
@@ -403,9 +410,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This property returns the secret of the client. The secret is set when the client logs in to Amino, and is used to
         make authenticated API calls, such as posting messages or retrieving user information.
-
-        **Note:** This property only returns the secret and cannot be used to set the secret. To set the secret, use the
-        `self._secret` attribute directly.
         """
         return self._secret
 
@@ -420,9 +424,6 @@ class Client(socket.WSClient, global_client.Global):
 
         This setter sets the secret of the client. The secret is used to make authenticated API calls, such as posting
         messages or retrieving user information.
-
-        **Note:** This setter only sets the secret and cannot be used to retrieve the secret. To retrieve the secret, use
-        the `self.secret` property.
         """
         self._secret = value
 

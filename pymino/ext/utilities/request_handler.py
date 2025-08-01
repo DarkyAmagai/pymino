@@ -34,7 +34,7 @@ class RequestHandler:
     ) -> None:
         self.bot = bot
         self.generate = generator
-        self.api_url = "http://service.aminoapps.com/api/v1"
+        self.api_url = "https://service.aminoapps.com/api/v1"
         self.http_handler = requests.Session()
         self.response_map = {
             400: entities.BadRequest,
@@ -67,6 +67,7 @@ class RequestHandler:
             "HOST": "service.aminoapps.com",
             "CONNECTION": "Keep-Alive",
             "ACCEPT-ENCODING": "gzip, deflate, br",
+            "NDCDEVICEID": self.bot.device_id,
             "AUID": str(uuid.uuid4()),
         }
         if self.bot.sid:
@@ -190,7 +191,6 @@ class RequestHandler:
 
         """
         headers = self.service_headers()
-        headers.update({"NDCDEVICEID": self.generate.device_id()})
         if data:
             headers, data = self.fetch_signature(data, headers, content_type)
         else:

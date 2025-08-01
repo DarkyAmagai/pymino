@@ -31,6 +31,10 @@ class Global(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def device_id(self) -> str: ...
+
+    @property
+    @abc.abstractmethod
     def sid(self) -> Optional[str]: ...
 
     @property
