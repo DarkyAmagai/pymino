@@ -12,7 +12,7 @@ __title__ = "pymino"
 __author__ = "cynical"
 __license__ = "MIT"
 __copyright__ = "Copyright 2023 Cynical"
-__version__ = "1.3.4.10"
+__version__ = "1.3.4.11"
 __description__ = "A Python wrapper for the aminoapps.com API"
 
 print("Join the pymino Discord server: https://discord.gg/3HRdkVNets")
@@ -29,7 +29,7 @@ if not TYPE_CHECKING:
     except (requests.ConnectionError, requests.Timeout):
         print("Could not fetch version info from PyPI.")
     else:
-        if __version__ != latest_version:
+        if __version__ < latest_version:
             print(
                 f"{colorama.Fore.RED}WARNING:{colorama.Style.RESET_ALL} "
                 f"You are using an outdated version of pymino ({__version__}). "
