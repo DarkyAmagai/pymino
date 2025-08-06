@@ -52,6 +52,7 @@ class LinkInfo:
         return (
             self.data.get("ndcId")
             or self.extensions.get("linkInfo", {}).get("ndcId")
+            or self.extensions.get("community", {}).get("ndcId")
             or 0
         )
 

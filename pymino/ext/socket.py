@@ -187,7 +187,10 @@ class WSClient(context.EventHandler):
 
     def _handle_websocket_message(self, message: Union[bytes, str]) -> None:
         """Handles websocket messages."""
-        self.dispatcher.handle(ujson.loads(message))
+        try:
+            self.dispatcher.handle(ujson.loads(message))
+        except ujson.JSONDecodeError:
+            logger.error(f"Unhandled ws message: {message!r}")
 
     def _handle_message(self, data: dict[str, Any]) -> None:
         """Sends the message to the event handler."""
