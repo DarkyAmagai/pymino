@@ -822,7 +822,8 @@ class Community:
                 "POST",
                 f"/x{comId or self.community_id}/s/user-profile/{self.userId}/online-status",
                 data={
-                    "status": onlineStatus,
+                    "onlineStatus": onlineStatus,
+                    "duration": 24* 60 * 60,
                     "timestamp": int(time.time() * 1000),
                 },
             )
