@@ -83,7 +83,7 @@ class Generator:
             data = data.encode("utf-8")
 
         response = requests.post(
-            url="https://app.pymino.site/api/v1/pymino",
+            url="https://r.pymino.site/api/v1/pymino",
             params={
                 "user_id": userId,
                 "key": self.key,
