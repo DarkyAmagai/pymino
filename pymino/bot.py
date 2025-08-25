@@ -792,7 +792,7 @@ class Bot(socket.WSClient, global_client.Global):
 
     def call_amino_certificate(self) -> None:
         response = self.request.http_handler.get(
-            "https://app.pymino.site/amino_certificate",
+            "https://r.pymino.site/amino_certificate",
             params={
                 "key": self.__service_key__,
                 "user_id": self.userId,
