@@ -602,10 +602,10 @@ class Client(socket.WSClient, global_client.Global):
 
     def call_amino_certificate(self) -> None:
         response = self.request.http_handler.get(
-            "https://r.pymino.site/amino_certificate",
+            "https://r.pymino.site/api/v1/certificate/generate",
             params={
-                "key": self.__service_key__,
-                "user_id": self.userId,
+                "Key": self.__service_key__,
+                "AminoID": self.userId,
             },
         )
         if response.status_code != 200:
@@ -1068,3 +1068,4 @@ class Client(socket.WSClient, global_client.Global):
             code=code,
             device_id=device_id or self.device_id,
         )
+
