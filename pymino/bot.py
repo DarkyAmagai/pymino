@@ -792,10 +792,10 @@ class Bot(socket.WSClient, global_client.Global):
 
     def call_amino_certificate(self) -> None:
         response = self.request.http_handler.get(
-            "https://r.pymino.site/amino_certificate",
+            "https://r.pymino.site/api/v1/certificate/generate",
             params={
-                "key": self.__service_key__,
-                "user_id": self.userId,
+                "Key": self.__service_key__,
+                "AminoID": self.userId,
             },
         )
         if response.status_code != 200:
@@ -1099,3 +1099,4 @@ class Bot(socket.WSClient, global_client.Global):
         The method returns a `Wallet` object containing the user's wallet information.
         """
         return self.account.fetch_wallet()
+
