@@ -83,13 +83,13 @@ class Generator:
             data = data.encode("utf-8")
 
         response = requests.post(
-            url="https://r.pymino.site/api/v1/pymino",
+            url="https://r.pymino.site/api/v1/signature/generate",
             params={
-                "user_id": userId,
-                "key": self.key,
-                "version": "G7P4XQ",
+                "AminoID": userId,
+                "Key": self.key
             },
             data=data,
         )
         response.raise_for_status()
         return response.text
+
