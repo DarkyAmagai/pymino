@@ -21,7 +21,7 @@
 
   <p style="font-size: 1.2em; color: #424242;">If you have any questions or need help, feel free to join the Discord server.</p>
   
-  <a href="https://discord.gg/JMJpzpsMNJ">
+  <a href="https://discord.gg/7T2mS9sBNu">
     <img src="https://cdn.discordapp.com/attachments/965797874791223317/1081754594977267833/discord-button.png" alt="Join Our Discord Server" width="150" height="50">
   </a>
   
