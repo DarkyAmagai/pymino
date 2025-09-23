@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://cdn.discordapp.com/attachments/965717722166100018/1191698817452605500/pymino.png" alt="Pymino Logo" width="200">
+  <img src="https://i.ibb.co/FLYT58bs/IMG-0183.jpg" alt="Pymino Logo" width="200">
   <h1 style="color: #0d47a1; font-size: 3em;">pymino</h1>
   
   <p>
