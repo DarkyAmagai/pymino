@@ -3,9 +3,9 @@
   <h1 style="color: #0d47a1; font-size: 3em;">pymino</h1>
   
   <p>
-    <a href="https://discord.gg/JMJpzpsMNJ"><img src="https://img.shields.io/discord/926853226152755280?color=blueviolet&label=discord%20server" alt="Discord"></a>
-    <a href="https://libraries.io/github/forevercynical/pymino"><img src="https://img.shields.io/librariesio/github/forevercynical/pymino?color=blueviolet" alt="Libraries.io dependency status for GitHub repo"></a>
-    <a href="https://github.com/forevercynical/pymino/commits/main"><img src="https://img.shields.io/github/last-commit/forevercynical/pymino?label=last%20updated&color=blueviolet" alt="GitHub last commit"></a>
+    <a href="https://discord.gg/7T2mS9sBNu"><img src="https://img.shields.io/discord/926853226152755280?color=blueviolet&label=discord%20server" alt="Discord"></a>
+    <a href="https://libraries.io/github/DarkyAmagai/pymino"><img src="https://img.shields.io/librariesio/github/forevercynical/pymino?color=blueviolet" alt="Libraries.io dependency status for GitHub repo"></a>
+    <a href="https://github.com/DarkyAmagai/pymino/commits/main"><img src="https://img.shields.io/github/last-commit/forevercynical/pymino?label=last%20updated&color=blueviolet" alt="GitHub last commit"></a>
     <a href="https://pypi.org/project/pymino/"><img src="https://img.shields.io/pypi/dw/pymino?color=blueviolet" alt="PyPI - Downloads"></a>
   </p>
 
